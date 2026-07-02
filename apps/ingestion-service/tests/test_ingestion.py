@@ -63,3 +63,34 @@ def test_pipeline_upserts_evidence_first() -> None:
     assert orphan[0][0] == 0
     assert store.counts()["nodes"] > 5
     store.close()
+
+
+def test_pipeline_logs_coverage_to_metastore() -> None:
+    # §25.5: when a MetaStore is supplied, per-chunk coverage is logged so the
+    # absence-confidence layer can tell a true gap from mere non-extraction.
+    from kg_common.storage import SqlMetaStore
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    meta = SqlMetaStore("sqlite:///:memory:")
+    meta.migrate()
+    doc = ParsedDoc(
+        path="x.txt",
+        title="Покрытие",
+        doc_type="article",
+        file_hash="cov1",
+        lang="ru",
+        pages=[(1, SAMPLE)],
+        country="russia",
+        year=2023,
+    )
+    try:
+        IngestionPipeline(store, metastore=meta).ingest(doc)
+        stats = {s.target_type: s for s in meta.coverage_stats()}
+        assert "Measurement" in stats and stats["Measurement"].n_attempts >= 1
+        # SAMPLE carries a current-density measurement → ≥1 chunk found one
+        assert stats["Measurement"].n_found >= 1
+        # entity target types are logged as attempted too
+        assert "Material" in stats
+    finally:
+        store.close()

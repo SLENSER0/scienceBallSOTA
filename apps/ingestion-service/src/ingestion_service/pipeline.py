@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from ingestion_service.chunker import chunk_pages
 from ingestion_service.parsers import ParsedDoc
 from kg_common import evidence_id, get_logger, make_id
+from kg_common.storage.base import CoverageEvent, MetaStore
 from kg_extractors.rule_extractor import extract_rules
 from kg_retrievers.graph_store import KuzuGraphStore
 from kg_schema.extraction import DocumentExtraction
@@ -21,6 +22,9 @@ from kg_schema.taxonomy import load_taxonomy
 
 _log = get_logger("ingest")
 SCHEMA_VERSION = "0.1.0"
+
+# Entity target types whose per-chunk coverage we log for absence-confidence (§25.5).
+_COVERAGE_ENTITY_TYPES = ("Material", "TechnologySolution", "ProcessingRegime", "Property")
 
 _STRENGTH = {
     "article": "peer_reviewed",
@@ -61,11 +65,18 @@ def _practice_type(country: str | None) -> str:
 
 class IngestionPipeline:
     def __init__(
-        self, store: KuzuGraphStore, *, use_llm: bool = False, llm_max_chunks: int = 0
+        self,
+        store: KuzuGraphStore,
+        *,
+        use_llm: bool = False,
+        llm_max_chunks: int = 0,
+        metastore: MetaStore | None = None,
     ) -> None:
         self.store = store
         self.use_llm = use_llm
         self.llm_max_chunks = llm_max_chunks
+        # Optional coverage telemetry sink (§25.5). None → no logging (default, hot path unchanged).
+        self.metastore = metastore
         self.tax = load_taxonomy()
         self.run_id = make_id("ExtractorRun", f"ingest-{datetime.now(UTC).date()}")
         self._now = datetime.now(UTC).isoformat()
@@ -202,9 +213,32 @@ class IngestionPipeline:
 
         return {"status": "ok", "title": doc.title, "chunks": len(chunks)}
 
+    def _log_coverage(self, ex: DocumentExtraction, doc_id: str, chunk_id: str) -> None:
+        """Record which target types the extractor looked for + found in this chunk (§25.5)."""
+        if self.metastore is None:
+            return
+        extractor = "rule+llm" if self.use_llm else "rule"
+        counts: dict[str, int] = {"Measurement": len(ex.measurements)}
+        for e in ex.entities:
+            if e.entity_type in _COVERAGE_ENTITY_TYPES:
+                counts[e.entity_type] = counts.get(e.entity_type, 0) + 1
+        for target in (*_COVERAGE_ENTITY_TYPES, "Measurement"):
+            self.metastore.log_coverage(
+                CoverageEvent(
+                    doc_id=doc_id,
+                    chunk_id=chunk_id,
+                    extractor=extractor,
+                    target_type=target,
+                    attempted=True,
+                    found_count=counts.get(target, 0),
+                    run_id=self.run_id,
+                )
+            )
+
     def _apply_extraction(
         self, ex: DocumentExtraction, doc_id: str, chunk_id: str, page: int
     ) -> None:
+        self._log_coverage(ex, doc_id, chunk_id)
         material_id: str | None = None
         for e in ex.entities:
             nid = self._upsert_entity(e.canonical_name or e.text, e.entity_type, e.text)
