@@ -18,8 +18,14 @@ PACKAGES: dict[str, dict] = {
         dist="kg-common",
         pkg="kg_common",
         kind="lib",
-        deps=["pydantic>=2.7", "pydantic-settings>=2.2", "structlog>=24.1", "orjson>=3.10"],
-        desc="Shared config, DTOs, deterministic IDs, logging, telemetry.",
+        deps=[
+            "pydantic>=2.7",
+            "pydantic-settings>=2.2",
+            "structlog>=24.1",
+            "orjson>=3.10",
+            "sqlalchemy>=2.0",
+        ],
+        desc="Shared config, DTOs, deterministic IDs, logging, telemetry, MetaStore.",
         port=None,
     ),
     "packages/kg_schema": dict(

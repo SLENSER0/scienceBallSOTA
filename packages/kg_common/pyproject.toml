@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.2",
     "structlog>=24.1",
     "orjson>=3.10",
+    "sqlalchemy>=2.0",
 ]
 
 [build-system]
