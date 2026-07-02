@@ -23,7 +23,9 @@ _STARTED = time.time()
 async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     configure("api-gateway")
     setup_observability("api-gateway")
-    get_settings().ensure_runtime_dirs()
+    settings = get_settings()
+    settings.ensure_runtime_dirs()
+    settings.require_prod_secret()  # fail-fast on placeholder JWT secret outside local
     _log.info("api-gateway.startup")
     yield
     _log.info("api-gateway.shutdown")

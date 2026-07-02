@@ -109,8 +109,22 @@ class Settings(BaseSettings):
     langsmith_api_key: SecretStr = Field(default=SecretStr(""), alias="LANGSMITH_API_KEY")
 
     # -- Auth -------------------------------------------------------------
-    jwt_secret: SecretStr = Field(default=SecretStr("dev-insecure-change-me"), alias="JWT_SECRET")
+    # Default is ≥32 bytes (HS256 minimum, RFC 7518 §3.2) yet clearly a
+    # placeholder; production must override via JWT_SECRET (guarded below).
+    jwt_secret: SecretStr = Field(
+        default=SecretStr("dev-insecure-change-me-0000000000000000"), alias="JWT_SECRET"
+    )
     jwt_ttl_minutes: int = Field(default=720, alias="JWT_TTL_MINUTES")
+
+    def require_prod_secret(self) -> None:
+        """Fail-fast if a non-local deployment still uses the placeholder secret."""
+        secret = self.jwt_secret.get_secret_value()
+        if self.app_env != "local" and (
+            secret.startswith("dev-insecure") or len(secret.encode()) < 32
+        ):
+            raise RuntimeError(
+                "JWT_SECRET must be set to a real ≥32-byte secret outside local env"
+            )
 
     def path(self, *parts: str) -> pathlib.Path:
         """Resolve a path relative to the repo root."""
