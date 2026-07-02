@@ -195,6 +195,25 @@ class KuzuGraphStore:
                 d.update(json.loads(props))
         return d
 
+    def is_reviewed(self, node_id: str) -> bool:
+        """True if a node's factual fields are protected from auto-overwrite (§3.7)."""
+        nd = self.get_node(node_id)
+        return bool(nd and nd.get("review_status") in {"accepted", "corrected"})
+
+    def upsert_node_guarded(self, node_id: str, label: str, **props: Any) -> bool:
+        """Upsert but never overwrite a reviewed node's fields (§3.7 re-ingestion).
+
+        Returns True if written, False if skipped because the node is reviewed.
+        """
+        if self.is_reviewed(node_id):
+            return False
+        self.upsert_node(node_id, label, **props)
+        return True
+
+    def delete_node(self, node_id: str) -> None:
+        with self._lock:
+            self._conn.execute("MATCH (n:Node {id:$id}) DETACH DELETE n", {"id": node_id})
+
     def counts(self) -> dict[str, int]:
         nodes = self.rows("MATCH (n:Node) RETURN count(n)")
         rels = self.rows("MATCH ()-[r:Rel]->() RETURN count(r)")

@@ -1,0 +1,358 @@
+# Auto-generated taxonomy — water_treatment (workflow). RU/EN.
+- id: effluent_neutralization
+  node_type: TechnologySolution
+  canonical_ru: нейтрализация стоков
+  canonical_en: effluent neutralization
+  aliases:
+  - нейтрализация стоков
+  - нейтрализация сточных вод
+  - нейтрализация кислых стоков
+  - корректировка pH
+  - известковая нейтрализация
+  - effluent neutralization
+  - wastewater neutralization
+  - acid neutralization
+  - lime neutralization
+  - pH adjustment
+  domain: water_treatment
+- id: hydroxide_precipitation
+  node_type: TechnologySolution
+  canonical_ru: гидроксидное осаждение
+  canonical_en: hydroxide precipitation
+  aliases:
+  - гидроксидное осаждение
+  - осаждение гидроксидов
+  - осаждение тяжёлых металлов
+  - реагентное осаждение
+  - hydroxide precipitation
+  - metal hydroxide precipitation
+  - heavy metal precipitation
+  - chemical precipitation
+  domain: water_treatment
+- id: sulfide_precipitation
+  node_type: TechnologySolution
+  canonical_ru: сульфидное осаждение
+  canonical_en: sulfide precipitation
+  aliases:
+  - сульфидное осаждение
+  - осаждение сульфидов
+  - осаждение металлов сульфидами
+  - сульфидная очистка
+  - sulfide precipitation
+  - sulphide precipitation
+  - metal sulfide precipitation
+  - sulfide precipitation of metals
+  domain: water_treatment
+- id: electrocoagulation
+  node_type: TechnologySolution
+  canonical_ru: электрокоагуляция
+  canonical_en: electrocoagulation
+  aliases:
+  - электрокоагуляция
+  - электрохимическая коагуляция
+  - электрокоагуляционная очистка
+  - electrocoagulation
+  - EC
+  - electrochemical coagulation
+  - electrocoagulation treatment
+  domain: water_treatment
+- id: membrane_distillation
+  node_type: TechnologySolution
+  canonical_ru: мембранная дистилляция
+  canonical_en: membrane distillation
+  aliases:
+  - мембранная дистилляция
+  - мембранное дистиллирование
+  - термомембранная дистилляция
+  - membrane distillation
+  - MD
+  - direct contact membrane distillation
+  - DCMD
+  - vacuum membrane distillation
+  domain: water_treatment
+- id: brine_evaporation
+  node_type: TechnologySolution
+  canonical_ru: выпарка
+  canonical_en: evaporation
+  aliases:
+  - выпарка
+  - выпаривание
+  - упаривание
+  - выпарная установка
+  - термическое концентрирование
+  - evaporation
+  - brine evaporation
+  - evaporator
+  - forced circulation evaporation
+  - thermal concentration
+  domain: water_treatment
+- id: mechanical_vapor_recompression
+  node_type: TechnologySolution
+  canonical_ru: механическая рекомпрессия пара
+  canonical_en: mechanical vapor recompression
+  aliases:
+  - механическая рекомпрессия пара
+  - механическое сжатие пара
+  - выпарка с рекомпрессией пара
+  - MVR
+  - mechanical vapor recompression
+  - mechanical vapour recompression
+  - vapor compression evaporation
+  domain: water_treatment
+- id: salt_crystallization
+  node_type: TechnologySolution
+  canonical_ru: кристаллизация солей
+  canonical_en: salt crystallization
+  aliases:
+  - кристаллизация солей
+  - солевая кристаллизация
+  - выделение солей кристаллизацией
+  - кристаллизатор
+  - salt crystallization
+  - salt crystallisation
+  - evaporative crystallization
+  - crystallizer
+  domain: water_treatment
+- id: zero_liquid_discharge
+  node_type: TechnologySolution
+  canonical_ru: бессточная схема
+  canonical_en: zero liquid discharge
+  aliases:
+  - бессточная схема
+  - нулевой сброс жидких стоков
+  - бессточное водопользование
+  - замкнутый водооборот без сброса
+  - ZLD
+  - zero liquid discharge
+  - minimal liquid discharge
+  - MLD
+  domain: water_treatment
+- id: dry_fgd
+  node_type: TechnologySolution
+  canonical_ru: сухая сероочистка
+  canonical_en: dry flue gas desulfurization
+  aliases:
+  - сухая сероочистка
+  - сухая десульфуризация
+  - сухое связывание SO2
+  - известковая сухая очистка
+  - dry FGD
+  - dry flue gas desulfurization
+  - dry sorbent injection
+  - DSI
+  - dry scrubbing
+  domain: environment
+- id: semidry_fgd
+  node_type: TechnologySolution
+  canonical_ru: полусухая сероочистка
+  canonical_en: semi-dry flue gas desulfurization
+  aliases:
+  - полусухая сероочистка
+  - полусухая десульфуризация
+  - распылительная сушилка-абсорбер
+  - полусухой скруббер
+  - semi-dry FGD
+  - semi-dry flue gas desulfurization
+  - spray dryer absorber
+  - SDA
+  - semi-dry scrubbing
+  domain: environment
+- id: sulfuric_acid_plant
+  node_type: TechnologySolution
+  canonical_ru: производство серной кислоты из SO2
+  canonical_en: sulfuric acid production
+  aliases:
+  - производство серной кислоты из SO2
+  - сернокислотное производство
+  - утилизация SO2 в серную кислоту
+  - контактный способ
+  - sulfuric acid production
+  - sulphuric acid plant
+  - contact process
+  - double contact double absorption
+  - DCDA
+  - sulfuric acid recovery
+  domain: environment
+- id: wet_scrubbing
+  node_type: TechnologySolution
+  canonical_ru: мокрая газоочистка
+  canonical_en: wet scrubbing
+  aliases:
+  - мокрая газоочистка
+  - мокрый скруббер
+  - мокрая очистка газов
+  - скруббер Вентури
+  - wet scrubbing
+  - wet scrubber
+  - venturi scrubber
+  - wet gas cleaning
+  domain: environment
+- id: electrostatic_precipitation
+  node_type: TechnologySolution
+  canonical_ru: электростатическое осаждение пыли
+  canonical_en: electrostatic precipitation
+  aliases:
+  - электростатическое осаждение пыли
+  - электрофильтр
+  - сухой электрофильтр
+  - пылеулавливание электрофильтром
+  - electrostatic precipitation
+  - electrostatic precipitator
+  - ESP
+  - dust precipitation
+  domain: environment
+- id: fabric_filtration
+  node_type: TechnologySolution
+  canonical_ru: рукавная фильтрация
+  canonical_en: fabric filtration
+  aliases:
+  - рукавная фильтрация
+  - рукавный фильтр
+  - тканевый фильтр
+  - тканевая фильтрация газов
+  - fabric filtration
+  - fabric filter
+  - baghouse
+  - bag filter
+  domain: environment
+- id: selective_catalytic_reduction
+  node_type: TechnologySolution
+  canonical_ru: селективное каталитическое восстановление
+  canonical_en: selective catalytic reduction
+  aliases:
+  - селективное каталитическое восстановление
+  - СКВ
+  - каталитическая денитрификация
+  - удаление NOx
+  - selective catalytic reduction
+  - SCR
+  - NOx removal
+  - DeNOx
+  domain: environment
+- id: mercury_removal
+  node_type: TechnologySolution
+  canonical_ru: удаление ртути из газов
+  canonical_en: mercury removal
+  aliases:
+  - удаление ртути из газов
+  - ртутоочистка
+  - демеркуризация газов
+  - улавливание ртути
+  - mercury removal
+  - mercury abatement
+  - activated carbon injection
+  - ACI
+  - Hg removal
+  domain: environment
+- id: cyanide_destruction
+  node_type: TechnologySolution
+  canonical_ru: обезвреживание цианидов
+  canonical_en: cyanide destruction
+  aliases:
+  - обезвреживание цианидов
+  - разрушение цианидов
+  - детоксикация цианидов
+  - обезвреживание цианистых стоков
+  - cyanide destruction
+  - cyanide detoxification
+  - INCO process
+  - SO2/air process
+  domain: water_treatment
+- id: arsenic_stabilization
+  node_type: TechnologySolution
+  canonical_ru: стабилизация мышьяка
+  canonical_en: arsenic stabilization
+  aliases:
+  - стабилизация мышьяка
+  - осаждение мышьяка
+  - связывание мышьяка
+  - скородит
+  - arsenic stabilization
+  - arsenic fixation
+  - scorodite precipitation
+  - arsenic immobilization
+  domain: waste_processing
+- id: tailings_reprocessing
+  node_type: TechnologySolution
+  canonical_ru: переработка хвостов
+  canonical_en: tailings reprocessing
+  aliases:
+  - переработка хвостов
+  - утилизация хвостов
+  - доизвлечение из хвостов
+  - переработка лежалых хвостов
+  - tailings reprocessing
+  - tailings retreatment
+  - tailings valorization
+  - tailings recycling
+  domain: waste_processing
+- id: dry_stacking
+  node_type: TechnologySolution
+  canonical_ru: сухое складирование хвостов
+  canonical_en: dry stacking
+  aliases:
+  - сухое складирование хвостов
+  - сухое складирование
+  - обезвоженные хвосты
+  - складирование фильтрованных хвостов
+  - dry stacking
+  - dry stack tailings
+  - filtered tailings
+  - filtered tailings disposal
+  domain: waste_processing
+- id: paste_thickening
+  node_type: TechnologySolution
+  canonical_ru: пастовое сгущение
+  canonical_en: paste thickening
+  aliases:
+  - пастовое сгущение
+  - сгущение хвостов до пасты
+  - сгущённые хвосты
+  - глубокий сгуститель
+  - paste thickening
+  - paste tailings
+  - thickened tailings
+  - deep cone thickener
+  domain: waste_processing
+- id: sludge_dewatering
+  node_type: TechnologySolution
+  canonical_ru: обезвоживание осадка
+  canonical_en: sludge dewatering
+  aliases:
+  - обезвоживание осадка
+  - обезвоживание шлама
+  - обезвоживание кека
+  - обезвоживание осадков сточных вод
+  - sludge dewatering
+  - dewatering of sludge
+  - cake dewatering
+  - filter press dewatering
+  domain: waste_processing
+- id: land_reclamation
+  node_type: TechnologySolution
+  canonical_ru: рекультивация
+  canonical_en: land reclamation
+  aliases:
+  - рекультивация
+  - рекультивация нарушенных земель
+  - восстановление земель
+  - техническая рекультивация
+  - land reclamation
+  - land rehabilitation
+  - mine reclamation
+  - revegetation
+  domain: environment
+- id: acid_mine_drainage_treatment
+  node_type: TechnologySolution
+  canonical_ru: очистка кислых шахтных вод
+  canonical_en: acid mine drainage treatment
+  aliases:
+  - очистка кислых шахтных вод
+  - обработка кислых рудничных вод
+  - нейтрализация кислых дренажных вод
+  - кислые шахтные воды
+  - acid mine drainage treatment
+  - AMD treatment
+  - acid rock drainage treatment
+  - ARD treatment
+  domain: water_treatment

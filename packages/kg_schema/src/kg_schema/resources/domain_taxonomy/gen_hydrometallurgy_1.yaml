@@ -1,0 +1,327 @@
+# Auto-generated taxonomy — hydrometallurgy (workflow). RU/EN.
+- id: pressure_leaching
+  node_type: ProcessingRegime
+  canonical_ru: автоклавное выщелачивание
+  canonical_en: pressure leaching
+  aliases:
+  - автоклавное выщелачивание
+  - выщелачивание под давлением
+  - автоклавное выщелачивание под давлением
+  - АВ
+  - pressure leaching
+  - autoclave leaching
+  - pressure leach
+  - PL
+  domain: hydrometallurgy
+- id: atmospheric_leaching
+  node_type: ProcessingRegime
+  canonical_ru: атмосферное выщелачивание
+  canonical_en: atmospheric leaching
+  aliases:
+  - атмосферное выщелачивание
+  - выщелачивание при атмосферном давлении
+  - атмосферное кислотное выщелачивание
+  - atmospheric leaching
+  - atmospheric leach
+  - ambient pressure leaching
+  - AL
+  domain: hydrometallurgy
+- id: oxidative_leaching
+  node_type: ProcessingRegime
+  canonical_ru: окислительное выщелачивание
+  canonical_en: oxidative leaching
+  aliases:
+  - окислительное выщелачивание
+  - окислительный режим выщелачивания
+  - выщелачивание с окислителем
+  - oxidative leaching
+  - oxidation leaching
+  - oxidative leach
+  domain: hydrometallurgy
+- id: reductive_leaching
+  node_type: ProcessingRegime
+  canonical_ru: восстановительное выщелачивание
+  canonical_en: reductive leaching
+  aliases:
+  - восстановительное выщелачивание
+  - редукционное выщелачивание
+  - выщелачивание в восстановительных условиях
+  - reductive leaching
+  - reduction leaching
+  - reductive leach
+  domain: hydrometallurgy
+- id: vat_leaching
+  node_type: TechnologySolution
+  canonical_ru: чановое выщелачивание
+  canonical_en: vat leaching
+  aliases:
+  - чановое выщелачивание
+  - выщелачивание в чанах
+  - перколяционное выщелачивание
+  - vat leaching
+  - vat leach
+  - percolation leaching
+  - tank vat leaching
+  domain: hydrometallurgy
+- id: agitation_leaching
+  node_type: TechnologySolution
+  canonical_ru: агитационное выщелачивание
+  canonical_en: agitation leaching
+  aliases:
+  - агитационное выщелачивание
+  - выщелачивание с перемешиванием
+  - агитационное перемешивание
+  - agitation leaching
+  - agitated leaching
+  - stirred tank leaching
+  - agitated tank leaching
+  domain: hydrometallurgy
+- id: in_situ_leaching
+  node_type: TechnologySolution
+  canonical_ru: подземное выщелачивание
+  canonical_en: in-situ leaching
+  aliases:
+  - подземное выщелачивание
+  - скважинное подземное выщелачивание
+  - ПСВ
+  - СПВ
+  - in-situ leaching
+  - in situ recovery
+  - ISL
+  - ISR
+  domain: hydrometallurgy
+- id: dump_leaching
+  node_type: TechnologySolution
+  canonical_ru: отвальное выщелачивание
+  canonical_en: dump leaching
+  aliases:
+  - отвальное выщелачивание
+  - выщелачивание из отвалов
+  - выщелачивание отвалов
+  - dump leaching
+  - dump leach
+  - waste dump leaching
+  domain: hydrometallurgy
+- id: solvent_extraction
+  node_type: TechnologySolution
+  canonical_ru: экстракция растворителями
+  canonical_en: solvent extraction
+  aliases:
+  - экстракция растворителями
+  - жидкостная экстракция
+  - жидкость-жидкостная экстракция
+  - растворительная экстракция
+  - solvent extraction
+  - liquid-liquid extraction
+  - liquid extraction
+  - SX
+  domain: hydrometallurgy
+- id: stripping
+  node_type: TechnologySolution
+  canonical_ru: реэкстракция
+  canonical_en: stripping
+  aliases:
+  - реэкстракция
+  - реэкстракция металла
+  - стриппинг
+  - обратная экстракция
+  - stripping
+  - strip stage
+  - back-extraction
+  - stripping stage
+  domain: hydrometallurgy
+- id: resin_in_pulp
+  node_type: TechnologySolution
+  canonical_ru: сорбция из пульпы смолой
+  canonical_en: resin-in-pulp
+  aliases:
+  - сорбция из пульпы
+  - смола в пульпе
+  - смоляная сорбция из пульпы
+  - сорбция смолой из пульпы
+  - resin-in-pulp
+  - resin in pulp
+  - RIP
+  domain: hydrometallurgy
+- id: carbon_in_pulp
+  node_type: TechnologySolution
+  canonical_ru: сорбция углём из пульпы
+  canonical_en: carbon-in-pulp
+  aliases:
+  - уголь в пульпе
+  - сорбция углём из пульпы
+  - угольно-сорбционная технология
+  - сорбция активированным углём
+  - carbon-in-pulp
+  - carbon in pulp
+  - CIP
+  domain: hydrometallurgy
+- id: carbon_in_leach
+  node_type: TechnologySolution
+  canonical_ru: сорбционное выщелачивание углём
+  canonical_en: carbon-in-leach
+  aliases:
+  - сорбционное выщелачивание
+  - уголь в процессе выщелачивания
+  - совмещённое выщелачивание и сорбция
+  - carbon-in-leach
+  - carbon in leach
+  - CIL
+  domain: hydrometallurgy
+- id: elution
+  node_type: TechnologySolution
+  canonical_ru: десорбция
+  canonical_en: elution
+  aliases:
+  - десорбция
+  - элюирование
+  - элюция
+  - регенерация сорбента
+  - elution
+  - desorption
+  - carbon elution
+  domain: hydrometallurgy
+- id: cementation
+  node_type: TechnologySolution
+  canonical_ru: цементация
+  canonical_en: cementation
+  aliases:
+  - цементация
+  - цементационное осаждение
+  - контактное осаждение металла
+  - цементационная очистка
+  - cementation
+  - metal cementation
+  - contact precipitation
+  domain: hydrometallurgy
+- id: jarosite_process
+  node_type: TechnologySolution
+  canonical_ru: ярозитовый процесс
+  canonical_en: jarosite process
+  aliases:
+  - ярозитовый процесс
+  - осаждение ярозита
+  - ярозитовое осаждение
+  - вывод железа в виде ярозита
+  - jarosite process
+  - jarosite precipitation
+  - jarosite
+  domain: hydrometallurgy
+- id: goethite_process
+  node_type: TechnologySolution
+  canonical_ru: гётитовый процесс
+  canonical_en: goethite process
+  aliases:
+  - гётитовый процесс
+  - гётитовое осаждение
+  - осаждение гётита
+  - вывод железа в виде гётита
+  - goethite process
+  - goethite precipitation
+  - goethite
+  domain: hydrometallurgy
+- id: neutralization
+  node_type: TechnologySolution
+  canonical_ru: нейтрализация
+  canonical_en: neutralization
+  aliases:
+  - нейтрализация
+  - нейтрализационная очистка
+  - известковая нейтрализация
+  - нейтрализация растворов
+  - neutralization
+  - neutralisation
+  - lime neutralization
+  - acid neutralization
+  domain: hydrometallurgy
+- id: crystallization
+  node_type: TechnologySolution
+  canonical_ru: кристаллизация
+  canonical_en: crystallization
+  aliases:
+  - кристаллизация
+  - выпарная кристаллизация
+  - кристаллизационное выделение
+  - кристаллизация солей
+  - crystallization
+  - crystallisation
+  - evaporative crystallization
+  domain: hydrometallurgy
+- id: hydrolysis
+  node_type: TechnologySolution
+  canonical_ru: гидролиз
+  canonical_en: hydrolysis
+  aliases:
+  - гидролиз
+  - гидролитическое осаждение
+  - гидролитическая очистка
+  - термический гидролиз
+  - hydrolysis
+  - hydrolytic precipitation
+  - thermal hydrolysis
+  domain: hydrometallurgy
+- id: pressure_oxidation
+  node_type: TechnologySolution
+  canonical_ru: автоклавное окисление
+  canonical_en: pressure oxidation
+  aliases:
+  - автоклавное окисление
+  - автоклавное окислительное выщелачивание
+  - окисление под давлением
+  - автоклавное вскрытие
+  - pressure oxidation
+  - POX
+  - pressure oxidation leaching
+  domain: hydrometallurgy
+- id: high_pressure_acid_leaching
+  node_type: TechnologySolution
+  canonical_ru: автоклавное сернокислотное выщелачивание
+  canonical_en: high pressure acid leaching
+  aliases:
+  - автоклавное сернокислотное выщелачивание
+  - высокотемпературное автоклавное выщелачивание
+  - автоклавное кислотное выщелачивание
+  - high pressure acid leaching
+  - high-pressure acid leach
+  - HPAL
+  domain: hydrometallurgy
+- id: biooxidation
+  node_type: TechnologySolution
+  canonical_ru: биоокисление
+  canonical_en: biooxidation
+  aliases:
+  - биоокисление
+  - бактериальное окисление
+  - биоокислительная подготовка
+  - биоокисление сульфидов
+  - biooxidation
+  - bio-oxidation
+  - bacterial oxidation
+  - BIOX
+  domain: hydrometallurgy
+- id: cyanidation
+  node_type: TechnologySolution
+  canonical_ru: цианирование
+  canonical_en: cyanidation
+  aliases:
+  - цианирование
+  - цианидное выщелачивание
+  - цианистое выщелачивание
+  - цианирование золота
+  - cyanidation
+  - cyanide leaching
+  - gold cyanidation
+  domain: hydrometallurgy
+- id: counter_current_decantation
+  node_type: TechnologySolution
+  canonical_ru: противоточная декантация
+  canonical_en: counter-current decantation
+  aliases:
+  - противоточная декантация
+  - противоточная промывка
+  - промывка декантацией
+  - противоточное сгущение
+  - counter-current decantation
+  - countercurrent decantation
+  - CCD
+  domain: hydrometallurgy

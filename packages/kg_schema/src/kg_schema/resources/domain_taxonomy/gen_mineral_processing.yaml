@@ -1,0 +1,313 @@
+# Auto-generated taxonomy — mineral_processing (workflow). RU/EN.
+- id: cobalt
+  node_type: Material
+  canonical_ru: кобальт
+  canonical_en: cobalt
+  aliases:
+  - кобальт
+  - cobalt
+  - Co
+  - кобальтовый
+  - cobaltous
+  - Co metal
+  material_class: metal
+- id: zinc
+  node_type: Material
+  canonical_ru: цинк
+  canonical_en: zinc
+  aliases:
+  - цинк
+  - zinc
+  - Zn
+  - цинковый
+  - spelter
+  - zinc metal
+  material_class: metal
+- id: lead
+  node_type: Material
+  canonical_ru: свинец
+  canonical_en: lead
+  aliases:
+  - свинец
+  - lead
+  - Pb
+  - свинцовый
+  - plumbum
+  - lead metal
+  material_class: metal
+- id: palladium
+  node_type: Material
+  canonical_ru: палладий
+  canonical_en: palladium
+  aliases:
+  - палладий
+  - palladium
+  - Pd
+  - палладиевый
+  - Pd metal
+  material_class: metal
+- id: platinum
+  node_type: Material
+  canonical_ru: платина
+  canonical_en: platinum
+  aliases:
+  - платина
+  - platinum
+  - Pt
+  - платиновый
+  - platinum metal
+  material_class: metal
+- id: rhodium
+  node_type: Material
+  canonical_ru: родий
+  canonical_en: rhodium
+  aliases:
+  - родий
+  - rhodium
+  - Rh
+  - родиевый
+  - Rh metal
+  material_class: metal
+- id: iron
+  node_type: Material
+  canonical_ru: железо
+  canonical_en: iron
+  aliases:
+  - железо
+  - iron
+  - Fe
+  - железный
+  - ferrous
+  - ferric
+  material_class: metal
+- id: pentlandite
+  node_type: Material
+  canonical_ru: пентландит
+  canonical_en: pentlandite
+  aliases:
+  - пентландит
+  - pentlandite
+  - (Fe,Ni)9S8
+  - никелистый пентландит
+  - iron-nickel sulfide
+  - железо-никелевый сульфид
+  domain: mineral_processing
+  material_class: mineral
+- id: chalcopyrite
+  node_type: Material
+  canonical_ru: халькопирит
+  canonical_en: chalcopyrite
+  aliases:
+  - халькопирит
+  - chalcopyrite
+  - CuFeS2
+  - медный колчедан
+  - copper pyrite
+  - медно-железный сульфид
+  domain: mineral_processing
+  material_class: mineral
+- id: pyrrhotite
+  node_type: Material
+  canonical_ru: пирротин
+  canonical_en: pyrrhotite
+  aliases:
+  - пирротин
+  - pyrrhotite
+  - Fe(1-x)S
+  - магнитный колчедан
+  - magnetic pyrite
+  - пирротит
+  domain: mineral_processing
+  material_class: mineral
+- id: laterite_ore
+  node_type: Material
+  canonical_ru: латеритная руда
+  canonical_en: laterite ore
+  aliases:
+  - латерит
+  - laterite
+  - латеритная руда
+  - laterite ore
+  - окисленная никелевая руда
+  - nickel laterite
+  - garnierite ore
+  domain: mineral_processing
+  material_class: ore
+- id: sulfide_ore
+  node_type: Material
+  canonical_ru: сульфидная руда
+  canonical_en: sulfide ore
+  aliases:
+  - сульфидная руда
+  - sulfide ore
+  - sulphide ore
+  - сульфидные руды
+  - сернистая руда
+  - sulfidic ore
+  domain: mineral_processing
+  material_class: ore
+- id: sulfuric_acid
+  node_type: Material
+  canonical_ru: серная кислота
+  canonical_en: sulfuric acid
+  aliases:
+  - серная кислота
+  - sulfuric acid
+  - sulphuric acid
+  - H2SO4
+  - купоросное масло
+  - серка
+  domain: hydrometallurgy
+  material_class: acid
+- id: hydrochloric_acid
+  node_type: Material
+  canonical_ru: соляная кислота
+  canonical_en: hydrochloric acid
+  aliases:
+  - соляная кислота
+  - hydrochloric acid
+  - HCl
+  - хлороводородная кислота
+  - muriatic acid
+  - соляная
+  domain: hydrometallurgy
+  material_class: acid
+- id: lime
+  node_type: Material
+  canonical_ru: известь
+  canonical_en: lime
+  aliases:
+  - известь
+  - lime
+  - CaO
+  - негашеная известь
+  - quicklime
+  - известковое молоко
+  - milk of lime
+  - гашеная известь
+  - hydrated lime
+  domain: hydrometallurgy
+  material_class: reagent
+- id: xanthate
+  node_type: Material
+  canonical_ru: ксантогенат
+  canonical_en: xanthate
+  aliases:
+  - ксантогенат
+  - xanthate
+  - ксантат
+  - бутиловый ксантогенат
+  - potassium amyl xanthate
+  - SIBX
+  - xanthate collector
+  domain: mineral_processing
+  material_class: reagent
+- id: extractant
+  node_type: Material
+  canonical_ru: экстрагент
+  canonical_en: extractant
+  aliases:
+  - экстрагент
+  - extractant
+  - органический экстрагент
+  - organic extractant
+  - solvent extractant
+  - экстракционный реагент
+  domain: hydrometallurgy
+  material_class: extractant
+- id: flotation_reagent
+  node_type: Material
+  canonical_ru: флотореагент
+  canonical_en: flotation reagent
+  aliases:
+  - флотореагент
+  - flotation reagent
+  - флотационный реагент
+  - collector
+  - собиратель
+  - frother
+  - вспениватель
+  - депрессор
+  domain: mineral_processing
+  material_class: reagent
+- id: filter_cake
+  node_type: Material
+  canonical_ru: кек
+  canonical_en: filter cake
+  aliases:
+  - кек
+  - filter cake
+  - cake
+  - фильтр-кек
+  - осадок
+  - filter residue
+  domain: hydrometallurgy
+  material_class: intermediate
+- id: pulp
+  node_type: Material
+  canonical_ru: пульпа
+  canonical_en: pulp
+  aliases:
+  - пульпа
+  - pulp
+  - slurry
+  - суспензия
+  - шлам
+  - ore slurry
+  domain: mineral_processing
+  material_class: intermediate
+- id: pregnant_solution
+  node_type: Material
+  canonical_ru: продуктивный раствор
+  canonical_en: pregnant leach solution
+  aliases:
+  - продуктивный раствор
+  - pregnant leach solution
+  - PLS
+  - насыщенный раствор
+  - pregnant solution
+  - раствор выщелачивания
+  - leach liquor
+  - товарный раствор
+  domain: hydrometallurgy
+  material_class: solution
+- id: concentrate
+  node_type: Material
+  canonical_ru: концентрат
+  canonical_en: concentrate
+  aliases:
+  - концентрат
+  - concentrate
+  - флотоконцентрат
+  - flotation concentrate
+  - рудный концентрат
+  - mineral concentrate
+  domain: mineral_processing
+  material_class: intermediate
+- id: calcine
+  node_type: Material
+  canonical_ru: огарок
+  canonical_en: calcine
+  aliases:
+  - огарок
+  - calcine
+  - обожженный продукт
+  - roasted product
+  - cinder
+  - огарочный продукт
+  domain: pyrometallurgy
+  material_class: intermediate
+- id: sublimates
+  node_type: Material
+  canonical_ru: возгоны
+  canonical_en: sublimates
+  aliases:
+  - возгоны
+  - sublimates
+  - fume
+  - fumes
+  - возгонка
+  - sublimated dust
+  - конденсированные возгоны
+  domain: pyrometallurgy
+  material_class: intermediate

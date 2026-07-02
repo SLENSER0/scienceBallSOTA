@@ -1,24 +1,7 @@
-"""Curation Service — worker/library service (§6.1).
-
-No public HTTP port at this stage; exposes a service factory used by other apps
-and by the orchestration pipeline.
-"""
+"""Curation Service — expert edits, decision history, review queue (§16)."""
 
 from __future__ import annotations
 
-from kg_common import get_logger
+from curation_service.curation import CurationService, create_app
 
-_log = get_logger("curation-service")
-
-
-class CurationService:
-    """Placeholder service object; concrete logic lives in sibling modules."""
-
-    name = "curation-service"
-
-    def health(self) -> dict[str, str]:
-        return {"status": "ok", "service": self.name}
-
-
-def create_app() -> CurationService:
-    return CurationService()
+__all__ = ["CurationService", "create_app"]

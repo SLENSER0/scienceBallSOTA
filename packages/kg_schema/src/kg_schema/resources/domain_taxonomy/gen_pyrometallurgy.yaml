@@ -1,0 +1,338 @@
+# Auto-generated taxonomy — pyrometallurgy (workflow). RU/EN.
+- id: matte_smelting
+  node_type: TechnologySolution
+  canonical_ru: плавка на штейн
+  canonical_en: matte smelting
+  aliases:
+  - плавка на штейн
+  - штейновая плавка
+  - плавка на медный штейн
+  - штейнообразующая плавка
+  - matte smelting
+  - smelting to matte
+  - matte-making smelting
+  domain: pyrometallurgy
+- id: converting
+  node_type: TechnologySolution
+  canonical_ru: конвертирование штейна
+  canonical_en: matte converting
+  aliases:
+  - конвертирование
+  - конвертирование штейна
+  - конвертерный передел
+  - продувка штейна
+  - converting
+  - matte converting
+  - matte conversion
+  - converter blowing
+  domain: pyrometallurgy
+- id: peirce_smith_converting
+  node_type: TechnologySolution
+  canonical_ru: конвертирование в конвертере Пирса-Смита
+  canonical_en: Peirce-Smith converting
+  aliases:
+  - конвертер Пирса-Смита
+  - конвертирование Пирса-Смита
+  - горизонтальный конвертер
+  - ПС-конвертер
+  - Peirce-Smith converting
+  - Peirce-Smith converter
+  - PSC
+  - side-blown converter
+  domain: pyrometallurgy
+- id: flash_converting
+  node_type: TechnologySolution
+  canonical_ru: взвешенное конвертирование
+  canonical_en: flash converting
+  aliases:
+  - взвешенное конвертирование
+  - флэш-конвертирование
+  - конвертирование во взвешенном состоянии
+  - flash converting
+  - suspension converting
+  - Kennecott-Outotec flash converting
+  domain: pyrometallurgy
+- id: slag_depletion
+  node_type: TechnologySolution
+  canonical_ru: обеднение шлака
+  canonical_en: slag cleaning
+  aliases:
+  - обеднение шлака
+  - электрообеднение шлака
+  - обеднительная плавка
+  - доводка шлака
+  - обеднение шлаков
+  - slag cleaning
+  - slag depletion
+  - electric furnace slag cleaning
+  - slag settling
+  domain: pyrometallurgy
+- id: fire_refining
+  node_type: TechnologySolution
+  canonical_ru: огневое рафинирование
+  canonical_en: fire refining
+  aliases:
+  - огневое рафинирование
+  - огневое рафинирование меди
+  - анодная плавка
+  - окислительно-восстановительное рафинирование
+  - fire refining
+  - pyrorefining
+  - anode furnace refining
+  - poling
+  domain: pyrometallurgy
+- id: oxidizing_roasting
+  node_type: ProcessingRegime
+  canonical_ru: окислительный обжиг
+  canonical_en: oxidizing roasting
+  aliases:
+  - окислительный обжиг
+  - окислительное обжигание
+  - обжиг с окислением
+  - мёртвый обжиг
+  - oxidizing roasting
+  - oxidative roasting
+  - dead roasting
+  domain: pyrometallurgy
+- id: sulfatizing_roasting
+  node_type: ProcessingRegime
+  canonical_ru: сульфатизирующий обжиг
+  canonical_en: sulfating roasting
+  aliases:
+  - сульфатизирующий обжиг
+  - сульфатизация
+  - сульфатирующий обжиг
+  - сульфатизирующее обжигание
+  - sulfating roasting
+  - sulfatizing roast
+  - sulphating roasting
+  domain: pyrometallurgy
+- id: chloridizing_roasting
+  node_type: ProcessingRegime
+  canonical_ru: хлорирующий обжиг
+  canonical_en: chloridizing roasting
+  aliases:
+  - хлорирующий обжиг
+  - хлорирующее обжигание
+  - хлоридовозгонка
+  - хлоридизация
+  - chloridizing roasting
+  - chlorinating roast
+  - chloridization roasting
+  domain: pyrometallurgy
+- id: reduction_roasting
+  node_type: ProcessingRegime
+  canonical_ru: восстановительный обжиг
+  canonical_en: reduction roasting
+  aliases:
+  - восстановительный обжиг
+  - восстановительное обжигание
+  - магнетизирующий обжиг
+  - восстановительный отжиг
+  - reduction roasting
+  - reductive roasting
+  - magnetizing roasting
+  domain: pyrometallurgy
+- id: sintering
+  node_type: TechnologySolution
+  canonical_ru: агломерация
+  canonical_en: sintering
+  aliases:
+  - агломерация
+  - агломерирующий обжиг
+  - спекание
+  - аглопроцесс
+  - окускование
+  - sintering
+  - agglomeration
+  - Dwight-Lloyd sintering
+  - updraft sintering
+  domain: pyrometallurgy
+- id: pelletizing
+  node_type: TechnologySolution
+  canonical_ru: окомкование
+  canonical_en: pelletizing
+  aliases:
+  - окомкование
+  - окатывание
+  - производство окатышей
+  - обжиг окатышей
+  - pelletizing
+  - pelletising
+  - pellet induration
+  - balling
+  domain: pyrometallurgy
+- id: reverberatory_smelting
+  node_type: TechnologySolution
+  canonical_ru: отражательная плавка
+  canonical_en: reverberatory smelting
+  aliases:
+  - отражательная плавка
+  - плавка в отражательной печи
+  - отражательная печь
+  - reverberatory smelting
+  - reverberatory furnace smelting
+  - reverb smelting
+  domain: pyrometallurgy
+- id: electric_furnace_smelting
+  node_type: TechnologySolution
+  canonical_ru: электроплавка
+  canonical_en: electric furnace smelting
+  aliases:
+  - электроплавка
+  - электротермическая плавка
+  - руднотермическая плавка
+  - плавка в электропечи
+  - electric furnace smelting
+  - electric smelting
+  - submerged arc smelting
+  - electrothermal smelting
+  domain: pyrometallurgy
+- id: blast_furnace_smelting
+  node_type: TechnologySolution
+  canonical_ru: шахтная плавка
+  canonical_en: blast furnace smelting
+  aliases:
+  - шахтная плавка
+  - плавка в шахтной печи
+  - ватержакетная плавка
+  - шахтно-печная плавка
+  - blast furnace smelting
+  - shaft furnace smelting
+  - water-jacket smelting
+  - cupola smelting
+  domain: pyrometallurgy
+- id: distillation
+  node_type: TechnologySolution
+  canonical_ru: дистилляция
+  canonical_en: distillation
+  aliases:
+  - дистилляция
+  - дистилляция цинка
+  - ретортная дистилляция
+  - перегонка
+  - термическая дистилляция
+  - distillation
+  - zinc distillation
+  - retort distillation
+  domain: pyrometallurgy
+- id: fuming
+  node_type: TechnologySolution
+  canonical_ru: возгонка
+  canonical_en: fuming
+  aliases:
+  - возгонка
+  - фьюмингование
+  - шлаковозгонка
+  - отгонка возгонов
+  - фьюминг-процесс
+  - fuming
+  - slag fuming
+  - fuming process
+  - volatilization
+  domain: pyrometallurgy
+- id: waelz_process
+  node_type: TechnologySolution
+  canonical_ru: вельцевание
+  canonical_en: Waelz process
+  aliases:
+  - вельцевание
+  - вельц-процесс
+  - вельцевание цинксодержащих материалов
+  - вельц-возгонка
+  - Waelz process
+  - Waelz kiln process
+  - Waelz treatment
+  domain: pyrometallurgy
+- id: tsl_smelting
+  node_type: TechnologySolution
+  canonical_ru: плавка с погружной фурмой
+  canonical_en: top submerged lance smelting
+  aliases:
+  - плавка с погружной фурмой
+  - плавка Ausmelt
+  - плавка Isasmelt
+  - ТСЛ-плавка
+  - погружная фурменная плавка
+  - top submerged lance smelting
+  - TSL smelting
+  - Ausmelt
+  - Isasmelt
+  domain: pyrometallurgy
+- id: vanyukov_smelting
+  node_type: TechnologySolution
+  canonical_ru: плавка Ванюкова
+  canonical_en: Vanyukov process
+  aliases:
+  - плавка Ванюкова
+  - процесс Ванюкова
+  - ПВ
+  - плавка в жидкой ванне Ванюкова
+  - Vanyukov process
+  - Vanyukov smelting
+  - Vanyukov bath smelting
+  domain: pyrometallurgy
+- id: mitsubishi_process
+  node_type: TechnologySolution
+  canonical_ru: процесс Мицубиси
+  canonical_en: Mitsubishi continuous smelting
+  aliases:
+  - процесс Мицубиси
+  - непрерывная плавка Мицубиси
+  - непрерывный процесс Mitsubishi
+  - Mitsubishi process
+  - Mitsubishi continuous smelting
+  - Mitsubishi continuous converting
+  domain: pyrometallurgy
+- id: oxygen_enrichment
+  node_type: ProcessingRegime
+  canonical_ru: обогащение дутья кислородом
+  canonical_en: oxygen enrichment
+  aliases:
+  - обогащение дутья кислородом
+  - кислородное дутьё
+  - обогащение дутья
+  - кислородно-обогащённое дутьё
+  - oxygen enrichment
+  - oxygen-enriched blast
+  - oxygen enrichment of blast
+  domain: pyrometallurgy
+- id: autogenous_smelting
+  node_type: ProcessingRegime
+  canonical_ru: автогенная плавка
+  canonical_en: autogenous smelting
+  aliases:
+  - автогенная плавка
+  - автогенный процесс
+  - бестопливная плавка
+  - автотермическая плавка
+  - autogenous smelting
+  - autothermal smelting
+  - flash autogenous smelting
+  domain: pyrometallurgy
+- id: calcination
+  node_type: TechnologySolution
+  canonical_ru: кальцинация
+  canonical_en: calcination
+  aliases:
+  - кальцинация
+  - прокаливание
+  - кальцинирующий обжиг
+  - обжиг-прокаливание
+  - calcination
+  - calcining
+  - thermal decomposition
+  - calcine roasting
+  domain: pyrometallurgy
+- id: direct_to_blister_smelting
+  node_type: TechnologySolution
+  canonical_ru: прямая плавка на черновую медь
+  canonical_en: direct-to-blister smelting
+  aliases:
+  - прямая плавка на черновую медь
+  - прямое получение черновой меди
+  - одностадийная плавка меди
+  - direct-to-blister smelting
+  - direct blister smelting
+  - single-step copper smelting
+  domain: pyrometallurgy

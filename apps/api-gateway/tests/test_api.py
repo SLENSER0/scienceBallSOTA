@@ -84,3 +84,19 @@ def test_gaps_and_contradictions(client: TestClient) -> None:
 def test_gap_scan(client: TestClient) -> None:
     res = client.post("/api/v1/gaps/scan").json()
     assert "gaps" in res and "contradictions" in res and "run_id" in res
+
+
+def test_curation_edit_and_history(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/entities/material:nickel/edit",
+        json={"changes": {"name": "Никель (эксперт)"}, "reason": "уточнение"},
+        headers={"x-user": "expert2"},
+    )
+    assert r.status_code == 200
+    hist = client.get("/api/v1/entities/material:nickel/history").json()["history"]
+    assert hist and hist[0]["actor"] == "expert2"
+
+
+def test_curation_queue(client: TestClient) -> None:
+    q = client.get("/api/v1/curation/queue").json()["items"]
+    assert isinstance(q, list)

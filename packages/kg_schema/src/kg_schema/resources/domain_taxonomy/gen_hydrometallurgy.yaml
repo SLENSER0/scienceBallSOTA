@@ -1,0 +1,311 @@
+# Auto-generated taxonomy — hydrometallurgy (workflow). RU/EN.
+- id: autoclave
+  node_type: Equipment
+  canonical_ru: автоклав
+  canonical_en: autoclave
+  aliases:
+  - автоклав
+  - автоклав окислительного выщелачивания
+  - титановый автоклав
+  - autoclave
+  - POX autoclave
+  - pressure oxidation autoclave
+  - pressure leaching autoclave
+  domain: hydrometallurgy
+- id: peirce_smith_converter
+  node_type: Equipment
+  canonical_ru: конвертер Пирса-Смита
+  canonical_en: Peirce-Smith converter
+  aliases:
+  - конвертер Пирса-Смита
+  - горизонтальный конвертер
+  - конвертер
+  - Peirce-Smith converter
+  - PS converter
+  - P-S converter
+  - horizontal converter
+  domain: pyrometallurgy
+- id: ore_thermal_furnace
+  node_type: Equipment
+  canonical_ru: руднотермическая электропечь
+  canonical_en: electric ore-smelting furnace
+  aliases:
+  - руднотермическая электропечь
+  - руднотермическая печь
+  - электропечь
+  - РТП
+  - electric furnace
+  - ore-thermal furnace
+  - submerged arc furnace
+  - SAF
+  domain: pyrometallurgy
+- id: flotation_machine
+  node_type: Equipment
+  canonical_ru: флотомашина
+  canonical_en: flotation machine
+  aliases:
+  - флотомашина
+  - флотационная машина
+  - флотационная камера
+  - механическая флотомашина
+  - flotation machine
+  - flotation cell
+  - flotation bank
+  domain: mineral_processing
+- id: ball_mill
+  node_type: Equipment
+  canonical_ru: шаровая мельница
+  canonical_en: ball mill
+  aliases:
+  - шаровая мельница
+  - мельница шаровая
+  - шаровая барабанная мельница
+  - ШБМ
+  - ball mill
+  - tumbling ball mill
+  - grinding ball mill
+  domain: mineral_processing
+- id: rod_mill
+  node_type: Equipment
+  canonical_ru: стержневая мельница
+  canonical_en: rod mill
+  aliases:
+  - стержневая мельница
+  - мельница стержневая
+  - стержневая барабанная мельница
+  - rod mill
+  - grinding rod mill
+  - tumbling rod mill
+  domain: mineral_processing
+- id: sag_mill
+  node_type: Equipment
+  canonical_ru: мельница полусамоизмельчения
+  canonical_en: SAG mill
+  aliases:
+  - мельница полусамоизмельчения
+  - мельница ПСИ
+  - ММПС
+  - мельница SAG
+  - SAG mill
+  - semi-autogenous grinding mill
+  - semi-autogenous mill
+  domain: mineral_processing
+- id: hydrocyclone
+  node_type: Equipment
+  canonical_ru: гидроциклон
+  canonical_en: hydrocyclone
+  aliases:
+  - гидроциклон
+  - гидроциклонный классификатор
+  - ГЦ
+  - hydrocyclone
+  - hydrocyclone separator
+  - cyclone classifier
+  - hydro cyclone
+  domain: mineral_processing
+- id: mixer_settler
+  node_type: Equipment
+  canonical_ru: экстрактор-смеситель
+  canonical_en: mixer-settler
+  aliases:
+  - экстрактор-смеситель
+  - смеситель-отстойник
+  - ящичный экстрактор
+  - смесительно-отстойный экстрактор
+  - mixer-settler
+  - mixer settler
+  - SX mixer-settler
+  domain: hydrometallurgy
+- id: sorption_column
+  node_type: Equipment
+  canonical_ru: сорбционная колонна
+  canonical_en: sorption column
+  aliases:
+  - сорбционная колонна
+  - колонна сорбции
+  - сорбционная колонна с движущимся слоем
+  - sorption column
+  - adsorption column
+  - carbon-in-column
+  - CIC column
+  domain: hydrometallurgy
+- id: crystallizer
+  node_type: Equipment
+  canonical_ru: кристаллизатор
+  canonical_en: crystallizer
+  aliases:
+  - кристаллизатор
+  - вакуум-кристаллизатор
+  - испарительный кристаллизатор
+  - crystallizer
+  - crystalliser
+  - vacuum crystallizer
+  - evaporative crystallizer
+  domain: hydrometallurgy
+- id: centrifuge
+  node_type: Equipment
+  canonical_ru: центрифуга
+  canonical_en: centrifuge
+  aliases:
+  - центрифуга
+  - осадительная центрифуга
+  - шнековая центрифуга
+  - декантерная центрифуга
+  - centrifuge
+  - decanter centrifuge
+  - pusher centrifuge
+  domain: hydrometallurgy
+- id: electrorefining_cell
+  node_type: Equipment
+  canonical_ru: ванна электролитического рафинирования
+  canonical_en: electrorefining cell
+  aliases:
+  - ванна электролитического рафинирования
+  - ванна электрорафинирования
+  - электролизная ванна рафинирования
+  - electrorefining cell
+  - electrolytic refining cell
+  - ER cell
+  - tankhouse refining cell
+  domain: electrometallurgy
+- id: insoluble_anode
+  node_type: Equipment
+  canonical_ru: нерастворимый анод
+  canonical_en: insoluble anode
+  aliases:
+  - нерастворимый анод
+  - свинцовый анод
+  - размерно-стабильный анод
+  - insoluble anode
+  - lead anode
+  - dimensionally stable anode
+  - DSA
+  domain: electrometallurgy
+- id: cathode_starting_sheet
+  node_type: Equipment
+  canonical_ru: катодная основа
+  canonical_en: cathode starting sheet
+  aliases:
+  - катодная основа
+  - катод-основа
+  - стартовый лист
+  - катодная матрица
+  - cathode starting sheet
+  - starter sheet
+  - mother blank
+  domain: electrometallurgy
+- id: shell_and_tube_heat_exchanger
+  node_type: Equipment
+  canonical_ru: кожухотрубный теплообменник
+  canonical_en: shell-and-tube heat exchanger
+  aliases:
+  - кожухотрубный теплообменник
+  - кожухотрубчатый теплообменник
+  - теплообменник
+  - рекуперативный теплообменник
+  - shell-and-tube heat exchanger
+  - heat exchanger
+  - tubular heat exchanger
+- id: rectification_column
+  node_type: Equipment
+  canonical_ru: ректификационная колонна
+  canonical_en: rectification column
+  aliases:
+  - ректификационная колонна
+  - дистилляционная колонна
+  - тарельчатая колонна
+  - насадочная колонна
+  - rectification column
+  - distillation column
+  - tray column
+  - packed column
+- id: rotary_kiln
+  node_type: Equipment
+  canonical_ru: трубчатая вращающаяся печь
+  canonical_en: rotary kiln
+  aliases:
+  - трубчатая вращающаяся печь
+  - вращающаяся печь
+  - трубчатая печь
+  - барабанная печь
+  - rotary kiln
+  - rotary tube furnace
+  - tube kiln
+  domain: pyrometallurgy
+- id: anode_furnace
+  node_type: Equipment
+  canonical_ru: анодная печь
+  canonical_en: anode furnace
+  aliases:
+  - анодная печь
+  - рафинировочная печь
+  - печь огневого рафинирования
+  - anode furnace
+  - refining furnace
+  - fire refining furnace
+  domain: pyrometallurgy
+- id: pachuca_tank
+  node_type: Equipment
+  canonical_ru: аэролифтный чан
+  canonical_en: Pachuca tank
+  aliases:
+  - аэролифтный чан
+  - аэрлифтный агитатор
+  - пачук
+  - пневматический чан
+  - Pachuca tank
+  - air-lift agitator
+  - air-agitated leach tank
+  domain: hydrometallurgy
+- id: drum_vacuum_filter
+  node_type: Equipment
+  canonical_ru: барабанный вакуум-фильтр
+  canonical_en: rotary drum vacuum filter
+  aliases:
+  - барабанный вакуум-фильтр
+  - барабанный фильтр
+  - вакуум-фильтр
+  - rotary drum vacuum filter
+  - drum filter
+  - vacuum drum filter
+  - RDVF
+  domain: hydrometallurgy
+- id: electrostatic_precipitator
+  node_type: Equipment
+  canonical_ru: электрофильтр
+  canonical_en: electrostatic precipitator
+  aliases:
+  - электрофильтр
+  - электростатический фильтр
+  - сухой электрофильтр
+  - электрогазоочиститель
+  - electrostatic precipitator
+  - ESP
+  - dry electrostatic precipitator
+  domain: environment
+- id: baghouse_filter
+  node_type: Equipment
+  canonical_ru: рукавный фильтр
+  canonical_en: baghouse filter
+  aliases:
+  - рукавный фильтр
+  - тканевый фильтр
+  - рукавный пылеуловитель
+  - baghouse filter
+  - fabric filter
+  - bag filter
+  - baghouse
+  domain: environment
+- id: top_blown_rotary_converter
+  node_type: Equipment
+  canonical_ru: конвертер Кальдо
+  canonical_en: top-blown rotary converter
+  aliases:
+  - конвертер Кальдо
+  - вращающийся конвертер с верхней продувкой
+  - роторный конвертер
+  - top-blown rotary converter
+  - TBRC
+  - Kaldo converter
+  - Kaldo
+  domain: pyrometallurgy

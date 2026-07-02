@@ -1,0 +1,346 @@
+# Auto-generated taxonomy — hydrometallurgy (workflow). RU/EN.
+- id: leaching_rate
+  node_type: Property
+  canonical_ru: скорость выщелачивания
+  canonical_en: leaching rate
+  aliases:
+  - скорость выщелачивания
+  - скорость растворения
+  - кинетика выщелачивания
+  - скорость перехода в раствор
+  - leaching rate
+  - leach rate
+  - dissolution rate
+  - leaching kinetics
+  domain: hydrometallurgy
+  property_class: kinetics
+  default_unit: percent/hour
+- id: redox_potential
+  node_type: Property
+  canonical_ru: окислительно-восстановительный потенциал
+  canonical_en: redox potential
+  aliases:
+  - окислительно-восстановительный потенциал
+  - ОВП
+  - потенциал Eh
+  - редокс-потенциал
+  - Eh
+  - redox potential
+  - ORP
+  - oxidation-reduction potential
+  domain: hydrometallurgy
+  property_class: electrochemical
+  default_unit: mV
+- id: specific_surface_area
+  node_type: Property
+  canonical_ru: удельная поверхность
+  canonical_en: specific surface area
+  aliases:
+  - удельная поверхность
+  - удельная площадь поверхности
+  - поверхность по БЭТ
+  - удельная поверхность по БЭТ
+  - specific surface area
+  - SSA
+  - BET surface area
+  - BET area
+  domain: mineral_processing
+  property_class: physical
+  default_unit: m^2/g
+- id: grind_size
+  node_type: Property
+  canonical_ru: крупность помола
+  canonical_en: grind size
+  aliases:
+  - крупность помола
+  - тонина помола
+  - крупность измельчения
+  - класс крупности
+  - P80
+  - grind size
+  - particle size P80
+  - grind fineness
+  domain: mineral_processing
+  property_class: particle_size
+  default_unit: um
+- id: current_efficiency
+  node_type: Property
+  canonical_ru: выход по току
+  canonical_en: current efficiency
+  aliases:
+  - выход по току
+  - КПД по току
+  - выход металла по току
+  - current efficiency
+  - faradaic efficiency
+  - Faradaic efficiency
+  - current yield
+  - cathodic current efficiency
+  domain: electrometallurgy
+  property_class: electrochemical
+  default_unit: percent
+- id: cathode_purity
+  node_type: Property
+  canonical_ru: чистота катода
+  canonical_en: cathode purity
+  aliases:
+  - чистота катода
+  - чистота катодного металла
+  - качество катода
+  - содержание основного металла в катоде
+  - cathode purity
+  - cathode grade
+  - cathode quality
+  - cathode metal grade
+  domain: electrometallurgy
+  property_class: purity
+  default_unit: percent
+- id: reagent_consumption
+  node_type: Property
+  canonical_ru: расход реагентов
+  canonical_en: reagent consumption
+  aliases:
+  - расход реагентов
+  - удельный расход реагентов
+  - расход реагента
+  - расход кислоты
+  - reagent consumption
+  - reagent dosage
+  - specific reagent consumption
+  - acid consumption
+  domain: hydrometallurgy
+  property_class: consumption
+  default_unit: kg/t
+- id: impurity_content
+  node_type: Property
+  canonical_ru: содержание примесей
+  canonical_en: impurity content
+  aliases:
+  - содержание примесей
+  - содержание примесных элементов
+  - уровень примесей
+  - содержание вредных примесей
+  - impurity content
+  - impurity level
+  - impurities
+  - contaminant content
+  property_class: composition
+  default_unit: percent
+- id: residence_time
+  node_type: Property
+  canonical_ru: продолжительность
+  canonical_en: residence time
+  aliases:
+  - продолжительность
+  - время пребывания
+  - время выщелачивания
+  - продолжительность обработки
+  - residence time
+  - retention time
+  - duration
+  - leaching time
+  property_class: time
+  default_unit: hour
+- id: oxygen_partial_pressure
+  node_type: Property
+  canonical_ru: давление кислорода
+  canonical_en: oxygen partial pressure
+  aliases:
+  - давление кислорода
+  - парциальное давление кислорода
+  - парциальное давление O2
+  - кислородное давление
+  - oxygen partial pressure
+  - oxygen pressure
+  - pO2
+  - partial pressure of oxygen
+  domain: hydrometallurgy
+  property_class: pressure
+  default_unit: bar
+- id: liquid_to_solid_ratio
+  node_type: Property
+  canonical_ru: соотношение Ж:Т
+  canonical_en: liquid-to-solid ratio
+  aliases:
+  - соотношение Ж:Т
+  - Ж:Т
+  - отношение жидкое к твёрдому
+  - соотношение жидкого к твёрдому
+  - Т:Ж
+  - liquid-to-solid ratio
+  - L:S ratio
+  - L/S ratio
+  domain: hydrometallurgy
+  property_class: ratio
+  default_unit: ratio
+- id: net_present_value
+  node_type: Property
+  canonical_ru: чистая приведённая стоимость
+  canonical_en: net present value
+  aliases:
+  - чистая приведённая стоимость
+  - чистый дисконтированный доход
+  - чистая текущая стоимость
+  - ЧДД
+  - ЧПС
+  - net present value
+  - NPV
+  - net present worth
+  property_class: economic
+  default_unit: MUSD
+- id: payback_period
+  node_type: Property
+  canonical_ru: срок окупаемости
+  canonical_en: payback period
+  aliases:
+  - срок окупаемости
+  - период окупаемости
+  - окупаемость
+  - дисконтированный срок окупаемости
+  - payback period
+  - payback
+  - PBP
+  - discounted payback period
+  property_class: economic
+  default_unit: year
+- id: unit_cost
+  node_type: Property
+  canonical_ru: себестоимость
+  canonical_en: unit production cost
+  aliases:
+  - себестоимость
+  - себестоимость производства
+  - удельная себестоимость
+  - unit cost
+  - unit production cost
+  - production cost
+  - cash cost
+  - C1 cash cost
+  property_class: economic
+  default_unit: USD/t
+- id: internal_rate_of_return
+  node_type: Property
+  canonical_ru: внутренняя норма доходности
+  canonical_en: internal rate of return
+  aliases:
+  - внутренняя норма доходности
+  - внутренняя норма рентабельности
+  - внутренняя ставка доходности
+  - ВНД
+  - internal rate of return
+  - IRR
+  - internal rate
+  - rate of return
+  property_class: economic
+  default_unit: percent
+- id: discount_rate
+  node_type: Property
+  canonical_ru: ставка дисконтирования
+  canonical_en: discount rate
+  aliases:
+  - ставка дисконтирования
+  - норма дисконта
+  - ставка дисконта
+  - средневзвешенная стоимость капитала
+  - discount rate
+  - hurdle rate
+  - WACC
+  - cost of capital
+  property_class: economic
+  default_unit: percent
+- id: pulp_density
+  node_type: Property
+  canonical_ru: плотность пульпы
+  canonical_en: pulp density
+  aliases:
+  - плотность пульпы
+  - содержание твёрдого
+  - содержание твёрдой фазы
+  - плотность пульпы по твёрдому
+  - pulp density
+  - percent solids
+  - solids content
+  - slurry density
+  domain: mineral_processing
+  property_class: physical
+  default_unit: percent
+- id: free_acidity
+  node_type: Property
+  canonical_ru: свободная кислотность
+  canonical_en: free acidity
+  aliases:
+  - свободная кислотность
+  - свободная кислота
+  - концентрация свободной кислоты
+  - кислотность раствора
+  - free acidity
+  - free acid
+  - free acid concentration
+  - free H2SO4
+  domain: hydrometallurgy
+  property_class: physicochemical
+  default_unit: g/L
+- id: dissolved_oxygen
+  node_type: Property
+  canonical_ru: растворённый кислород
+  canonical_en: dissolved oxygen
+  aliases:
+  - растворённый кислород
+  - содержание растворённого кислорода
+  - концентрация растворённого кислорода
+  - кислород растворённый
+  - dissolved oxygen
+  - DO
+  - dissolved O2
+  - dissolved oxygen concentration
+  domain: hydrometallurgy
+  property_class: concentration
+  default_unit: mg/L
+- id: selectivity
+  node_type: Property
+  canonical_ru: селективность
+  canonical_en: selectivity
+  aliases:
+  - селективность
+  - коэффициент селективности
+  - фактор разделения
+  - коэффициент разделения
+  - selectivity
+  - selectivity factor
+  - separation factor
+  - separation selectivity
+  domain: hydrometallurgy
+  property_class: efficiency
+  default_unit: ratio
+- id: head_grade
+  node_type: Property
+  canonical_ru: содержание металла в исходном сырье
+  canonical_en: head grade
+  aliases:
+  - содержание металла в руде
+  - содержание в исходном сырье
+  - содержание в питании
+  - богатство руды
+  - head grade
+  - feed grade
+  - ore grade
+  - head assay
+  domain: mineral_processing
+  property_class: composition
+  default_unit: percent
+- id: moisture_content
+  node_type: Property
+  canonical_ru: влажность
+  canonical_en: moisture content
+  aliases:
+  - влажность
+  - содержание влаги
+  - влагосодержание
+  - влажность концентрата
+  - moisture content
+  - moisture
+  - water content
+  - residual moisture
+  domain: mineral_processing
+  property_class: composition
+  default_unit: percent

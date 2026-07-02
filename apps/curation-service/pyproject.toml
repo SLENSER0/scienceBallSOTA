@@ -7,6 +7,7 @@ readme = "README.md"
 dependencies = [
     "kg-common",
     "kg-schema",
+    "kg-retrievers",
     "kuzu>=0.7",
 ]
 
@@ -20,3 +21,4 @@ packages = ["src/curation_service"]
 [tool.uv.sources]
 kg-common = { workspace = true }
 kg-schema = { workspace = true }
+kg-retrievers = { workspace = true }
