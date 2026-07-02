@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from api_gateway import audit
+from api_gateway.auth import current_role, current_user
 from api_gateway.deps import get_store
 from kg_common import AnswerPayload
 
@@ -22,23 +24,23 @@ class QueryRequest(BaseModel):
 
 
 @router.post("/query", response_model=AnswerPayload)
-def query(req: QueryRequest, x_role: str | None = Header(default=None)) -> AnswerPayload:
+def query(
+    req: QueryRequest,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> AnswerPayload:
     from agent_service.agent import answer_query
 
-    role = x_role or req.role
+    audit.record("query", user=user, role=role, detail={"q": req.query[:200]})
     return answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
 
 
 @router.post("/query/stream")
-async def query_stream(
-    req: QueryRequest, x_role: str | None = Header(default=None)
-) -> StreamingResponse:
+async def query_stream(req: QueryRequest, role: str = Depends(current_role)) -> StreamingResponse:
     """Server-sent events: emits parse/retrieve/answer stages (§5.3 ChatStreamEvent)."""
     from agent_service.agent import answer_query
 
     from kg_extractors.query_parser import parse_query
-
-    role = x_role or req.role
 
     async def gen() -> AsyncIterator[bytes]:
         intent = parse_query(req.query)

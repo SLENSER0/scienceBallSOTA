@@ -100,3 +100,36 @@ def test_curation_edit_and_history(client: TestClient) -> None:
 def test_curation_queue(client: TestClient) -> None:
     q = client.get("/api/v1/curation/queue").json()["items"]
     assert isinstance(q, list)
+
+
+def test_auth_login_and_role(client: TestClient) -> None:
+    tok = client.post("/api/v1/auth/login", json={"username": "vasil", "role": "analyst"}).json()[
+        "token"
+    ]
+    me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {tok}"}).json()
+    assert me["role"] == "analyst" and me["user"] == "vasil"
+
+
+def test_rbac_via_jwt(client: TestClient) -> None:
+    q = "циркуляция католита электроэкстракция никеля"
+    partner_tok = client.post(
+        "/api/v1/auth/login", json={"username": "ext", "role": "external_partner"}
+    ).json()["token"]
+    researcher = client.post("/api/v1/query", json={"query": q, "use_llm": False}).json()
+    partner = client.post(
+        "/api/v1/query",
+        json={"query": q, "use_llm": False},
+        headers={"Authorization": f"Bearer {partner_tok}"},
+    ).json()
+    assert len(partner["citations"]) <= len(researcher["citations"])
+
+
+def test_audit_log_records(client: TestClient) -> None:
+    admin_tok = client.post(
+        "/api/v1/auth/login", json={"username": "boss", "role": "admin"}
+    ).json()["token"]
+    client.post("/api/v1/query", json={"query": "тест аудита", "use_llm": False})
+    entries = client.get(
+        "/api/v1/admin/audit", headers={"Authorization": f"Bearer {admin_tok}"}
+    ).json()["entries"]
+    assert any(e["action"] == "query" for e in entries)

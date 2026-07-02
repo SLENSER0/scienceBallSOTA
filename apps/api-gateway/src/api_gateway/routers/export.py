@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
+from api_gateway import audit
+from api_gateway.auth import current_role, current_user
 from api_gateway.deps import get_store
 
 router = APIRouter(prefix="/api/v1/export", tags=["export"])
@@ -28,10 +30,17 @@ class ExportRequest(BaseModel):
 
 
 @router.post("")
-def export(req: ExportRequest):  # type: ignore[no-untyped-def]
+def export(  # type: ignore[no-untyped-def]
+    req: ExportRequest,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+):
     from agent_service.agent import answer_query
 
-    ans = answer_query(req.query, get_store(), role=req.role, use_llm=req.use_llm)
+    audit.record(
+        "export", user=user, role=role, detail={"format": req.format, "q": req.query[:120]}
+    )
+    ans = answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
 
     if req.format == "markdown":
         md = _to_markdown(req.query, ans)
