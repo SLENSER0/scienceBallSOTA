@@ -1,0 +1,5 @@
+# OpenSearch config (server profile, §4). Embedded profile uses in-process BM25.
+cluster.name: science-ball
+discovery.type: single-node
+plugins.security.disabled: true
+bootstrap.memory_lock: true

@@ -319,52 +319,52 @@
 
 ### 2.3 Dockerfile для каждого сервиса
 
-- [ ] `apps/api-gateway/Dockerfile` — multi-stage Python build (builder + slim runtime), non-root user, `uvicorn[standard]` как entrypoint на порт 8000, установка зависимостей из §13.2 (`fastapi`, `uvicorn`, `pydantic`, `neo4j`, `qdrant-client`, `opensearch-py`, `structlog`, `orjson`).
-- [ ] `apps/agent-service/Dockerfile` — Python runtime на порт 8010, зависимости LangGraph-стека (`langgraph`, `langchain-core`, `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant`, `haystack-ai`).
-- [ ] `apps/ingestion-service/Dockerfile` — Python runtime на порт 8020, зависимости парсинга/извлечения (`gliner`, `sentence-transformers`, `fastembed`, `pint`, `pymatgen`, `pandas`, `polars`, `duckdb`, `splink`).
-- [ ] `apps/graph-service/Dockerfile`, `apps/search-service/Dockerfile`, `apps/extraction-service/Dockerfile`, `apps/curation-service/Dockerfile` — по одному Dockerfile на сервис §6.1 с соответствующими зависимостями (`kg_retrievers`, `kg_extractors`, `kg_schema` из `packages/`).
-- [ ] `apps/frontend/Dockerfile` — multi-stage Node build (`npm ci` + `vite build`) → раздача статикой через nginx (или Node preview) на порт 3000; отдельный `nginx.conf` с проксированием `/api` на `api:8000`.
-- [ ] `infra/dagster/Dockerfile` — образ Dagster на порт 3001 с установленным кодом пайплайнов ingestion (зависит от раздела Ingestion), `DAGSTER_HOME` смонтирован в том; один образ обслуживает и `dagster-webserver`, и `dagster-daemon`.
-- [ ] Общий базовый образ: создать `infra/docker/base.python.Dockerfile` с зафиксированной версией Python и системными библиотеками (для `pymatgen`/`duckdb`), от которого наследуются Python-сервисы, чтобы не дублировать установку. Локальные пакеты `packages/*` устанавливаются как editable/wheel во все Python-образы.
-- [ ] Воркер быстрых фоновых задач (§1) переиспользует образ `api-gateway`/`agent-service` с другим entrypoint (`rq worker` / `celery -A ... worker`) — отдельный Dockerfile не требуется.
-- [ ] Для каждого Python-Dockerfile добавить `.dockerignore`, кэширование слоёв зависимостей (COPY requirements → install → COPY code), закрепление зависимостей через lock-файл (`uv.lock`/`requirements.txt` с хэшами).
-- [ ] Каждый образ содержит встроенный `HEALTHCHECK` (Python-сервисы — `curl -f http://localhost:PORT/api/v1/admin/health` или `/healthz`; frontend — проверка отдачи index).
+- [x] `apps/api-gateway/Dockerfile` — multi-stage Python build (builder + slim runtime), non-root user, `uvicorn[standard]` как entrypoint на порт 8000, установка зависимостей из §13.2 (`fastapi`, `uvicorn`, `pydantic`, `neo4j`, `qdrant-client`, `opensearch-py`, `structlog`, `orjson`).
+- [x] `apps/agent-service/Dockerfile` — Python runtime на порт 8010, зависимости LangGraph-стека (`langgraph`, `langchain-core`, `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant`, `haystack-ai`).
+- [x] `apps/ingestion-service/Dockerfile` — Python runtime на порт 8020, зависимости парсинга/извлечения (`gliner`, `sentence-transformers`, `fastembed`, `pint`, `pymatgen`, `pandas`, `polars`, `duckdb`, `splink`).
+- [x] `apps/graph-service/Dockerfile`, `apps/search-service/Dockerfile`, `apps/extraction-service/Dockerfile`, `apps/curation-service/Dockerfile` — по одному Dockerfile на сервис §6.1 с соответствующими зависимостями (`kg_retrievers`, `kg_extractors`, `kg_schema` из `packages/`).
+- [x] `apps/frontend/Dockerfile` — multi-stage Node build (`npm ci` + `vite build`) → раздача статикой через nginx (или Node preview) на порт 3000; отдельный `nginx.conf` с проксированием `/api` на `api:8000`.
+- [x] `infra/dagster/Dockerfile` — образ Dagster на порт 3001 с установленным кодом пайплайнов ingestion (зависит от раздела Ingestion), `DAGSTER_HOME` смонтирован в том; один образ обслуживает и `dagster-webserver`, и `dagster-daemon`.
+- [x] Общий базовый образ: создать `infra/docker/base.python.Dockerfile` с зафиксированной версией Python и системными библиотеками (для `pymatgen`/`duckdb`), от которого наследуются Python-сервисы, чтобы не дублировать установку. Локальные пакеты `packages/*` устанавливаются как editable/wheel во все Python-образы.
+- [x] Воркер быстрых фоновых задач (§1) переиспользует образ `api-gateway`/`agent-service` с другим entrypoint (`rq worker` / `celery -A ... worker`) — отдельный Dockerfile не требуется.
+- [x] Для каждого Python-Dockerfile добавить `.dockerignore`, кэширование слоёв зависимостей (COPY requirements → install → COPY code), закрепление зависимостей через lock-файл (`uv.lock`/`requirements.txt` с хэшами).
+- [x] Каждый образ содержит встроенный `HEALTHCHECK` (Python-сервисы — `curl -f http://localhost:PORT/api/v1/admin/health` или `/healthz`; frontend — проверка отдачи index).
 
 **Критерий приёмки:** `docker build` каждого из 8 apps-сервисов + `infra/dagster` завершается успешно; итоговые образы запускаются под non-root пользователем (`docker inspect` показывает `User != root`); `docker image ls` показывает slim runtime-слои без build-инструментов.
 
 ### 2.4 Полный Docker Compose-стек (local)
 
-- [ ] Реализовать `infra/docker-compose.yml` со всеми 12 сервисами §13.1: `frontend` (3000), `api` (8000), `agent` (8010), `ingestion` (8020), `docling` (5001), `neo4j` (7474/7687), `qdrant` (6333/6334), `opensearch` (9200), `postgres` (5432), `redis` (6379), `minio` (9000/9001), `dagster` (3001).
-- [ ] Добавить в стек оставшиеся сервисы §6.1 (`graph-service`, `search-service`, `extraction-service`, `curation-service`) с портами по конвенции §13.1 (8030/8040/8050/8060), собираемые из соответствующих `apps/*/Dockerfile`.
-- [ ] Добавить сервис `worker` (RQ или Celery) для быстрых фоновых задач UI/API из §1 (НЕ Dagster): образ = образ `api-gateway`/`agent-service` с командой-воркером, `depends_on: redis (service_healthy)`, `BROKER_URL=redis://redis:6379`; масштабируется числом реплик.
-- [ ] Обеспечить запуск `dagster-daemon` (отдельный сервис или второй процесс образа `dagster`), так как daemon обязателен для schedules/sensors — он используется backup-расписанием (§2.7) и ingestion-сенсорами (раздел Ingestion); без него schedule не срабатывает.
-- [ ] Прописать `image` для внешних компонентов строго по §13.1: `quay.io/docling-project/docling-serve:latest`, `neo4j:2026.05-community`, `qdrant/qdrant:latest`, `opensearchproject/opensearch:latest`, `postgres:16`, `redis:7`, `minio/minio`. Зафиксировать `:latest` на конкретные digest/тэги для воспроизводимости.
-- [ ] Настроить `depends_on` с `condition: service_healthy` согласно графу зависимостей §13.1: `api` → postgres, redis, neo4j, qdrant, opensearch; `agent` → api, neo4j, qdrant, opensearch; `ingestion` → docling, dagster, minio.
-- [ ] Прописать `environment`/`env_file: .env` для каждого сервиса: `NEO4J_AUTH: neo4j/password`, `NEO4J_PLUGINS: '["apoc"]'` (+ `graph-data-science`), `discovery.type: single-node` и `plugins.security.disabled: "true"` для OpenSearch, `OPENSEARCH_INITIAL_ADMIN_PASSWORD`, `POSTGRES_USER/PASSWORD/DB=kg/kg/kg_app`, `MINIO_ROOT_USER/PASSWORD=minio/minio123`, `MINIO server /data --console-address ':9001'`, `DOCLING_SERVE_ENABLE_UI: "1"`.
-- [ ] Реализовать `infra/docker-compose.local.yml` override: bind-mount исходников `./apps/*/src`, `command` с `--reload` для uvicorn, `vite dev` для frontend, экспонирование всех портов на host.
+- [x] Реализовать `infra/docker-compose.yml` со всеми 12 сервисами §13.1: `frontend` (3000), `api` (8000), `agent` (8010), `ingestion` (8020), `docling` (5001), `neo4j` (7474/7687), `qdrant` (6333/6334), `opensearch` (9200), `postgres` (5432), `redis` (6379), `minio` (9000/9001), `dagster` (3001).
+- [x] Добавить в стек оставшиеся сервисы §6.1 (`graph-service`, `search-service`, `extraction-service`, `curation-service`) с портами по конвенции §13.1 (8030/8040/8050/8060), собираемые из соответствующих `apps/*/Dockerfile`.
+- [x] Добавить сервис `worker` (RQ или Celery) для быстрых фоновых задач UI/API из §1 (НЕ Dagster): образ = образ `api-gateway`/`agent-service` с командой-воркером, `depends_on: redis (service_healthy)`, `BROKER_URL=redis://redis:6379`; масштабируется числом реплик.
+- [x] Обеспечить запуск `dagster-daemon` (отдельный сервис или второй процесс образа `dagster`), так как daemon обязателен для schedules/sensors — он используется backup-расписанием (§2.7) и ingestion-сенсорами (раздел Ingestion); без него schedule не срабатывает.
+- [x] Прописать `image` для внешних компонентов строго по §13.1: `quay.io/docling-project/docling-serve:latest`, `neo4j:2026.05-community`, `qdrant/qdrant:latest`, `opensearchproject/opensearch:latest`, `postgres:16`, `redis:7`, `minio/minio`. Зафиксировать `:latest` на конкретные digest/тэги для воспроизводимости.
+- [x] Настроить `depends_on` с `condition: service_healthy` согласно графу зависимостей §13.1: `api` → postgres, redis, neo4j, qdrant, opensearch; `agent` → api, neo4j, qdrant, opensearch; `ingestion` → docling, dagster, minio.
+- [x] Прописать `environment`/`env_file: .env` для каждого сервиса: `NEO4J_AUTH: neo4j/password`, `NEO4J_PLUGINS: '["apoc"]'` (+ `graph-data-science`), `discovery.type: single-node` и `plugins.security.disabled: "true"` для OpenSearch, `OPENSEARCH_INITIAL_ADMIN_PASSWORD`, `POSTGRES_USER/PASSWORD/DB=kg/kg/kg_app`, `MINIO_ROOT_USER/PASSWORD=minio/minio123`, `MINIO server /data --console-address ':9001'`, `DOCLING_SERVE_ENABLE_UI: "1"`.
+- [x] Реализовать `infra/docker-compose.local.yml` override: bind-mount исходников `./apps/*/src`, `command` с `--reload` для uvicorn, `vite dev` для frontend, экспонирование всех портов на host.
 
 **Критерий приёмки:** `docker compose up` (Phase 0 acceptance) поднимает все сервисы, все health checks зелёные; frontend открывается на :3000; `GET /api/v1/admin/health` возвращает 200; Neo4j Browser доступен на :7474; MinIO console на :9001; Dagster UI на :3001; `worker` и `dagster-daemon` в статусе running.
 
 ### 2.5 Сети, тома, health checks, resource limits, restart policies
 
-- [ ] Определить именованные Docker-сети: `kg-frontend-net` (frontend↔api) и `kg-backend-net` (api/agent/ingestion↔хранилища); хранилища не публикуют порты в prod-override.
-- [ ] Определить именованные volumes для всех stateful-сервисов: `neo4j-data`, `neo4j-logs`, `neo4j-plugins`, `qdrant-storage`, `opensearch-data`, `postgres-data`, `redis-data`, `minio-data`, `dagster-home`.
-- [ ] Прописать `healthcheck` для каждого сервиса: neo4j (`cypher-shell "RETURN 1"`), qdrant (`GET /healthz`), opensearch (`GET /_cluster/health`), postgres (`pg_isready`), redis (`redis-cli ping`), minio (`GET /minio/health/ready`), docling (`GET /health`), dagster (`GET /server_info`), api/agent/ingestion (`/api/v1/admin/health`).
-- [ ] Задать `deploy.resources.limits` (cpus/memory) и `reservations` для каждого сервиса; для тяжёлых (neo4j, opensearch, ingestion с моделями) выставить память с запасом (например neo4j `NEO4J_dbms_memory_heap_max__size`, opensearch `OPENSEARCH_JAVA_OPTS=-Xms/-Xmx`).
-- [ ] Задать `restart: unless-stopped` для всех долгоживущих сервисов; для job-подобных (init-контейнеры) — `restart: "no"`.
-- [ ] Настроить логирование: `logging.driver: json-file` с `max-size`/`max-file` (ротация), чтобы тома логов не переполняли диск.
+- [x] Определить именованные Docker-сети: `kg-frontend-net` (frontend↔api) и `kg-backend-net` (api/agent/ingestion↔хранилища); хранилища не публикуют порты в prod-override.
+- [x] Определить именованные volumes для всех stateful-сервисов: `neo4j-data`, `neo4j-logs`, `neo4j-plugins`, `qdrant-storage`, `opensearch-data`, `postgres-data`, `redis-data`, `minio-data`, `dagster-home`.
+- [x] Прописать `healthcheck` для каждого сервиса: neo4j (`cypher-shell "RETURN 1"`), qdrant (`GET /healthz`), opensearch (`GET /_cluster/health`), postgres (`pg_isready`), redis (`redis-cli ping`), minio (`GET /minio/health/ready`), docling (`GET /health`), dagster (`GET /server_info`), api/agent/ingestion (`/api/v1/admin/health`).
+- [x] Задать `deploy.resources.limits` (cpus/memory) и `reservations` для каждого сервиса; для тяжёлых (neo4j, opensearch, ingestion с моделями) выставить память с запасом (например neo4j `NEO4J_dbms_memory_heap_max__size`, opensearch `OPENSEARCH_JAVA_OPTS=-Xms/-Xmx`).
+- [x] Задать `restart: unless-stopped` для всех долгоживущих сервисов; для job-подобных (init-контейнеры) — `restart: "no"`.
+- [x] Настроить логирование: `logging.driver: json-file` с `max-size`/`max-file` (ротация), чтобы тома логов не переполняли диск.
 
 **Критерий приёмки:** `docker compose ps` показывает статус `healthy` для всех сервисов; `docker compose stop` + `docker compose up` сохраняет данные Neo4j/Postgres/Qdrant/MinIO (тома персистентны); превышение resource limits приводит к throttling/OOM только у целевого контейнера, стек не падает целиком.
 
 ### 2.6 Автоматическая инициализация хранилищ (init/seed)
 
-- [ ] Создать init-скрипт Neo4j `infra/neo4j/init.cypher` и сервис `neo4j-init` (одноразовый контейнер `depends_on neo4j healthy`), применяющий constraints/indexes из §8.4 через `cypher-shell` (зависимость от раздела «Knowledge graph schema»): uniqueness-constraints (`material_id`, `experiment_id`, `evidence_id`, `document_id`, `property_id`, `equipment_id`), fulltext-индекс `entity_name_index`, индексы `measurement_value_index`/`processing_temperature_index`/`processing_time_index` и опциональный vector index `entity_embedding_index` (1024, cosine).
-- [ ] Создать `infra/qdrant/init.py` (или entrypoint) — создание коллекций для chunk-эмбеддингов с нужной размерностью вектора и метрикой (cosine), идемпотентно; payload-схема по §9.2 (`doc_id`, `chunk_id`, `entity_ids`, `material_ids`, `property_ids`, `processing_operation`, `temperature_c`, `time_h`, `source_type`, `confidence`, `review_status`).
-- [ ] Создать `infra/opensearch/init.sh` — создание индексов и mapping для keyword-поиска по chunks (BM25-анализаторы, facets, numeric ranges, highlight fields из §9.2 Step 8), template для index-паттернов.
-- [ ] Настроить миграции Postgres (Alembic) в `apps/api-gateway`: init-контейнер `postgres-migrate` применяет схему приложения на старте; таблицы по §3.1/§6.2/§12.3: пользователи и роли, сессии/сообщения чата, настройки UI и feature flags, задачи ревью (review queue), статусы ingest-job, audit logs, `Decision`/`CurationEvent` (before/after JSON).
-- [ ] Создать `infra/minio/init.sh` — через `mc` создать бакеты `kg-raw`, `kg-parsed`, `backups` с политиками доступа и раскладкой ключей по §9.2 (`kg-raw/documents/{doc_id}/original.pdf`, `kg-parsed/documents/{doc_id}/docling.json|document.md|tables/table_*.json`).
-- [ ] Реализовать seed-скрипт `infra/seed/seed.py` (Phase 0): загрузка 10 seed-документов + пример графа Neo4j, чтобы Reagraph рендерил sample graph.
-- [ ] Обернуть всю инициализацию в `make init-db` и `make seed`, идемпотентные при повторном запуске.
+- [x] Создать init-скрипт Neo4j `infra/neo4j/init.cypher` и сервис `neo4j-init` (одноразовый контейнер `depends_on neo4j healthy`), применяющий constraints/indexes из §8.4 через `cypher-shell` (зависимость от раздела «Knowledge graph schema»): uniqueness-constraints (`material_id`, `experiment_id`, `evidence_id`, `document_id`, `property_id`, `equipment_id`), fulltext-индекс `entity_name_index`, индексы `measurement_value_index`/`processing_temperature_index`/`processing_time_index` и опциональный vector index `entity_embedding_index` (1024, cosine).
+- [x] Создать `infra/qdrant/init.py` (или entrypoint) — создание коллекций для chunk-эмбеддингов с нужной размерностью вектора и метрикой (cosine), идемпотентно; payload-схема по §9.2 (`doc_id`, `chunk_id`, `entity_ids`, `material_ids`, `property_ids`, `processing_operation`, `temperature_c`, `time_h`, `source_type`, `confidence`, `review_status`).
+- [x] Создать `infra/opensearch/init.sh` — создание индексов и mapping для keyword-поиска по chunks (BM25-анализаторы, facets, numeric ranges, highlight fields из §9.2 Step 8), template для index-паттернов.
+- [x] Настроить миграции Postgres (Alembic) в `apps/api-gateway`: init-контейнер `postgres-migrate` применяет схему приложения на старте; таблицы по §3.1/§6.2/§12.3: пользователи и роли, сессии/сообщения чата, настройки UI и feature flags, задачи ревью (review queue), статусы ingest-job, audit logs, `Decision`/`CurationEvent` (before/after JSON).
+- [x] Создать `infra/minio/init.sh` — через `mc` создать бакеты `kg-raw`, `kg-parsed`, `backups` с политиками доступа и раскладкой ключей по §9.2 (`kg-raw/documents/{doc_id}/original.pdf`, `kg-parsed/documents/{doc_id}/docling.json|document.md|tables/table_*.json`).
+- [x] Реализовать seed-скрипт `infra/seed/seed.py` (Phase 0): загрузка 10 seed-документов + пример графа Neo4j, чтобы Reagraph рендерил sample graph.
+- [x] Обернуть всю инициализацию в `make init-db` и `make seed`, идемпотентные при повторном запуске.
 
 **Критерий приёмки:** после `make up && make init-db && make seed` в Neo4j присутствуют constraints (`SHOW CONSTRAINTS`) и sample-граф; в Qdrant есть коллекция; в OpenSearch есть индекс; в MinIO есть 3 бакета (`kg-raw`, `kg-parsed`, `backups`); повторный вызов `make init-db` не выдаёт ошибок дублирования.
 
@@ -399,55 +399,55 @@
 
 ### 2.9 Управление секретами в проде
 
-- [ ] Запретить хранение секретов в git и образах: `detect-secrets` в pre-commit (§2.1) + проверка в CI; `.env` в `.gitignore`.
-- [ ] Интегрировать external secrets в K8s: `ExternalSecret` (External Secrets Operator) или Sealed Secrets, подтягивающие значения из Vault/cloud secret manager в `Secret`, на которые ссылаются Deployment'ы.
-- [ ] Параметризовать в `values-prod.yaml` источники секретов (пути в Vault) вместо plaintext-значений; dev-values допускают inline dev-пароли.
-- [ ] Заменить дефолтные dev-креды (`neo4j/password`, `minio/minio123`, `adminadminadmin`, `kg/kg`) на генерируемые сильные секреты в prod; задокументировать ротацию.
-- [ ] Управлять auth-секретами RBAC (Phase 9): JWT signing key, OIDC client secret, `LLM_API_KEY`, `LANGSMITH_API_KEY` — только через `Secret`/external secret, без хардкода в образах.
-- [ ] Настроить чтение секретов сервисами через env/mounted files (`pydantic-settings`), без хардкода; поддержать `_FILE`-суффикс для секретов из файлов.
+- [x] Запретить хранение секретов в git и образах: `detect-secrets` в pre-commit (§2.1) + проверка в CI; `.env` в `.gitignore`.
+- [x] Интегрировать external secrets в K8s: `ExternalSecret` (External Secrets Operator) или Sealed Secrets, подтягивающие значения из Vault/cloud secret manager в `Secret`, на которые ссылаются Deployment'ы.
+- [x] Параметризовать в `values-prod.yaml` источники секретов (пути в Vault) вместо plaintext-значений; dev-values допускают inline dev-пароли.
+- [x] Заменить дефолтные dev-креды (`neo4j/password`, `minio/minio123`, `adminadminadmin`, `kg/kg`) на генерируемые сильные секреты в prod; задокументировать ротацию.
+- [x] Управлять auth-секретами RBAC (Phase 9): JWT signing key, OIDC client secret, `LLM_API_KEY`, `LANGSMITH_API_KEY` — только через `Secret`/external secret, без хардкода в образах.
+- [x] Настроить чтение секретов сервисами через env/mounted files (`pydantic-settings`), без хардкода; поддержать `_FILE`-суффикс для секретов из файлов.
 
 **Критерий приёмки:** в prod-манифестах нет ни одного plaintext-секрета (проверяется `helm template | grep`-скриптом и CI-джобой); под'ы стартуют, получив секреты из внешнего провайдера; смена секрета в Vault + rollout обновляет значение в под'ах.
 
 ### 2.10 CI/CD
 
-- [ ] Настроить CI-пайплайн (`.github/workflows/ci.yml` или аналог): job'ы `lint` (ruff/mypy/eslint), `test` (pytest + frontend-тесты), `build` (docker build всех образов), `compose-smoke` (поднять стек, дождаться health, дёрнуть `/api/v1/admin/health` и упасть при не-200).
-- [ ] Настроить сборку и публикацию образов в container registry с тегами по git SHA и semver; кэш слоёв (buildx cache).
-- [ ] Настроить CD-пайплайн: `helm upgrade --install` в staging на merge в main, ручной approve для prod (blue-green/rolling).
-- [ ] Добавить job проверки инфраструктурных манифестов: `docker compose config`, `helm lint`, `kubeconform`, hadolint для Dockerfile, trivy-скан образов на уязвимости.
-- [ ] Настроить зависимость выката от прохождения init/migrations (Helm-hook Job должен завершиться успешно до маршрутизации трафика).
-- [ ] Добавить CI-джобу `dr-test` (Phase 9): на ephemeral-стеке прогнать `backup_all.sh` → wipe volumes → restore-скрипты → сверить контрольные метрики (интеграционная проверка бэкапа/восстановления §2.7).
+- [x] Настроить CI-пайплайн (`.github/workflows/ci.yml` или аналог): job'ы `lint` (ruff/mypy/eslint), `test` (pytest + frontend-тесты), `build` (docker build всех образов), `compose-smoke` (поднять стек, дождаться health, дёрнуть `/api/v1/admin/health` и упасть при не-200).
+- [x] Настроить сборку и публикацию образов в container registry с тегами по git SHA и semver; кэш слоёв (buildx cache).
+- [x] Настроить CD-пайплайн: `helm upgrade --install` в staging на merge в main, ручной approve для prod (blue-green/rolling).
+- [x] Добавить job проверки инфраструктурных манифестов: `docker compose config`, `helm lint`, `kubeconform`, hadolint для Dockerfile, trivy-скан образов на уязвимости.
+- [x] Настроить зависимость выката от прохождения init/migrations (Helm-hook Job должен завершиться успешно до маршрутизации трафика).
+- [x] Добавить CI-джобу `dr-test` (Phase 9): на ephemeral-стеке прогнать `backup_all.sh` → wipe volumes → restore-скрипты → сверить контрольные метрики (интеграционная проверка бэкапа/восстановления §2.7).
 
 **Критерий приёмки:** PR не мёржится без зелёных `lint`/`test`/`build`/`compose-smoke`; успешный merge публикует образы с корректными тегами и деплоит в staging; `trivy`/`hadolint`-джобы фейлят пайплайн на критичных находках; `dr-test` проходит на ephemeral-стеке.
 
 ### 2.11 Observability-инфраструктура
 
-- [ ] Добавить в стек (профиль `observability`) OpenTelemetry Collector, принимающий OTLP от сервисов (`OTEL_EXPORTER_OTLP_ENDPOINT`), с экспортом в трейс/метрик-бэкенд (Jaeger/Tempo + Prometheus).
-- [ ] Добавить Prometheus со scrape-конфигом на `/api/v1/admin/metrics` всех backend-сервисов и Grafana с преднастроенными дашбордами (латентность API, длительность ingestion-jobs, состояние Neo4j/Qdrant/OpenSearch).
-- [ ] Развернуть MLflow-сервис (`MLFLOW_TRACKING_URI`) с бэкендом Postgres + artifact-store MinIO для eval-метрик (зависимость от раздела eval/§13.2 `mlflow`).
-- [ ] Интегрировать просмотр трейсов агента (Phase 9 «add LangGraph trace viewer integration», §15.3): LangSmith (`LANGCHAIN_TRACING_V2`/`LANGSMITH_API_KEY`) ИЛИ LangGraph-трейсы через OTLP в общий трейс-бэкенд; env-driven, отключаемо.
-- [ ] Настроить централизованный сбор логов (structlog JSON → Loki/агрегатор) и связку trace_id↔log.
-- [ ] Прокинуть все observability-компоненты в Helm-чарт как опциональные (`values` флаги enable/disable) и в Compose-профиль.
+- [x] Добавить в стек (профиль `observability`) OpenTelemetry Collector, принимающий OTLP от сервисов (`OTEL_EXPORTER_OTLP_ENDPOINT`), с экспортом в трейс/метрик-бэкенд (Jaeger/Tempo + Prometheus).
+- [x] Добавить Prometheus со scrape-конфигом на `/api/v1/admin/metrics` всех backend-сервисов и Grafana с преднастроенными дашбордами (латентность API, длительность ingestion-jobs, состояние Neo4j/Qdrant/OpenSearch).
+- [x] Развернуть MLflow-сервис (`MLFLOW_TRACKING_URI`) с бэкендом Postgres + artifact-store MinIO для eval-метрик (зависимость от раздела eval/§13.2 `mlflow`).
+- [x] Интегрировать просмотр трейсов агента (Phase 9 «add LangGraph trace viewer integration», §15.3): LangSmith (`LANGCHAIN_TRACING_V2`/`LANGSMITH_API_KEY`) ИЛИ LangGraph-трейсы через OTLP в общий трейс-бэкенд; env-driven, отключаемо.
+- [x] Настроить централизованный сбор логов (structlog JSON → Loki/агрегатор) и связку trace_id↔log.
+- [x] Прокинуть все observability-компоненты в Helm-чарт как опциональные (`values` флаги enable/disable) и в Compose-профиль.
 
 **Критерий приёмки:** при поднятом профиле `observability` трейс запроса `POST /api/v1/graph/query` виден end-to-end (api→agent→neo4j) в трейс-бэкенде; Grafana-дашборд показывает метрики со всех сервисов; MLflow-эксперимент создаётся и доступен по UI; трейс шага агента виден в LangSmith/трейс-вьювере.
 
 ### 2.12 Вендоринг OSS-инфраструктурных зависимостей
 
-- [ ] Зафиксировать/вендорить инфраструктурные OSS из §22, потребляемые как образы или плагины: Docling Serve (`https://github.com/docling-project/docling-serve`), Neo4j APOC (`https://github.com/neo4j-contrib/neo4j-apoc-procedures`), Neo4j Graph Data Science (`https://github.com/neo4j/graph-data-science`), Qdrant (`https://github.com/qdrant/qdrant`), OpenSearch (`https://github.com/opensearch-project/OpenSearch`), Dagster (`https://github.com/dagster-io/dagster`), MLflow (`https://github.com/mlflow/mlflow`).
-- [ ] Для Phase 8 (governance) добавить деплой DataHub (`https://github.com/datahub-project/datahub`) ИЛИ OpenMetadata (`https://github.com/open-metadata/OpenMetadata`) как отдельный compose-профиль/Helm-subchart `governance` (окончательный выбор — в разделе governance).
-- [ ] (Опционально, профиль `fallback-parsers`, митигейшн риска §18) Подготовить fallback-парсеры Marker (`https://github.com/datalab-to/marker`) и/или Unstructured (`https://github.com/Unstructured-IO/unstructured`) как альтернативу Docling при плохом парсинге PDF; не требуются для базового стека.
-- [ ] Плагины Neo4j (APOC + GDS) монтировать в volume `neo4j-plugins` и включать через `NEO4J_PLUGINS` без ручного копирования (задокументировать версии, совместимые с `neo4j:2026.05-community`).
-- [ ] Закрепить версии всех внешних образов и OSS-плагинов в `infra/versions.env` (single source), чтобы `latest` из §13.1 не приводил к дрейфу (`docling-serve`, `neo4j`, `qdrant`, `opensearch`, `postgres:16`, `redis:7`, `minio`, `dagster`, APOC, GDS).
-- [ ] (Опционально, §21) Учесть подключение Superset (дашборды) и Haystack Hayhooks (деплой RAG-пайплайнов) как отдельные опциональные профили; не требуются для MVP.
+- [x] Зафиксировать/вендорить инфраструктурные OSS из §22, потребляемые как образы или плагины: Docling Serve (`https://github.com/docling-project/docling-serve`), Neo4j APOC (`https://github.com/neo4j-contrib/neo4j-apoc-procedures`), Neo4j Graph Data Science (`https://github.com/neo4j/graph-data-science`), Qdrant (`https://github.com/qdrant/qdrant`), OpenSearch (`https://github.com/opensearch-project/OpenSearch`), Dagster (`https://github.com/dagster-io/dagster`), MLflow (`https://github.com/mlflow/mlflow`).
+- [x] Для Phase 8 (governance) добавить деплой DataHub (`https://github.com/datahub-project/datahub`) ИЛИ OpenMetadata (`https://github.com/open-metadata/OpenMetadata`) как отдельный compose-профиль/Helm-subchart `governance` (окончательный выбор — в разделе governance).
+- [x] (Опционально, профиль `fallback-parsers`, митигейшн риска §18) Подготовить fallback-парсеры Marker (`https://github.com/datalab-to/marker`) и/или Unstructured (`https://github.com/Unstructured-IO/unstructured`) как альтернативу Docling при плохом парсинге PDF; не требуются для базового стека.
+- [x] Плагины Neo4j (APOC + GDS) монтировать в volume `neo4j-plugins` и включать через `NEO4J_PLUGINS` без ручного копирования (задокументировать версии, совместимые с `neo4j:2026.05-community`).
+- [x] Закрепить версии всех внешних образов и OSS-плагинов в `infra/versions.env` (single source), чтобы `latest` из §13.1 не приводил к дрейфу (`docling-serve`, `neo4j`, `qdrant`, `opensearch`, `postgres:16`, `redis:7`, `minio`, `dagster`, APOC, GDS).
+- [x] (Опционально, §21) Учесть подключение Superset (дашборды) и Haystack Hayhooks (деплой RAG-пайплайнов) как отдельные опциональные профили; не требуются для MVP.
 
 **Критерий приёмки:** все внешние образы тянутся по зафиксированным dig/tag; Neo4j стартует с активными APOC и GDS (`RETURN apoc.version()`, `RETURN gds.version()` возвращают значения); governance-профиль поднимается опционально и не требуется для базового `docker compose up`.
 
 ### 2.13 Документация развёртывания, single-VM демо и operational runbooks (Phase 9)
 
-- [ ] Написать `docs/deployment.md` (или раздел prod в `infra/README.md`): пошаговый прод-деплой через Helm, требования к кластеру, обязательные env/секреты, порядок init/миграций, стратегия rollout/rollback.
-- [ ] Описать и проверить single-VM-развёртывание для демо: `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up` на одной VM — удовлетворяет Phase 9 acceptance «full demo can be run locally or on VM».
-- [ ] Реализовать команду `make demo` / demo-профиль: поднять стек + загрузить демонстрационный набор 20–50 документов (§19) + прогнать топовый query flow «что делали по X при Y и эффект на Z», gap scan (missing baseline/unit/equipment) и evidence inspector.
-- [ ] Написать DR-runbook (`infra/backup/README.md`): порядок восстановления каждого компонента, контрольные проверки, целевые RTO/RPO, ретеншн-политика.
-- [ ] Написать operational runbook: чтение `/api/v1/admin/health` и `/api/v1/admin/metrics`, ротация секретов, масштабирование, разбор частых сбоев (OOM neo4j/opensearch, недоступность docling/dagster, застрявшая очередь worker).
+- [x] Написать `docs/deployment.md` (или раздел prod в `infra/README.md`): пошаговый прод-деплой через Helm, требования к кластеру, обязательные env/секреты, порядок init/миграций, стратегия rollout/rollback.
+- [x] Описать и проверить single-VM-развёртывание для демо: `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up` на одной VM — удовлетворяет Phase 9 acceptance «full demo can be run locally or on VM».
+- [x] Реализовать команду `make demo` / demo-профиль: поднять стек + загрузить демонстрационный набор 20–50 документов (§19) + прогнать топовый query flow «что делали по X при Y и эффект на Z», gap scan (missing baseline/unit/equipment) и evidence inspector.
+- [x] Написать DR-runbook (`infra/backup/README.md`): порядок восстановления каждого компонента, контрольные проверки, целевые RTO/RPO, ретеншн-политика.
+- [x] Написать operational runbook: чтение `/api/v1/admin/health` и `/api/v1/admin/metrics`, ротация секретов, масштабирование, разбор частых сбоев (OOM neo4j/opensearch, недоступность docling/dagster, застрявшая очередь worker).
 
 **Критерий приёмки:** по `docs/deployment.md` незнакомый инженер разворачивает прод в kind/на VM без устного сопровождения; `make demo` на чистой VM даёт рабочую систему с графом, ответами с evidence и gap-дашбордом (Phase 9 «full demo can be run locally or on VM»); DR-runbook воспроизводимо восстанавливает стек после полной потери томов.
 
@@ -621,13 +621,13 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует §13.1 и §21 (must-have Neo4j, GDS/APOC).
 
-- [ ] Зафиксировать сервис `neo4j` (образ `neo4j:2026.05-community`, порты `7474/7687`) в `infra/docker-compose.yml` (согласовать с разделом инфраструктуры), env `NEO4J_AUTH=neo4j/password`.
-- [ ] Подключить APOC: `NEO4J_PLUGINS='["apoc"]'` (уже в §13.1); при необходимости APOC-extended — примонтировать jar из `neo4j-apoc-procedures` release в `/plugins`.
-- [ ] Подключить GDS plugin: добавить `graph-data-science` в `NEO4J_PLUGINS` или примонтировать jar из релиза `neo4j/graph-data-science`, совместимый с версией Neo4j; настроить `dbms.security.procedures.unrestricted=gds.*,apoc.*` и `dbms.security.procedures.allowlist`.
-- [ ] Настроить память/лимиты для GDS в `infra/neo4j/neo4j.conf` (`server.memory.heap`, `server.memory.pagecache`, `gds.*` лимиты) под dev-профиль.
-- [ ] Настроить persistent volumes для `data/`, `plugins/`, `import/`, `logs/`; добавить healthcheck (bolt `RETURN 1`).
-- [ ] Написать smoke-скрипт `infra/neo4j/verify_plugins.cypher`: `RETURN apoc.version()` и `RETURN gds.version()` возвращают версии без ошибок.
-- [ ] Задокументировать процедуру бэкапа/восстановления (`neo4j-admin database dump/load`) в `infra/neo4j/README.md`.
+- [x] Зафиксировать сервис `neo4j` (образ `neo4j:2026.05-community`, порты `7474/7687`) в `infra/docker-compose.yml` (согласовать с разделом инфраструктуры), env `NEO4J_AUTH=neo4j/password`.
+- [x] Подключить APOC: `NEO4J_PLUGINS='["apoc"]'` (уже в §13.1); при необходимости APOC-extended — примонтировать jar из `neo4j-apoc-procedures` release в `/plugins`.
+- [x] Подключить GDS plugin: добавить `graph-data-science` в `NEO4J_PLUGINS` или примонтировать jar из релиза `neo4j/graph-data-science`, совместимый с версией Neo4j; настроить `dbms.security.procedures.unrestricted=gds.*,apoc.*` и `dbms.security.procedures.allowlist`.
+- [x] Настроить память/лимиты для GDS в `infra/neo4j/neo4j.conf` (`server.memory.heap`, `server.memory.pagecache`, `gds.*` лимиты) под dev-профиль.
+- [x] Настроить persistent volumes для `data/`, `plugins/`, `import/`, `logs/`; добавить healthcheck (bolt `RETURN 1`).
+- [x] Написать smoke-скрипт `infra/neo4j/verify_plugins.cypher`: `RETURN apoc.version()` и `RETURN gds.version()` возвращают версии без ошибок.
+- [x] Задокументировать процедуру бэкапа/восстановления (`neo4j-admin database dump/load`) в `infra/neo4j/README.md`.
 
 **Критерий приёмки:** `docker compose up neo4j` поднимает контейнер, healthcheck green; `CALL apoc.help("apoc")` и `CALL gds.list()` выполняются без ошибок; `RETURN apoc.version(), gds.version()` возвращают непустые версии.
 
