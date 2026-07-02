@@ -1907,14 +1907,14 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 9.5 Schedules
 
-- [ ] Создать файл `schedules/__init__.py` со следующими `ScheduleDefinition`/`@schedule`:
-  - [ ] `nightly_gap_scan_schedule` — ежедневный запуск `gap_scan_job` (cron, например `0 2 * * *`), партиция «сегодня».
-  - [ ] `nightly_retrieval_eval_schedule` — ежедневный прогон `retrieval_eval` на golden dataset (§15) после gap scan.
-  - [ ] `reindex_schedule` — периодический (напр. еженедельный) `reindex_job` + `community_summary_job` для пересчёта community detection и обновления community/neighborhood summaries (GraphRAG/GDS, §10.3) и их переиндексации.
-  - [ ] `catalog_sync_schedule` — периодическая синхронизация lineage/каталога в DataHub/OpenMetadata (§9.8).
-- [ ] Реализовать логику пропуска (`SkipReason`) в schedules, если нет новых материализаций (не гонять eval вхолостую).
-- [ ] Обеспечить работу schedules через `dagster-daemon`; задать `execution_timezone`.
-- [ ] Добавить теги запусков schedule (`dagster/schedule_name`, `run_type=scheduled`) для фильтрации в Dagit и в Job status API.
+- [x] Создать файл `schedules/__init__.py` со следующими `ScheduleDefinition`/`@schedule`:
+  - [x] `nightly_gap_scan_schedule` — ежедневный запуск `gap_scan_job` (cron, например `0 2 * * *`), партиция «сегодня».
+  - [x] `nightly_retrieval_eval_schedule` — ежедневный прогон `retrieval_eval` на golden dataset (§15) после gap scan.
+  - [x] `reindex_schedule` — периодический (напр. еженедельный) `reindex_job` + `community_summary_job` для пересчёта community detection и обновления community/neighborhood summaries (GraphRAG/GDS, §10.3) и их переиндексации.
+  - [x] `catalog_sync_schedule` — периодическая синхронизация lineage/каталога в DataHub/OpenMetadata (§9.8).
+- [x] Реализовать логику пропуска (`SkipReason`) в schedules, если нет новых материализаций (не гонять eval вхолостую).
+- [x] Обеспечить работу schedules через `dagster-daemon`; задать `execution_timezone`.
+- [x] Добавить теги запусков schedule (`dagster/schedule_name`, `run_type=scheduled`) для фильтрации в Dagit и в Job status API.
 
 **Критерий приёмки:** в Dagit во вкладке Schedules видны 4 расписания, все включаемы; ручной тик `dagster schedule preview` возвращает валидный `RunRequest`; ночной тик реально запускает `gap_scan_job` и `retrieval_eval`.
 
