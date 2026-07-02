@@ -41,5 +41,23 @@ export const api = {
   evidence(id: string): Promise<Record<string, unknown>> {
     return req(`/api/v1/evidence/${encodeURIComponent(id)}`);
   },
+  gaps(): Promise<{ count: number; gaps: { id: string; name: string; type: string }[] }> {
+    return req('/api/v1/gaps');
+  },
+  contradictions(): Promise<{ count: number; contradictions: { id: string; name: string }[] }> {
+    return req('/api/v1/contradictions');
+  },
+  reviewQueue(): Promise<{
+    items: { id: string; label: string; name: string; review_status: string; confidence: number }[];
+  }> {
+    return req('/api/v1/curation/queue');
+  },
+  comparison(query: string): Promise<{
+    columns: string[];
+    rows: Record<string, unknown>[];
+    coverage: { cells_total: number; cells_with_evidence: number; solutions: number };
+  }> {
+    return req('/api/v1/comparison', { method: 'POST', body: JSON.stringify({ query }) });
+  },
   exportUrl: '/api/v1/export',
 };

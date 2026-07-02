@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { CircleHelp, LayoutGrid, Network, BookMarked } from 'lucide-react';
+import { CircleHelp, LayoutGrid, Network, BookMarked, TriangleAlert } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
 import { AskView } from './components/AskView';
 import { CoverageView } from './components/CoverageView';
+import { GapsView } from './components/GapsView';
 import { GlossaryView } from './components/GlossaryView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
 
 const NAV: { id: View; label: string; icon: typeof Network }[] = [
   { id: 'ask', label: 'Запрос', icon: Network },
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
+  { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
 ];
 
@@ -89,6 +91,7 @@ export function App() {
         <main className="min-h-0 flex-1 overflow-hidden">
           {view === 'ask' && <AskView />}
           {view === 'coverage' && <CoverageView />}
+          {view === 'gaps' && <GapsView />}
           {view === 'glossary' && <GlossaryView />}
         </main>
       </div>
