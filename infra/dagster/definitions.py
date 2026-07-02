@@ -7,7 +7,9 @@ Optional: Dagster is not a hard dependency (the embedded profile orchestrates vi
 library functions used by the CLI, so behavior is identical.
 """
 
-from __future__ import annotations
+# NB: no `from __future__ import annotations` — Dagster inspects the real
+# `context` parameter type at runtime, and PEP 563 stringized annotations make
+# its AssetExecutionContext check fail with DagsterInvalidDefinitionError.
 
 try:
     from dagster import (  # type: ignore[import-not-found]

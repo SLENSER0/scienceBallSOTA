@@ -6,6 +6,13 @@ name: science-ball
 x-restart: &restart
   restart: unless-stopped
 
+# Shared healthcheck cadence (§13.1: every service reports readiness).
+x-hc: &hc
+  interval: 15s
+  timeout: 5s
+  retries: 10
+  start_period: 30s
+
 services:
   neo4j:
     image: neo4j:5.26-community            # GPLv3 (permitted §7.5)
@@ -22,16 +29,18 @@ services:
       - neo4j_plugins:/plugins
       - ./neo4j/import:/import
     healthcheck:
+      <<: *hc
       test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
 
   qdrant:
     image: qdrant/qdrant:latest             # Apache-2.0
     <<: *restart
     ports: ["6333:6333", "6334:6334"]
     volumes: ["qdrant_data:/qdrant/storage"]
+    healthcheck:
+      <<: *hc
+      # qdrant image ships bash but no curl; probe the REST port over /dev/tcp.
+      test: ["CMD-SHELL", "bash -c '>/dev/tcp/127.0.0.1/6333' || exit 1"]
 
   opensearch:
     image: opensearchproject/opensearch:2.17.0   # Apache-2.0
@@ -43,6 +52,9 @@ services:
       OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
     ports: ["9200:9200"]
     volumes: ["opensearch_data:/usr/share/opensearch/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
 
   postgres:
     image: postgres:16-alpine               # PostgreSQL License
@@ -53,11 +65,17 @@ services:
       POSTGRES_DB: kg_app
     ports: ["5432:5432"]
     volumes: ["pg_data:/var/lib/postgresql/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "pg_isready -U kg -d kg_app"]
 
   redis:
     image: valkey/valkey:8-alpine           # BSD (OSS Redis drop-in)
     <<: *restart
     ports: ["6379:6379"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
 
   minio:
     image: minio/minio:latest               # AGPLv3
@@ -68,6 +86,9 @@ services:
       MINIO_ROOT_PASSWORD: minio123
     ports: ["9000:9000", "9001:9001"]
     volumes: ["minio_data:/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
 
   docling-serve:
     image: quay.io/docling-project/docling-serve:latest   # MIT
@@ -75,6 +96,9 @@ services:
     environment:
       DOCLING_SERVE_ENABLE_UI: "1"
     ports: ["5001:5001"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5001/health || exit 1"]
 
   api-gateway:
     build: ../apps/api-gateway
@@ -82,28 +106,51 @@ services:
     env_file: [../.env]
     environment:
       RUNTIME_PROFILE: server
-    depends_on: [neo4j, qdrant, opensearch, postgres, redis]
+    depends_on:
+      neo4j: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      opensearch: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
     ports: ["8000:8000"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "python -c \"import urllib.request as u; u.urlopen('http://localhost:8000/api/v1/admin/health')\" || exit 1"]
 
   agent-service:
     build: ../apps/agent-service
     <<: *restart
     env_file: [../.env]
-    depends_on: [api-gateway]
+    depends_on:
+      api-gateway: {condition: service_healthy}
     ports: ["8010:8010"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "python -c \"import socket,sys; s=socket.socket(); s.settimeout(3); sys.exit(s.connect_ex(('127.0.0.1',8010)))\" || exit 1"]
 
   ingestion-service:
     build: ../apps/ingestion-service
     <<: *restart
     env_file: [../.env]
-    depends_on: [neo4j, qdrant, opensearch, docling-serve]
+    depends_on:
+      neo4j: {condition: service_healthy}
+      qdrant: {condition: service_healthy}
+      opensearch: {condition: service_healthy}
+      docling-serve: {condition: service_healthy}
     ports: ["8020:8020"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "python -c \"import socket,sys; s=socket.socket(); s.settimeout(3); sys.exit(s.connect_ex(('127.0.0.1',8020)))\" || exit 1"]
 
   frontend:
     build: ../apps/frontend
     <<: *restart
-    depends_on: [api-gateway]
+    depends_on:
+      api-gateway: {condition: service_healthy}
     ports: ["3000:3000"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 >/dev/null 2>&1 || exit 1"]
 
 volumes:
   neo4j_data:
