@@ -21,6 +21,14 @@ _log = get_logger("graph_retriever")
 SOLUTION_LABELS = ["TechnologySolution", "Method"]
 CANDIDATE_LABELS = [*SOLUTION_LABELS, "ProcessingRegime", "Material", "Equipment"]
 
+# Caps so a dense real corpus doesn't flood an answer with hundreds of items.
+MAX_CANDIDATES = 30
+MAX_FACTS = 30
+MAX_SOLUTIONS = 20
+MAX_EVIDENCE = 25
+MAX_GAPS = 15
+MAX_CONTRADICTIONS = 15
+
 
 @dataclass
 class Fact:
@@ -141,6 +149,12 @@ class GraphRetriever:
     def retrieve(self, intent: QueryIntent) -> RetrievalResult:
         res = RetrievalResult(intent=intent)
         candidates = self._candidates(intent)
+        # prefer solutions/methods, then higher-confidence nodes; cap for focus
+        candidates.sort(
+            key=lambda c: (c.get("label") in SOLUTION_LABELS, c.get("confidence") or 0.0),
+            reverse=True,
+        )
+        candidates = candidates[:MAX_CANDIDATES]
         res.matched_ids = [c["id"] for c in candidates]
 
         ev_ids: set[str] = set()
@@ -194,15 +208,20 @@ class GraphRetriever:
                 s for s in res.solutions if (s.get("year") or cutoff_year) >= cutoff_year
             ]
 
+        # keep the most confident facts/solutions so dense corpora stay focused
+        res.facts.sort(key=lambda f: f.node.get("confidence") or 0.0, reverse=True)
+        res.facts = res.facts[:MAX_FACTS]
+        res.solutions = res.solutions[:MAX_SOLUTIONS]
+
         # practice grouping
         for s in res.solutions:
             pt = s.get("practice_type") or "unknown"
             res.grouped_by_practice.setdefault(pt, []).append(s)
 
-        # hydrate evidence / gaps / contradictions
-        res.evidence = self._load_nodes(ev_ids)
-        res.gaps = self._load_nodes(gap_ids)
-        res.contradictions = self._load_nodes(contra_ids)
+        # hydrate evidence / gaps / contradictions (capped)
+        res.evidence = self._load_nodes(set(list(ev_ids)[:MAX_EVIDENCE]))
+        res.gaps = self._load_nodes(set(list(gap_ids)[:MAX_GAPS]))
+        res.contradictions = self._load_nodes(set(list(contra_ids)[:MAX_CONTRADICTIONS]))
 
         # subgraph payload
         all_ids = set(res.matched_ids) | ev_ids | gap_ids | contra_ids
