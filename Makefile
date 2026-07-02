@@ -75,6 +75,12 @@ index: ## Build vector+keyword search indexes from the graph
 seed: ## Seed the demo graph (idempotent)
 	$(PY) python infra/neo4j/seed/seed_graph.py
 
+schema-gen: ## Regenerate LinkML ontology + Neo4j migrations from kg_schema
+	$(PY) python scripts/gen_schema_artifacts.py
+
+gap-scan: ## Scan the graph for gaps + contradictions
+	$(PY) python -c "from kg_common import get_settings; from kg_retrievers.graph_store import KuzuGraphStore; from kg_retrievers.gap_analysis import GapScanner; s=KuzuGraphStore(get_settings().kuzu_db_path); print(GapScanner(s).scan().as_dict())"
+
 demo: ## Run the 4 acceptance queries end-to-end
 	$(PY) python -m kg_eval.runner --suite domain_science_ball
 

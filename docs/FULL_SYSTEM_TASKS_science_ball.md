@@ -502,21 +502,21 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует §4.2 п.1 (domain schema / ontology-lite) и покрывает все доменные классы из §8.1.
 
-- [ ] Создать корневой LinkML-schema файл `packages/kg_schema/linkml/kg_ontology.yaml` с `id`, `name`, `version`, `default_prefix`, `prefixes` (в т.ч. `kg`, `schema`, `qudt`, `linkml`), `default_range: string`.
-- [ ] Определить общий тип идентификатора: slot `id` (identifier, pattern под deterministic ID §3.8) во всех классах-сущностях.
-- [ ] Описать LinkML-класс `Material` (slots: `canonical_name`, `name`, `aliases`, `material_class`, `formula`) и подкласс `Alloy` (slots: `alloy_system`, `designation`, `base_element`).
-- [ ] Описать классы `ChemicalElement` (symbol, atomic_number — засеять из pymatgen periodic table) и `Composition` (slots: список долей элементов, `basis: wt%|at%`).
-- [ ] Описать классы `ProcessingRegime` (slots: `operation`, `temperature_c`, `time_h`, `atmosphere`, `cooling_rate`), `ProcessingStep` (order, operation), `Parameter` (name, value, unit).
-- [ ] Описать классы `Property` (slots: `canonical_name`, `symbol`, `property_class`, `default_unit`), `Measurement` (slots из §9.5: `value_raw`, `value`, `unit`, `value_normalized`, `normalized_unit`, `normalization_method`, `condition`, `baseline_value`, `effect_direction`), `Unit` (symbol, dimension, qudt_uri).
-- [ ] Описать классы `Equipment`, `Method`, `Lab`, `ResearchTeam`, `Person`, `Project`, `Dataset`.
-- [ ] Описать классы структуры документа/эксперимента: `Document`, `Paper`, `Section`, `Paragraph`, `Table`, `Figure`, `Chunk`, `Experiment`, `Sample`.
-- [ ] Описать классы знаний/провенанса: `Evidence`, `Claim`, `Finding`, `Gap`, `Contradiction`, `Decision`, `CurationEvent`, а также run-классы `ExtractorRun`, `GapScanRun` (используются в §8.2).
-- [ ] Определить LinkML-enums: `MaterialClass`, `PropertyClass`, `ProcessingOperation`, `Atmosphere`, `EffectDirection {increase, decrease, no_change}`, `ReviewStatus {pending, accepted, rejected, corrected}`, `SourceType {paragraph, table_cell, figure_caption, metadata, manual}`, `GapType` (все 9 типов из §11.1: `missing_property_value, missing_baseline, missing_processing_parameter, missing_equipment, missing_unit, unverified_claim, contradictory_measurements, low_coverage_material, orphan_entity`), `MatchDecision {auto_merge, review_needed, separate}`.
-- [ ] Определить enum-ы курирования из §12.3: `CurationAction {accept, reject, correct, merge, split, alias_add, schema_change}` и `CurationTargetType {node, edge, evidence, schema}` (используются в §3.7 моделью `CurationEvent`).
-- [ ] Свести словарь `GapType` (§11.1) с набором правил gap_analyzer (§7.4 Node 8: `missing_source_span, low_confidence_entity_resolution, conflicting_measurements, unverified_critical_claim`) к единому каноническому enum и задокументировать соответствие §11.1↔§7.4, чтобы gap-скан (§11) и enum не расходились.
-- [ ] Замапить property-vocabulary и processing-vocabulary на внешние словари (Propnet/Matscholar/MatKG) через `exact_mappings`/`close_mappings` в slot-определениях.
-- [ ] Указать в каждом slot `range`, `required`, `multivalued`, `description`; для числовых — `minimum_value`/`maximum_value` (например `confidence` в `[0,1]`).
-- [ ] Прогнать `linkml-lint packages/kg_schema/linkml/kg_ontology.yaml` — 0 ошибок.
+- [x] Создать корневой LinkML-schema файл `packages/kg_schema/linkml/kg_ontology.yaml` с `id`, `name`, `version`, `default_prefix`, `prefixes` (в т.ч. `kg`, `schema`, `qudt`, `linkml`), `default_range: string`.
+- [x] Определить общий тип идентификатора: slot `id` (identifier, pattern под deterministic ID §3.8) во всех классах-сущностях.
+- [x] Описать LinkML-класс `Material` (slots: `canonical_name`, `name`, `aliases`, `material_class`, `formula`) и подкласс `Alloy` (slots: `alloy_system`, `designation`, `base_element`).
+- [x] Описать классы `ChemicalElement` (symbol, atomic_number — засеять из pymatgen periodic table) и `Composition` (slots: список долей элементов, `basis: wt%|at%`).
+- [x] Описать классы `ProcessingRegime` (slots: `operation`, `temperature_c`, `time_h`, `atmosphere`, `cooling_rate`), `ProcessingStep` (order, operation), `Parameter` (name, value, unit).
+- [x] Описать классы `Property` (slots: `canonical_name`, `symbol`, `property_class`, `default_unit`), `Measurement` (slots из §9.5: `value_raw`, `value`, `unit`, `value_normalized`, `normalized_unit`, `normalization_method`, `condition`, `baseline_value`, `effect_direction`), `Unit` (symbol, dimension, qudt_uri).
+- [x] Описать классы `Equipment`, `Method`, `Lab`, `ResearchTeam`, `Person`, `Project`, `Dataset`.
+- [x] Описать классы структуры документа/эксперимента: `Document`, `Paper`, `Section`, `Paragraph`, `Table`, `Figure`, `Chunk`, `Experiment`, `Sample`.
+- [x] Описать классы знаний/провенанса: `Evidence`, `Claim`, `Finding`, `Gap`, `Contradiction`, `Decision`, `CurationEvent`, а также run-классы `ExtractorRun`, `GapScanRun` (используются в §8.2).
+- [x] Определить LinkML-enums: `MaterialClass`, `PropertyClass`, `ProcessingOperation`, `Atmosphere`, `EffectDirection {increase, decrease, no_change}`, `ReviewStatus {pending, accepted, rejected, corrected}`, `SourceType {paragraph, table_cell, figure_caption, metadata, manual}`, `GapType` (все 9 типов из §11.1: `missing_property_value, missing_baseline, missing_processing_parameter, missing_equipment, missing_unit, unverified_claim, contradictory_measurements, low_coverage_material, orphan_entity`), `MatchDecision {auto_merge, review_needed, separate}`.
+- [x] Определить enum-ы курирования из §12.3: `CurationAction {accept, reject, correct, merge, split, alias_add, schema_change}` и `CurationTargetType {node, edge, evidence, schema}` (используются в §3.7 моделью `CurationEvent`).
+- [x] Свести словарь `GapType` (§11.1) с набором правил gap_analyzer (§7.4 Node 8: `missing_source_span, low_confidence_entity_resolution, conflicting_measurements, unverified_critical_claim`) к единому каноническому enum и задокументировать соответствие §11.1↔§7.4, чтобы gap-скан (§11) и enum не расходились.
+- [x] Замапить property-vocabulary и processing-vocabulary на внешние словари (Propnet/Matscholar/MatKG) через `exact_mappings`/`close_mappings` в slot-определениях.
+- [x] Указать в каждом slot `range`, `required`, `multivalued`, `description`; для числовых — `minimum_value`/`maximum_value` (например `confidence` в `[0,1]`).
+- [x] Прогнать `linkml-lint packages/kg_schema/linkml/kg_ontology.yaml` — 0 ошибок.
 
 **Критерий приёмки:** `linkml-convert`/`gen-json-schema packages/kg_schema/linkml/kg_ontology.yaml` завершается без ошибок; схема содержит все 33 доменных класса из §8.1 плюс `ExtractorRun`/`GapScanRun`; все enum из §11.1 (9 типов `GapType`)/§8.3/§9.6/§12.3 присутствуют; `linkml-lint` — clean.
 
@@ -567,12 +567,12 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует §4.2 п.2 и §17 п.1 (evidence-first graph).
 
-- [ ] Определить LinkML/Pydantic класс `Evidence` строго по §8.3 со slots: `id (ev:uuid)`, `source_type (enum SourceType)`, `doc_id`, `page`, `table_id`, `row_index`, `col_index`, `char_start`, `char_end`, `text`, `extractor`, `model`, `confidence (0..1)`, `created_at`, `reviewed_by (nullable)`, `review_status (enum ReviewStatus, default pending)`.
-- [ ] Реализовать инвариант «no source span → no graph fact»: любой factual node/edge (Measurement, Claim, факт-ребро) должен иметь минимум один `SUPPORTED_BY`/`SUPPORTS` линк на `Evidence`; написать Cypher-валидатор, находящий нарушителей.
-- [ ] Реализовать привязки evidence из §8.2: `(:Evidence)-[:FROM_CHUNK]->(:Chunk)`, `(:Evidence)-[:FROM_TABLE]->(:Table)`, `(:Evidence)-[:SUPPORTS]->(:Claim)`, `(:Evidence)-[:EXTRACTED_BY]->(:ExtractorRun)`, `(:Measurement)-[:SUPPORTED_BY]->(:Evidence)`, `(:Claim)-[:SUPPORTED_BY]->(:Evidence)`.
-- [ ] Реализовать `evidence_locator` DTO в `kg_common`, однозначно указывающий на span (doc_id + page + char_start/char_end или table_id + row/col) для Evidence Inspector (§5.2.6) и endpoint `GET /api/v1/evidence/{evidence_id}`.
-- [ ] Добавить property на Evidence `review_status` с индексом (см. §3.11) для review queue (§12).
-- [ ] Написать тесты: создание Measurement без Evidence отклоняется upsert-слоем; Evidence с `table_cell` требует `table_id/row_index/col_index`; Evidence с `paragraph` требует `char_start<char_end`.
+- [x] Определить LinkML/Pydantic класс `Evidence` строго по §8.3 со slots: `id (ev:uuid)`, `source_type (enum SourceType)`, `doc_id`, `page`, `table_id`, `row_index`, `col_index`, `char_start`, `char_end`, `text`, `extractor`, `model`, `confidence (0..1)`, `created_at`, `reviewed_by (nullable)`, `review_status (enum ReviewStatus, default pending)`.
+- [x] Реализовать инвариант «no source span → no graph fact»: любой factual node/edge (Measurement, Claim, факт-ребро) должен иметь минимум один `SUPPORTED_BY`/`SUPPORTS` линк на `Evidence`; написать Cypher-валидатор, находящий нарушителей.
+- [x] Реализовать привязки evidence из §8.2: `(:Evidence)-[:FROM_CHUNK]->(:Chunk)`, `(:Evidence)-[:FROM_TABLE]->(:Table)`, `(:Evidence)-[:SUPPORTS]->(:Claim)`, `(:Evidence)-[:EXTRACTED_BY]->(:ExtractorRun)`, `(:Measurement)-[:SUPPORTED_BY]->(:Evidence)`, `(:Claim)-[:SUPPORTED_BY]->(:Evidence)`.
+- [x] Реализовать `evidence_locator` DTO в `kg_common`, однозначно указывающий на span (doc_id + page + char_start/char_end или table_id + row/col) для Evidence Inspector (§5.2.6) и endpoint `GET /api/v1/evidence/{evidence_id}`.
+- [x] Добавить property на Evidence `review_status` с индексом (см. §3.11) для review queue (§12).
+- [x] Написать тесты: создание Measurement без Evidence отклоняется upsert-слоем; Evidence с `table_cell` требует `table_id/row_index/col_index`; Evidence с `paragraph` требует `char_start<char_end`.
 
 **Критерий приёмки:** Cypher-запрос «`MATCH (m:Measurement) WHERE NOT (m)-[:SUPPORTED_BY]->(:Evidence) RETURN count(m)`» возвращает `0` на валидном графе; все поля §8.3 присутствуют в модели `Evidence`; локатор восстанавливает исходный span в тесте.
 
@@ -582,16 +582,16 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует §1 (evidence graph: источник, confidence, extractor/model version, review status) и §17 п.8 (versioned decisions).
 
-- [ ] Определить обязательный provenance-mixin для всех factual узлов и рёбер: `created_at`, `updated_at`, `created_by`, `extractor`, `model`, `extractor_run_id`, `confidence (0..1)`, `review_status`, `schema_version`, `source_doc_ids`.
-- [ ] Реализовать модель `ExtractorRun` (id, extractor_name, model, version, params_hash, started_at, finished_at, input_doc_ids, code_git_sha) и связь `(:Evidence)-[:EXTRACTED_BY]->(:ExtractorRun)`.
-- [ ] Реализовать модель `GapScanRun` (id, `gap_rules`/scan_type, params_hash, started_at, finished_at, input_scope/target_properties, code_git_sha) и связь `(:Gap)-[:DETECTED_BY]->(:GapScanRun)` (§8.2) как provenance для gap-нод (§16 Phase 8).
-- [ ] Реализовать версионирование фактов «preserve previous versions» (§9.7): при изменении reviewed/factual свойств не перезаписывать, а создавать версию — паттерн `version: int` + `valid_from/valid_to` + `superseded_by` (или history-узлы `:FactVersion`), выбрать один и задокументировать в `packages/kg_schema/docs/versioning.md`.
-- [ ] Реализовать инвариант «never overwrite reviewed fields automatically» (§9.7): upsert-слой блокирует автозапись в поля, где `review_status IN [accepted, corrected]`, если не передан `force_curation=true` с `curation_event_id`.
-- [ ] Реализовать модели curation-провенанса: `Decision` и `CurationEvent` строго по §12.3 (`id`, `action: CurationAction`, `actor_id`, `target_type: CurationTargetType`, `target_id`, `before: json`, `after: json`, `reason`, `created_at`) и рёбра `(:Decision)-[:AFFECTS]->(:Entity)`, `(:CurationEvent)-[:CHANGED]->(:Entity)` для decision history (§12.3) и merge/split history в Entity Detail (§5.2.4).
-- [ ] Ввести edge-level provenance: у factual рёбер (`MEASURED`, `SUPPORTED_BY`, `ABOUT_*`, `PROCESSED_BY`, `MENTIONS`) хранить `confidence`, `extractor_run_id`, `created_at`, `schema_version`.
-- [ ] Хранить на factual-рёбрах массив `evidence_ids` (id связанных `Evidence`), чтобы обслуживать `GET /api/v1/evidence/by-edge/{edge_id}` (§6.2) и заполнять `GraphEdge.evidenceIds`/`evidenceCount` во фронтенд-payload (§5.3); согласовать с `SUPPORTED_BY`/`SUPPORTS` линками §3.6.
-- [ ] Реализовать confidence-политики: агрегирование confidence при multi-evidence фактах (например max / noisy-OR) как чистую функцию в `kg_common`, покрыть тестами.
-- [ ] Написать Cypher-репорты provenance-полноты: доля узлов/рёбер без `extractor_run_id`, без `confidence`, без `schema_version`.
+- [x] Определить обязательный provenance-mixin для всех factual узлов и рёбер: `created_at`, `updated_at`, `created_by`, `extractor`, `model`, `extractor_run_id`, `confidence (0..1)`, `review_status`, `schema_version`, `source_doc_ids`.
+- [x] Реализовать модель `ExtractorRun` (id, extractor_name, model, version, params_hash, started_at, finished_at, input_doc_ids, code_git_sha) и связь `(:Evidence)-[:EXTRACTED_BY]->(:ExtractorRun)`.
+- [x] Реализовать модель `GapScanRun` (id, `gap_rules`/scan_type, params_hash, started_at, finished_at, input_scope/target_properties, code_git_sha) и связь `(:Gap)-[:DETECTED_BY]->(:GapScanRun)` (§8.2) как provenance для gap-нод (§16 Phase 8).
+- [x] Реализовать версионирование фактов «preserve previous versions» (§9.7): при изменении reviewed/factual свойств не перезаписывать, а создавать версию — паттерн `version: int` + `valid_from/valid_to` + `superseded_by` (или history-узлы `:FactVersion`), выбрать один и задокументировать в `packages/kg_schema/docs/versioning.md`.
+- [x] Реализовать инвариант «never overwrite reviewed fields automatically» (§9.7): upsert-слой блокирует автозапись в поля, где `review_status IN [accepted, corrected]`, если не передан `force_curation=true` с `curation_event_id`.
+- [x] Реализовать модели curation-провенанса: `Decision` и `CurationEvent` строго по §12.3 (`id`, `action: CurationAction`, `actor_id`, `target_type: CurationTargetType`, `target_id`, `before: json`, `after: json`, `reason`, `created_at`) и рёбра `(:Decision)-[:AFFECTS]->(:Entity)`, `(:CurationEvent)-[:CHANGED]->(:Entity)` для decision history (§12.3) и merge/split history в Entity Detail (§5.2.4).
+- [x] Ввести edge-level provenance: у factual рёбер (`MEASURED`, `SUPPORTED_BY`, `ABOUT_*`, `PROCESSED_BY`, `MENTIONS`) хранить `confidence`, `extractor_run_id`, `created_at`, `schema_version`.
+- [x] Хранить на factual-рёбрах массив `evidence_ids` (id связанных `Evidence`), чтобы обслуживать `GET /api/v1/evidence/by-edge/{edge_id}` (§6.2) и заполнять `GraphEdge.evidenceIds`/`evidenceCount` во фронтенд-payload (§5.3); согласовать с `SUPPORTED_BY`/`SUPPORTS` линками §3.6.
+- [x] Реализовать confidence-политики: агрегирование confidence при multi-evidence фактах (например max / noisy-OR) как чистую функцию в `kg_common`, покрыть тестами.
+- [x] Написать Cypher-репорты provenance-полноты: доля узлов/рёбер без `extractor_run_id`, без `confidence`, без `schema_version`.
 
 **Критерий приёмки:** каждый factual узел и ребро в seed-графе имеет `confidence`, `extractor_run_id`, `schema_version`, `created_at` (Cypher-репорт показывает 100% покрытие); попытка авто-перезаписи `accepted`-поля без `curation_event_id` отклоняется тестом; изменение факта создаёт новую версию, старая остаётся достижима.
 
@@ -635,11 +635,11 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.10 Constraints и uniqueness (§8.4)
 
-- [ ] Создать миграционный файл `infra/neo4j/migrations/0001_constraints.cypher` со всеми uniqueness-constraints из §8.4: `material_id`, `experiment_id`, `evidence_id`, `document_id`, `property_id`, `equipment_id` (каждый `IF NOT EXISTS ... REQUIRE n.id IS UNIQUE`).
-- [ ] Расширить constraints на все остальные типы узлов с deterministic id (`Paper, Section, Chunk, Table, Figure, Claim, Finding, Sample, Alloy, Composition, ProcessingRegime, ProcessingStep, Parameter, Lab, ResearchTeam, Person, Measurement, Unit, Method, Dataset, Project, Decision, CurationEvent, Gap, Contradiction, ExtractorRun, GapScanRun`) — `REQUIRE n.id IS UNIQUE`.
-- [ ] Добавить existence-constraints (Enterprise, опционально/при доступности) или Pydantic-уровень валидацию для обязательных полей: `Evidence.review_status`, `Measurement.value_normalized` при наличии value, `n.schema_version`.
-- [ ] Реализовать генератор constraints из `NodeLabel` каталога (§3.4), чтобы список не рассинхронизировался с онтологией; сгенерированный `.cypher` — часть миграции.
-- [ ] Написать тест: попытка создать два узла `:Material {id:"material:x"}` бросает constraint violation.
+- [x] Создать миграционный файл `infra/neo4j/migrations/0001_constraints.cypher` со всеми uniqueness-constraints из §8.4: `material_id`, `experiment_id`, `evidence_id`, `document_id`, `property_id`, `equipment_id` (каждый `IF NOT EXISTS ... REQUIRE n.id IS UNIQUE`).
+- [x] Расширить constraints на все остальные типы узлов с deterministic id (`Paper, Section, Chunk, Table, Figure, Claim, Finding, Sample, Alloy, Composition, ProcessingRegime, ProcessingStep, Parameter, Lab, ResearchTeam, Person, Measurement, Unit, Method, Dataset, Project, Decision, CurationEvent, Gap, Contradiction, ExtractorRun, GapScanRun`) — `REQUIRE n.id IS UNIQUE`.
+- [x] Добавить existence-constraints (Enterprise, опционально/при доступности) или Pydantic-уровень валидацию для обязательных полей: `Evidence.review_status`, `Measurement.value_normalized` при наличии value, `n.schema_version`.
+- [x] Реализовать генератор constraints из `NodeLabel` каталога (§3.4), чтобы список не рассинхронизировался с онтологией; сгенерированный `.cypher` — часть миграции.
+- [x] Написать тест: попытка создать два узла `:Material {id:"material:x"}` бросает constraint violation.
 
 **Критерий приёмки:** после применения миграции `SHOW CONSTRAINTS` содержит uniqueness-constraint для каждого label из §3.4; вставка дубликата id падает; количество constraints == количеству labels-сущностей.
 
@@ -647,12 +647,12 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.11 Property / range / composite indexes (§8.4)
 
-- [ ] Создать `infra/neo4j/migrations/0002_indexes.cypher` c индексами из §8.4: `measurement_value_index` FOR `(m:Measurement) ON (m.value_normalized)`, `processing_temperature_index` FOR `(r:ProcessingRegime) ON (r.temperature_c)`, `processing_time_index` FOR `(r:ProcessingRegime) ON (r.time_h)`.
-- [ ] Добавить range-index для числовых фильтров из §6.2/§9.8 запросов: `ProcessingRegime.time_h`, `Measurement.value_normalized`, `Measurement.confidence`.
-- [ ] Добавить индексы под фильтры review/curation: `Evidence.review_status`, `Gap.type`, `Claim.review_status`, `*.created_at` (для date_from/date_to фильтров §6.2).
-- [ ] Добавить composite index под ключевой запрос `material_regime_property` (§6.2): например `(:ProcessingRegime) ON (r.operation, r.temperature_c, r.time_h)`.
-- [ ] Добавить lookup/point индексы под `id`-джойны там, где нет constraint (constraint уже создаёт backing index — не дублировать).
-- [ ] Задокументировать соответствие «endpoint/запрос → используемый индекс» в `infra/neo4j/docs/index_plan.md`; проверить `PROFILE` ключевого запроса, что используется NodeIndexSeek, а не AllNodesScan.
+- [x] Создать `infra/neo4j/migrations/0002_indexes.cypher` c индексами из §8.4: `measurement_value_index` FOR `(m:Measurement) ON (m.value_normalized)`, `processing_temperature_index` FOR `(r:ProcessingRegime) ON (r.temperature_c)`, `processing_time_index` FOR `(r:ProcessingRegime) ON (r.time_h)`.
+- [x] Добавить range-index для числовых фильтров из §6.2/§9.8 запросов: `ProcessingRegime.time_h`, `Measurement.value_normalized`, `Measurement.confidence`.
+- [x] Добавить индексы под фильтры review/curation: `Evidence.review_status`, `Gap.type`, `Claim.review_status`, `*.created_at` (для date_from/date_to фильтров §6.2).
+- [x] Добавить composite index под ключевой запрос `material_regime_property` (§6.2): например `(:ProcessingRegime) ON (r.operation, r.temperature_c, r.time_h)`.
+- [x] Добавить lookup/point индексы под `id`-джойны там, где нет constraint (constraint уже создаёт backing index — не дублировать).
+- [x] Задокументировать соответствие «endpoint/запрос → используемый индекс» в `infra/neo4j/docs/index_plan.md`; проверить `PROFILE` ключевого запроса, что используется NodeIndexSeek, а не AllNodesScan.
 
 **Критерий приёмки:** `SHOW INDEXES` содержит все индексы §8.4 + добавленные; `PROFILE` для примера запроса `material_regime_property` (§6.2) показывает index seek без full scan; все индексы в состоянии `ONLINE`.
 
@@ -660,11 +660,11 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.12 Fulltext index (§8.4)
 
-- [ ] Создать в `infra/neo4j/migrations/0003_fulltext.cypher` fulltext-индекс `entity_name_index` FOR `(n:Material|Property|Equipment|Lab|Person|ProcessingRegime) ON EACH [n.name, n.canonical_name, n.aliases_text]` (точно по §8.4).
-- [ ] Обеспечить наличие поля `aliases_text` (склеенные алиасы) на всех entity-узлах при upsert (§3.8), чтобы fulltext-поиск ловил синонимы из entity resolution (§9.6).
-- [ ] Реализовать в `apps/graph-service` функцию поиска через `db.index.fulltext.queryNodes('entity_name_index', $q)` для endpoint `GET /api/v1/entities/search?q=&type=&limit=` (§6.2).
-- [ ] Добавить fulltext-индекс по тексту evidence/claim (`Evidence.text`, `Claim.text`) для keyword-fallback и Evidence Inspector.
-- [ ] Написать тест: поиск по алиасу `AA2024` находит узел `Material` с canonical `Al-Cu 2024` (после того как alias записан в `aliases_text`).
+- [x] Создать в `infra/neo4j/migrations/0003_fulltext.cypher` fulltext-индекс `entity_name_index` FOR `(n:Material|Property|Equipment|Lab|Person|ProcessingRegime) ON EACH [n.name, n.canonical_name, n.aliases_text]` (точно по §8.4).
+- [x] Обеспечить наличие поля `aliases_text` (склеенные алиасы) на всех entity-узлах при upsert (§3.8), чтобы fulltext-поиск ловил синонимы из entity resolution (§9.6).
+- [x] Реализовать в `apps/graph-service` функцию поиска через `db.index.fulltext.queryNodes('entity_name_index', $q)` для endpoint `GET /api/v1/entities/search?q=&type=&limit=` (§6.2).
+- [x] Добавить fulltext-индекс по тексту evidence/claim (`Evidence.text`, `Claim.text`) для keyword-fallback и Evidence Inspector.
+- [x] Написать тест: поиск по алиасу `AA2024` находит узел `Material` с canonical `Al-Cu 2024` (после того как alias записан в `aliases_text`).
 
 **Критерий приёмки:** `SHOW INDEXES` показывает `entity_name_index` типа FULLTEXT в состоянии `ONLINE`; `CALL db.index.fulltext.queryNodes('entity_name_index','AA2024')` возвращает ожидаемый Material; поиск через `/api/v1/entities/search` возвращает результат по алиасу.
 
@@ -672,12 +672,12 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.13 Vector index для node embeddings (§8.4)
 
-- [ ] Создать `infra/neo4j/migrations/0004_vector.cypher` с `CREATE VECTOR INDEX entity_embedding_index ... FOR (n:Entity) ON (n.embedding) OPTIONS { indexConfig: { vector.dimensions: 1024, vector.similarity_function: 'cosine' } }` (точно по §8.4).
-- [ ] Гарантировать, что super-label `:Entity` (§3.4) навешивается на все embeddable-сущности при upsert, иначе индекс не покроет узлы.
-- [ ] Согласовать размерность `1024` с embedding-моделью раздела retrieval/indexing (§9.8/§10); задокументировать выбранную модель и dim в `infra/neo4j/docs/embeddings.md`; если dim отличается — синхронно обновить миграцию.
-- [ ] Реализовать батч-джобу записи node embeddings в `n.embedding` (источник — entity descriptions / graph neighborhood summaries §9.8) с идемпотентным upsert по id.
-- [ ] Реализовать запрос ближайших сущностей `CALL db.index.vector.queryNodes('entity_embedding_index', $k, $vec)` в graph-service для «similar materials/entities» (Mode D §10.1).
-- [ ] Написать тест: после записи embeddings для 3 материалов vector-query к вектору одного из них возвращает его же первым (self-nearest).
+- [x] Создать `infra/neo4j/migrations/0004_vector.cypher` с `CREATE VECTOR INDEX entity_embedding_index ... FOR (n:Entity) ON (n.embedding) OPTIONS { indexConfig: { vector.dimensions: 1024, vector.similarity_function: 'cosine' } }` (точно по §8.4).
+- [x] Гарантировать, что super-label `:Entity` (§3.4) навешивается на все embeddable-сущности при upsert, иначе индекс не покроет узлы.
+- [x] Согласовать размерность `1024` с embedding-моделью раздела retrieval/indexing (§9.8/§10); задокументировать выбранную модель и dim в `infra/neo4j/docs/embeddings.md`; если dim отличается — синхронно обновить миграцию.
+- [x] Реализовать батч-джобу записи node embeddings в `n.embedding` (источник — entity descriptions / graph neighborhood summaries §9.8) с идемпотентным upsert по id.
+- [x] Реализовать запрос ближайших сущностей `CALL db.index.vector.queryNodes('entity_embedding_index', $k, $vec)` в graph-service для «similar materials/entities» (Mode D §10.1).
+- [x] Написать тест: после записи embeddings для 3 материалов vector-query к вектору одного из них возвращает его же первым (self-nearest).
 
 **Критерий приёмки:** `SHOW INDEXES` показывает `entity_embedding_index` типа VECTOR, `ONLINE`, dim=1024, cosine; `db.index.vector.queryNodes` возвращает top-k без ошибок; self-nearest тест проходит.
 
@@ -753,10 +753,10 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.18 Документация онтологии и developer guide
 
-- [ ] Сгенерировать HTML/Markdown документацию онтологии из LinkML (`gen-doc`) в `packages/kg_schema/docs/` (классы, slots, enums, mappings).
-- [ ] Написать `docs/graph_model.md`: диаграмма labels/relationships (§8.1/§8.2), правила evidence-first (§8.3), provenance/versioning (§3.7), deterministic ID + MERGE (§3.8).
-- [ ] Написать `docs/operations.md`: как запускать миграции, seed, GDS-jobs, бэкап/восстановление, проверять плагины.
-- [ ] Добавить cheat-sheet ключевых Cypher (constraints, fulltext query, vector query, GDS calls) для новых разработчиков.
+- [x] Сгенерировать HTML/Markdown документацию онтологии из LinkML (`gen-doc`) в `packages/kg_schema/docs/` (классы, slots, enums, mappings).
+- [x] Написать `docs/graph_model.md`: диаграмма labels/relationships (§8.1/§8.2), правила evidence-first (§8.3), provenance/versioning (§3.7), deterministic ID + MERGE (§3.8).
+- [x] Написать `docs/operations.md`: как запускать миграции, seed, GDS-jobs, бэкап/восстановление, проверять плагины.
+- [x] Добавить cheat-sheet ключевых Cypher (constraints, fulltext query, vector query, GDS calls) для новых разработчиков.
 
 **Критерий приёмки:** `gen-doc` создаёт документацию без ошибок и покрывает все классы/slots; `docs/graph_model.md` и `docs/operations.md` присутствуют и ссылаются на актуальные пути миграций/скриптов; ссылки/команды в docs проверены запуском.
 

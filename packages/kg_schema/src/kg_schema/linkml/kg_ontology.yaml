@@ -1,0 +1,1103 @@
+# GENERATED from kg_schema by scripts/gen_schema_artifacts.py — DO NOT EDIT.
+id: https://science-ball.example/ontology
+name: kg_ontology
+description: Научный клубок — mining/metallurgy R&D knowledge-graph ontology.
+version: 0.1.0
+prefixes:
+  kg: https://science-ball.example/ontology#
+  linkml: https://w3id.org/linkml/
+  schema: https://schema.org/
+  qudt: http://qudt.org/schema/qudt/
+default_prefix: kg
+default_range: string
+imports:
+- linkml:types
+slots:
+  aliases_text:
+    description: aliases_text
+  atmosphere:
+    description: atmosphere
+  canonical_name:
+    description: canonical_name
+  confidence:
+    description: confidence
+    range: float
+    minimum_value: 0
+    maximum_value: 1
+  country:
+    description: country
+  created_at:
+    description: created_at
+  doc_id:
+    description: doc_id
+  domain:
+    description: domain
+  evidence_strength:
+    description: evidence_strength
+  extractor_run_id:
+    description: extractor_run_id
+  gap_type:
+    description: gap_type
+  id:
+    description: id
+    identifier: true
+  name:
+    description: name
+  normalized_unit:
+    description: normalized_unit
+  operation:
+    description: operation
+  page:
+    description: page
+    range: integer
+  practice_type:
+    description: practice_type
+  review_status:
+    description: review_status
+  schema_version:
+    description: schema_version
+  source_type:
+    description: source_type
+  temperature_c:
+    description: temperature_c
+    range: float
+  text:
+    description: text
+  time_h:
+    description: time_h
+    range: float
+  unit:
+    description: unit
+  value_normalized:
+    description: value_normalized
+    range: float
+  value_raw:
+    description: value_raw
+  year:
+    description: year
+    range: integer
+enums:
+  Atmosphere:
+    permissible_values:
+      air: {}
+      inert: {}
+      vacuum: {}
+      reducing: {}
+      oxidizing: {}
+      other: {}
+  ConfidentialityLevel:
+    permissible_values:
+      public: {}
+      internal: {}
+      restricted: {}
+      commercial_secret: {}
+      partner_visible: {}
+  CurationAction:
+    permissible_values:
+      accept: {}
+      reject: {}
+      correct: {}
+      merge: {}
+      split: {}
+      alias_add: {}
+      schema_change: {}
+      mark_as_domestic_practice: {}
+      mark_as_foreign_practice: {}
+      set_applicability_condition: {}
+      add_limitation: {}
+      resolve_contradiction: {}
+      annotate_gap: {}
+  CurationTargetType:
+    permissible_values:
+      node: {}
+      edge: {}
+      evidence: {}
+      schema: {}
+  EffectDirection:
+    permissible_values:
+      increase: {}
+      decrease: {}
+      no_change: {}
+  EvidenceStrength:
+    permissible_values:
+      peer_reviewed: {}
+      patent: {}
+      internal_report: {}
+      experiment_protocol: {}
+      standard: {}
+      expert_comment: {}
+      unverified: {}
+  GapType:
+    permissible_values:
+      missing_property_value: {}
+      missing_baseline: {}
+      missing_processing_parameter: {}
+      missing_equipment: {}
+      missing_unit: {}
+      unverified_claim: {}
+      contradictory_measurements: {}
+      low_coverage_material: {}
+      orphan_entity: {}
+      missing_geography: {}
+      missing_applicability_condition: {}
+      missing_technoeconomic: {}
+      only_foreign_sources: {}
+      no_pilot_data: {}
+  MatchDecision:
+    permissible_values:
+      auto_merge: {}
+      review_needed: {}
+      separate: {}
+  MaterialClass:
+    permissible_values:
+      ore: {}
+      concentrate: {}
+      matte: {}
+      slag: {}
+      tailings: {}
+      metal: {}
+      alloy: {}
+      solution: {}
+      electrolyte: {}
+      gas: {}
+      water: {}
+      waste: {}
+      reagent: {}
+      other: {}
+  MetallurgicalDomain:
+    permissible_values:
+      hydrometallurgy: {}
+      pyrometallurgy: {}
+      environment: {}
+      water_treatment: {}
+      waste_processing: {}
+      mineral_processing: {}
+      electrometallurgy: {}
+  PracticeGeography:
+    permissible_values:
+      russia: {}
+      cis: {}
+      foreign: {}
+      global: {}
+      unknown: {}
+  ProcessingOperation:
+    permissible_values:
+      leaching: {}
+      heap_leaching: {}
+      bioleaching: {}
+      flotation: {}
+      electrowinning: {}
+      electrorefining: {}
+      flash_smelting: {}
+      fluidized_bed: {}
+      smelting: {}
+      converting: {}
+      roasting: {}
+      desalination: {}
+      reverse_osmosis: {}
+      ion_exchange: {}
+      electrodialysis: {}
+      nanofiltration: {}
+      lime_softening: {}
+      gas_cleaning: {}
+      so2_removal: {}
+      water_injection: {}
+      aging: {}
+      annealing: {}
+      other: {}
+  PropertyClass:
+    permissible_values:
+      concentration: {}
+      temperature: {}
+      flow: {}
+      electrochemical: {}
+      mechanical: {}
+      recovery: {}
+      efficiency: {}
+      economic: {}
+      energy: {}
+      physicochemical: {}
+      other: {}
+  ReviewStatus:
+    permissible_values:
+      pending: {}
+      accepted: {}
+      rejected: {}
+      corrected: {}
+  Role:
+    permissible_values:
+      researcher: {}
+      analyst: {}
+      project_manager: {}
+      admin: {}
+      external_partner: {}
+      curator: {}
+  SourceDocType:
+    permissible_values:
+      internal_report: {}
+      article: {}
+      review: {}
+      patent: {}
+      thesis: {}
+      standard: {}
+      experiment_protocol: {}
+      presentation: {}
+      conference: {}
+      handbook: {}
+      other: {}
+  SourceType:
+    permissible_values:
+      paragraph: {}
+      table_cell: {}
+      figure_caption: {}
+      metadata: {}
+      manual: {}
+  VerificationLevel:
+    permissible_values:
+      confirmed: {}
+      likely: {}
+      conflicting: {}
+      weakly_supported: {}
+      unverified: {}
+      obsolete: {}
+classes:
+  Document:
+    description: Document node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Document
+  Paper:
+    description: Paper node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - country
+    - created_at
+    - evidence_strength
+    - extractor_run_id
+    - id
+    - name
+    - practice_type
+    - review_status
+    - schema_version
+    - year
+    class_uri: kg:Paper
+  Section:
+    description: Section node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Section
+  Paragraph:
+    description: Paragraph node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Paragraph
+  Table:
+    description: Table node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Table
+  Figure:
+    description: Figure node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Figure
+  Chunk:
+    description: Chunk node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Chunk
+  Evidence:
+    description: Evidence node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - doc_id
+    - evidence_strength
+    - extractor_run_id
+    - id
+    - name
+    - page
+    - review_status
+    - schema_version
+    - source_type
+    - text
+    class_uri: kg:Evidence
+  Claim:
+    description: Claim node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Claim
+  Finding:
+    description: Finding node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Finding
+  Experiment:
+    description: Experiment node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Experiment
+  Sample:
+    description: Sample node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Sample
+  Material:
+    description: Material node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Material
+    mixins:
+    - Entity
+  Alloy:
+    description: Alloy node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Alloy
+    mixins:
+    - Entity
+  ChemicalElement:
+    description: ChemicalElement node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:ChemicalElement
+    mixins:
+    - Entity
+  Composition:
+    description: Composition node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Composition
+  ProcessingRegime:
+    description: ProcessingRegime node (§8.1).
+    slots:
+    - aliases_text
+    - atmosphere
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - operation
+    - review_status
+    - schema_version
+    - temperature_c
+    - time_h
+    class_uri: kg:ProcessingRegime
+    mixins:
+    - Entity
+  ProcessingStep:
+    description: ProcessingStep node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:ProcessingStep
+  Parameter:
+    description: Parameter node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Parameter
+  Equipment:
+    description: Equipment node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Equipment
+    mixins:
+    - Entity
+  Lab:
+    description: Lab node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Lab
+    mixins:
+    - Entity
+  ResearchTeam:
+    description: ResearchTeam node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:ResearchTeam
+    mixins:
+    - Entity
+  Person:
+    description: Person node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Person
+    mixins:
+    - Entity
+  Property:
+    description: Property node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Property
+    mixins:
+    - Entity
+  Measurement:
+    description: Measurement node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - normalized_unit
+    - review_status
+    - schema_version
+    - unit
+    - value_normalized
+    - value_raw
+    class_uri: kg:Measurement
+  Unit:
+    description: Unit node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Unit
+  Method:
+    description: Method node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Method
+    mixins:
+    - Entity
+  Dataset:
+    description: Dataset node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Dataset
+  Project:
+    description: Project node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Project
+  Decision:
+    description: Decision node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Decision
+  CurationEvent:
+    description: CurationEvent node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:CurationEvent
+  Gap:
+    description: Gap node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - domain
+    - extractor_run_id
+    - gap_type
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Gap
+  Contradiction:
+    description: Contradiction node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Contradiction
+  Geography:
+    description: Geography node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Geography
+    mixins:
+    - Entity
+  Country:
+    description: Country node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Country
+  Facility:
+    description: Facility node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Facility
+    mixins:
+    - Entity
+  TechnologySolution:
+    description: TechnologySolution node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - country
+    - created_at
+    - domain
+    - extractor_run_id
+    - id
+    - name
+    - operation
+    - practice_type
+    - review_status
+    - schema_version
+    class_uri: kg:TechnologySolution
+    mixins:
+    - Entity
+  Recommendation:
+    description: Recommendation node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Recommendation
+    mixins:
+    - Entity
+  Limitation:
+    description: Limitation node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Limitation
+  ApplicabilityCondition:
+    description: ApplicabilityCondition node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:ApplicabilityCondition
+  TechnologyComparison:
+    description: TechnologyComparison node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:TechnologyComparison
+  KnowledgeClaim:
+    description: KnowledgeClaim node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:KnowledgeClaim
+  Standard:
+    description: Standard node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:Standard
+  TechnoEconomicIndicator:
+    description: TechnoEconomicIndicator node (§8.1).
+    slots:
+    - aliases_text
+    - canonical_name
+    - confidence
+    - created_at
+    - extractor_run_id
+    - id
+    - name
+    - review_status
+    - schema_version
+    class_uri: kg:TechnoEconomicIndicator
+  Entity:
+    abstract: true
+    description: Resolvable/embeddable super-label (§3.4).
+_relationships:
+- from: Document
+  predicate: HAS_SECTION
+  to: Section
+- from: Document
+  predicate: HAS_CHUNK
+  to: Chunk
+- from: Section
+  predicate: HAS_CHUNK
+  to: Chunk
+- from: Paper
+  predicate: HAS_SECTION
+  to: Section
+- from: Chunk
+  predicate: MENTIONS
+  to: Entity
+- from: Evidence
+  predicate: FROM_CHUNK
+  to: Chunk
+- from: Evidence
+  predicate: FROM_TABLE
+  to: Table
+- from: Document
+  predicate: HAS_SECTION
+  to: Table
+- from: Evidence
+  predicate: SUPPORTS
+  to: Claim
+- from: Evidence
+  predicate: EXTRACTED_BY
+  to: ExtractorRun
+- from: Measurement
+  predicate: SUPPORTED_BY
+  to: Evidence
+- from: Claim
+  predicate: SUPPORTED_BY
+  to: Evidence
+- from: Finding
+  predicate: SUPPORTED_BY
+  to: Evidence
+- from: Recommendation
+  predicate: SUPPORTED_BY
+  to: Evidence
+- from: KnowledgeClaim
+  predicate: SUPPORTED_BY
+  to: Evidence
+- from: Paper
+  predicate: REPORTS
+  to: Experiment
+- from: Document
+  predicate: REPORTS
+  to: Experiment
+- from: Claim
+  predicate: CONTRADICTS
+  to: Claim
+- from: KnowledgeClaim
+  predicate: CONTRADICTS
+  to: KnowledgeClaim
+- from: Experiment
+  predicate: USES_SAMPLE
+  to: Sample
+- from: Sample
+  predicate: HAS_MATERIAL
+  to: Material
+- from: Experiment
+  predicate: HAS_MATERIAL
+  to: Material
+- from: Material
+  predicate: HAS_COMPOSITION
+  to: Composition
+- from: Composition
+  predicate: CONTAINS_ELEMENT
+  to: ChemicalElement
+- from: Experiment
+  predicate: PROCESSED_BY
+  to: ProcessingRegime
+- from: Sample
+  predicate: PROCESSED_BY
+  to: ProcessingRegime
+- from: ProcessingRegime
+  predicate: HAS_STEP
+  to: ProcessingStep
+- from: ProcessingRegime
+  predicate: HAS_PARAMETER
+  to: Parameter
+- from: ProcessingStep
+  predicate: HAS_PARAMETER
+  to: Parameter
+- from: Experiment
+  predicate: USED_EQUIPMENT
+  to: Equipment
+- from: Experiment
+  predicate: PERFORMED_BY
+  to: Person
+- from: Experiment
+  predicate: PERFORMED_BY
+  to: Lab
+- from: Person
+  predicate: MEMBER_OF
+  to: Lab
+- from: Person
+  predicate: MEMBER_OF
+  to: ResearchTeam
+- from: Lab
+  predicate: PART_OF
+  to: Project
+- from: Experiment
+  predicate: MEASURED
+  to: Measurement
+- from: Sample
+  predicate: MEASURED
+  to: Measurement
+- from: Measurement
+  predicate: OF_PROPERTY
+  to: Property
+- from: Measurement
+  predicate: HAS_UNIT
+  to: Unit
+- from: Gap
+  predicate: ABOUT
+  to: Entity
+- from: Gap
+  predicate: ABOUT_MATERIAL
+  to: Material
+- from: Gap
+  predicate: ABOUT_PROPERTY
+  to: Property
+- from: Gap
+  predicate: ABOUT_REGIME
+  to: ProcessingRegime
+- from: Gap
+  predicate: DETECTED_BY
+  to: GapScanRun
+- from: Contradiction
+  predicate: ABOUT
+  to: Entity
+- from: Decision
+  predicate: AFFECTS
+  to: Entity
+- from: CurationEvent
+  predicate: CHANGED
+  to: Entity
+- from: TechnologySolution
+  predicate: TREATS_WATER
+  to: Material
+- from: TechnologySolution
+  predicate: REMOVES_CONTAMINANT
+  to: Material
+- from: TechnologySolution
+  predicate: INJECTS_INTO_HORIZON
+  to: Facility
+- from: TechnologySolution
+  predicate: CIRCULATES_ELECTROLYTE
+  to: Material
+- from: Equipment
+  predicate: FEEDS_ELECTROLYTE_TO_CELL
+  to: Equipment
+- from: TechnologySolution
+  predicate: OPERATES_IN_CLIMATE
+  to: Geography
+- from: TechnologySolution
+  predicate: IMPLEMENTED_IN_COUNTRY
+  to: Country
+- from: TechnologySolution
+  predicate: IMPLEMENTED_IN
+  to: Facility
+- from: TechnologySolution
+  predicate: HAS_TECHNOECONOMIC_INDICATOR
+  to: TechnoEconomicIndicator
+- from: TechnologySolution
+  predicate: HAS_APPLICABILITY_CONDITION
+  to: ApplicabilityCondition
+- from: TechnologySolution
+  predicate: HAS_LIMITATION
+  to: Limitation
+- from: TechnologySolution
+  predicate: APPLIES_TO
+  to: ProcessingRegime
+- from: Recommendation
+  predicate: RECOMMENDS_SOLUTION
+  to: TechnologySolution
+- from: TechnologyComparison
+  predicate: COMPARES_WITH
+  to: TechnologySolution
+- from: TechnologySolution
+  predicate: HAS_PRACTICE_TYPE
+  to: Geography
+- from: Measurement
+  predicate: DISTRIBUTES_BETWEEN
+  to: Material
+- from: Material
+  predicate: PARTITIONED_TO_PHASE
+  to: Material
+- from: Measurement
+  predicate: HAS_DISTRIBUTION_COEFFICIENT
+  to: Property
+- from: Person
+  predicate: EXPERT_IN
+  to: ProcessingRegime
+- from: Person
+  predicate: EXPERT_IN
+  to: Material
+- from: Lab
+  predicate: EXPERT_IN
+  to: ProcessingRegime
+- from: Facility
+  predicate: LOCATED_IN
+  to: Country
+- from: Method
+  predicate: APPLIES_TO
+  to: Material
+- from: Method
+  predicate: REMOVES_CONTAMINANT
+  to: Material
