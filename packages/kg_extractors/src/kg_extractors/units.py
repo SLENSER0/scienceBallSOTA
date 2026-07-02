@@ -259,13 +259,19 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
     t = unicodedata.normalize("NFKC", text)
     out: list[ParsedConstraint] = []
     seen: set[str] = set()
+    covered: list[tuple[int, int]] = []  # char spans already consumed by range/ineq
 
-    def add(pc: ParsedConstraint) -> None:
+    def add(pc: ParsedConstraint, span: tuple[int, int] | None = None) -> None:
         key = pc.source_span.strip().lower()
         if key and key not in seen:
             seen.add(key)
             _attach_norm(pc)
             out.append(pc)
+            if span:
+                covered.append(span)
+
+    def overlaps(a: int, b: int) -> bool:
+        return any(not (b <= s or a >= e) for s, e in covered)
 
     # range: "200–300 мг/л" / "0.1-0.3 м/с" / "от 100 до 300 т/сут"
     range_re = re.compile(
@@ -274,39 +280,33 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
     )
     for m in range_re.finditer(t):
         lo, hi = _f(m.group(1)), _f(m.group(2))
-        add(
-            ParsedConstraint(
-                "range",
-                min=min(lo, hi),
-                max=max(lo, hi),
-                unit=m.group(3),
-                source_span=m.group(0).strip(),
-            )
-        )
+        add(ParsedConstraint("range", min=min(lo, hi), max=max(lo, hi),
+                             unit=m.group(3), source_span=m.group(0).strip()), m.span())
 
     # inequality: "≤1000 мг/дм³", "<200 мг/л", "от 100 т/сут"
     ineq_re = re.compile(
         rf"(≤|⩽|≥|⩾|<|>|≈|~|не более|не менее|от|до|менее|более)\s*({_NUM})\s*{_UNIT_RE}?",
         re.IGNORECASE,
     )
-    ru_ops = {
-        "не более": "<=",
-        "менее": "<",
-        "до": "<=",
-        "не менее": ">=",
-        "более": ">",
-        "от": ">=",
-    }
+    ru_ops = {"не более": "<=", "менее": "<", "до": "<=", "не менее": ">=",
+              "более": ">", "от": ">="}
     for m in ineq_re.finditer(t):
+        if overlaps(*m.span()):
+            continue
         raw_op = m.group(1).lower()
         op = _OPS.get(raw_op) or ru_ops.get(raw_op)
         if not op:
             continue
-        add(
-            ParsedConstraint(
-                op, value=_f(m.group(2)), unit=m.group(3), source_span=m.group(0).strip()
-            )
-        )
+        add(ParsedConstraint(op, value=_f(m.group(2)), unit=m.group(3),
+                             source_span=m.group(0).strip()), m.span())
+
+    # bare "value + unit": "250 А/м²", "0.2 м/с", "95%" (unit REQUIRED)
+    bare_re = re.compile(rf"({_NUM})\s*{_UNIT_RE}", re.IGNORECASE)
+    for m in bare_re.finditer(t):
+        if overlaps(*m.span()):
+            continue
+        add(ParsedConstraint("=", value=_f(m.group(1)), unit=m.group(2),
+                             source_span=m.group(0).strip()), m.span())
 
     return out
 
