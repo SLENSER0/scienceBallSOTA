@@ -26,8 +26,15 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Common slots on all entities + the typed columns used for filtering.
 COMMON_SLOTS = [
-    "id", "name", "canonical_name", "aliases_text", "confidence", "review_status",
-    "created_at", "schema_version", "extractor_run_id",
+    "id",
+    "name",
+    "canonical_name",
+    "aliases_text",
+    "confidence",
+    "review_status",
+    "created_at",
+    "schema_version",
+    "extractor_run_id",
 ]
 NUMERIC_SLOTS = {
     "Measurement": ["value_normalized", "normalized_unit", "value_raw", "unit"],
@@ -59,7 +66,10 @@ def gen_linkml() -> None:
             "class_uri": f"kg:{label}",
             **({"mixins": ["Entity"]} if str(label) in ENTITY_LABELS else {}),
         }
-    classes["Entity"] = {"abstract": True, "description": "Resolvable/embeddable super-label (§3.4)."}
+    classes["Entity"] = {
+        "abstract": True,
+        "description": "Resolvable/embeddable super-label (§3.4).",
+    }
 
     all_slots = sorted({s for c in classes.values() for s in c.get("slots", [])})
     schema = {
@@ -79,8 +89,11 @@ def gen_linkml() -> None:
         "slots": {
             s: {
                 "description": s,
-                **({"range": "float"} if s in {"confidence", "value_normalized",
-                                               "temperature_c", "time_h"} else {}),
+                **(
+                    {"range": "float"}
+                    if s in {"confidence", "value_normalized", "temperature_c", "time_h"}
+                    else {}
+                ),
                 **({"range": "integer"} if s in {"year", "page"} else {}),
                 **({"minimum_value": 0, "maximum_value": 1} if s == "confidence" else {}),
                 **({"identifier": True} if s == "id" else {}),
