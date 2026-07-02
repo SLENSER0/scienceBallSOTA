@@ -28,6 +28,12 @@ def test_health(client: TestClient) -> None:
     assert client.get("/api/v1/admin/health").json()["status"] == "ok"
 
 
+def test_metrics_records_routes(client: TestClient) -> None:
+    client.get("/api/v1/admin/health")
+    m = client.get("/api/v1/admin/metrics").json()
+    assert "routes" in m and any("count" in v for v in m["routes"].values())
+
+
 def test_graph_schema(client: TestClient) -> None:
     r = client.get("/api/v1/graph/schema").json()
     assert len(r["labels"]) >= 33

@@ -43,6 +43,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         allow_credentials=True,
     )
+    from api_gateway.observability import ObservabilityMiddleware
+
+    app.add_middleware(ObservabilityMiddleware)
 
     @app.get("/api/v1/admin/health")
     def health() -> dict[str, Any]:
@@ -54,12 +57,15 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/admin/metrics")
     def metrics() -> dict[str, Any]:
+        from api_gateway.observability import METRICS
+
         s = get_settings()
         return {
             "service": "api-gateway",
             "runtime_profile": s.runtime_profile,
             "uptime_s": round(time.time() - _STARTED, 1),
             "models": {"extract": s.llm_model_extract, "synth": s.llm_model_synth},
+            "routes": METRICS.snapshot(),
         }
 
     # Feature routers are attached here as subsystems come online.

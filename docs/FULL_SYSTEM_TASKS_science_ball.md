@@ -4094,28 +4094,28 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 ### 18.1 Structured logging (structlog) и корреляция запросов
 
-- [ ] В `packages/kg_common/logging.py` реализовать конфигурацию `structlog` с JSON-рендерером, единой схемой полей: `ts`, `level`, `service`, `env`, `event`, `session_id`, `user_id`, `request_id`, `trace_id`, `span_id`, `job_id`.
-- [ ] Реализовать `contextvars`-контекст (`bind_request_context()`) для проброса `request_id`/`session_id`/`trace_id` во все логи внутри одного запроса без явной передачи.
-- [ ] Добавить FastAPI middleware в `apps/api-gateway/` и `apps/agent-service/`, который генерирует/принимает `X-Request-ID`, кладёт его в контекст и возвращает в response headers.
-- [ ] Подключить `structlog` во все backend-сервисы (`api-gateway`, `agent-service`, `ingestion-service`, `extraction-service`, `graph-service`, `search-service`, `curation-service`) через общий `kg_common.logging.configure()`.
-- [ ] Гарантировать, что `trace_id`/`span_id` из активного OpenTelemetry-спана автоматически инжектятся в каждую log-запись (log-trace correlation).
-- [ ] Настроить уровни логирования из env (`LOG_LEVEL`, `LOG_FORMAT=json|console`) через `pydantic-settings`.
-- [ ] Реализовать структурированный audit-log (§6.2 «audit logs», §5.2.8 monitor/curation): отдельный logger/sink для security- и curation-значимых действий (login, `POST /entities/merge`, alias add, schema change, `POST /evidence/{id}/review` decision, запуск/отмена ingest job) с полями `actor_id`, `action`, `target_type`, `target_id`, `before`/`after` diff, `result`, `request_id`; писать в таблицу Postgres `audit_log` + JSON-лог, синхронно с `CurationEvent` (§12.3), не смешивая с debug-логами.
-- [ ] Определить транспорт логов: все сервисы пишут JSON в stdout; docker-compose logging + OTel Collector (18.2) собирают их и отправляют в Loki (18.5); обеспечить переход logs↔traces по `trace_id`/`request_id` в Grafana.
+- [x] В `packages/kg_common/logging.py` реализовать конфигурацию `structlog` с JSON-рендерером, единой схемой полей: `ts`, `level`, `service`, `env`, `event`, `session_id`, `user_id`, `request_id`, `trace_id`, `span_id`, `job_id`.
+- [x] Реализовать `contextvars`-контекст (`bind_request_context()`) для проброса `request_id`/`session_id`/`trace_id` во все логи внутри одного запроса без явной передачи.
+- [x] Добавить FastAPI middleware в `apps/api-gateway/` и `apps/agent-service/`, который генерирует/принимает `X-Request-ID`, кладёт его в контекст и возвращает в response headers.
+- [x] Подключить `structlog` во все backend-сервисы (`api-gateway`, `agent-service`, `ingestion-service`, `extraction-service`, `graph-service`, `search-service`, `curation-service`) через общий `kg_common.logging.configure()`.
+- [x] Гарантировать, что `trace_id`/`span_id` из активного OpenTelemetry-спана автоматически инжектятся в каждую log-запись (log-trace correlation).
+- [x] Настроить уровни логирования из env (`LOG_LEVEL`, `LOG_FORMAT=json|console`) через `pydantic-settings`.
+- [x] Реализовать структурированный audit-log (§6.2 «audit logs», §5.2.8 monitor/curation): отдельный logger/sink для security- и curation-значимых действий (login, `POST /entities/merge`, alias add, schema change, `POST /evidence/{id}/review` decision, запуск/отмена ingest job) с полями `actor_id`, `action`, `target_type`, `target_id`, `before`/`after` diff, `result`, `request_id`; писать в таблицу Postgres `audit_log` + JSON-лог, синхронно с `CurationEvent` (§12.3), не смешивая с debug-логами.
+- [x] Определить транспорт логов: все сервисы пишут JSON в stdout; docker-compose logging + OTel Collector (18.2) собирают их и отправляют в Loki (18.5); обеспечить переход logs↔traces по `trace_id`/`request_id` в Grafana.
 
 **Критерий приёмки:** запрос к любому endpoint порождает JSON-логи, где по одному `request_id` можно проследить цепочку `api-gateway → agent-service → graph/search-service`; каждая запись содержит непустые `trace_id`/`span_id`, совпадающие со спаном в трейсере; curation-действие (merge/review) порождает запись в `audit_log` с before/after diff.
 
 ### 18.2 OpenTelemetry distributed tracing (инфраструктура и инструментирование)
 
-- [ ] В `packages/kg_common/tracing.py` реализовать `init_tracing(service_name)`: настройка `TracerProvider`, `Resource` (service.name, service.version, deployment.environment), OTLP-exporter (gRPC на collector), sampler (`parentbased_traceidratio`, ratio из env).
-- [ ] Развернуть OpenTelemetry Collector в `infra/observability/otel-collector-config.yaml` и добавить сервис `otel-collector` в `infra/docker-compose.yml` (receivers OTLP grpc/http, exporters в трейс-бэкенд и Prometheus).
-- [ ] Добавить в `otel-collector-config.yaml` logs-pipeline (OTLP logs receiver → exporter в Loki, 18.5) и `tail_sampling`-processor (100% трейсов с ошибкой/высокой латентностью, сэмплирование остальных) для контроля объёма.
-- [ ] Добавить трейс-бэкенд (Jaeger `all-in-one` или Grafana Tempo) сервисом в `infra/docker-compose.yml` с портом UI и persistent volume.
-- [ ] Инструментировать FastAPI (`opentelemetry-instrumentation-fastapi`) во всех API-сервисах — авто-спаны на каждый HTTP-запрос.
-- [ ] Инструментировать исходящие вызовы: `httpx`/`requests` (`opentelemetry-instrumentation-httpx`), Neo4j-драйвер (спаны на Cypher с атрибутом `db.statement.template`), Qdrant-client, `opensearch-py` — ручные спаны в `apps/search-service/` и `apps/graph-service/`.
-- [ ] Инструментировать Dagster-ассеты/ops ingestion-пайплайна (§9.1) OTel-спанами по шагам (parse→chunk→extract→normalize→ER→validate→upsert→index→gap→eval) в `apps/ingestion-service/`/`infra/dagster/`; связать `job_id` из логов (18.1) с `trace_id` и эмитить метрику `ingestion_throughput_docs_per_min` (18.5).
-- [ ] Обеспечить W3C `traceparent` propagation между сервисами (заголовки прокидываются через API Gateway → agent-service → downstream).
-- [ ] Добавить span-атрибуты домена: `kg.intent`, `kg.retrieval_mode`, `kg.entity_count`, `kg.evidence_count`, `kg.cypher_template`, `kg.confidence_min`.
+- [x] В `packages/kg_common/tracing.py` реализовать `init_tracing(service_name)`: настройка `TracerProvider`, `Resource` (service.name, service.version, deployment.environment), OTLP-exporter (gRPC на collector), sampler (`parentbased_traceidratio`, ratio из env).
+- [x] Развернуть OpenTelemetry Collector в `infra/observability/otel-collector-config.yaml` и добавить сервис `otel-collector` в `infra/docker-compose.yml` (receivers OTLP grpc/http, exporters в трейс-бэкенд и Prometheus).
+- [x] Добавить в `otel-collector-config.yaml` logs-pipeline (OTLP logs receiver → exporter в Loki, 18.5) и `tail_sampling`-processor (100% трейсов с ошибкой/высокой латентностью, сэмплирование остальных) для контроля объёма.
+- [x] Добавить трейс-бэкенд (Jaeger `all-in-one` или Grafana Tempo) сервисом в `infra/docker-compose.yml` с портом UI и persistent volume.
+- [x] Инструментировать FastAPI (`opentelemetry-instrumentation-fastapi`) во всех API-сервисах — авто-спаны на каждый HTTP-запрос.
+- [x] Инструментировать исходящие вызовы: `httpx`/`requests` (`opentelemetry-instrumentation-httpx`), Neo4j-драйвер (спаны на Cypher с атрибутом `db.statement.template`), Qdrant-client, `opensearch-py` — ручные спаны в `apps/search-service/` и `apps/graph-service/`.
+- [x] Инструментировать Dagster-ассеты/ops ingestion-пайплайна (§9.1) OTel-спанами по шагам (parse→chunk→extract→normalize→ER→validate→upsert→index→gap→eval) в `apps/ingestion-service/`/`infra/dagster/`; связать `job_id` из логов (18.1) с `trace_id` и эмитить метрику `ingestion_throughput_docs_per_min` (18.5).
+- [x] Обеспечить W3C `traceparent` propagation между сервисами (заголовки прокидываются через API Gateway → agent-service → downstream).
+- [x] Добавить span-атрибуты домена: `kg.intent`, `kg.retrieval_mode`, `kg.entity_count`, `kg.evidence_count`, `kg.cypher_template`, `kg.confidence_min`.
 
 **Критерий приёмки:** одиночный chat-запрос виден в UI трейс-бэкенда как единый trace с вложенными спанами по сервисам и по Cypher/vector/keyword вызовам; propagation работает (нет «обрезанных» трейсов); атрибуты домена присутствуют на спанах.
 
