@@ -1,0 +1,110 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-void text-ink font-sans antialiased;
+  /* subtle industrial grid, like a technical schematic */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-line rounded;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .panel {
+    @apply bg-surface/80 border border-line rounded-lg backdrop-blur-sm;
+  }
+  .eyebrow {
+    @apply font-mono text-[11px] uppercase tracking-[0.2em] text-faint;
+  }
+  .metric {
+    @apply font-mono tabular-nums;
+  }
+  .btn-copper {
+    @apply bg-copper/90 text-void font-medium rounded-md px-4 py-2
+      hover:bg-copper-bright transition-colors disabled:opacity-40
+      disabled:cursor-not-allowed;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line
+      px-2.5 py-0.5 text-xs font-mono;
+  }
+}
+
+/* answer markdown */
+.md h2 {
+  @apply font-display text-lg text-ink mt-5 mb-2;
+}
+.md h3 {
+  @apply font-display text-base text-nickel-bright mt-4 mb-1.5;
+}
+.md p {
+  @apply text-ink/90 leading-relaxed my-2;
+}
+.md ul {
+  @apply list-none my-2 space-y-1;
+}
+.md li {
+  @apply pl-4 relative text-ink/90;
+}
+.md li::before {
+  content: '';
+  @apply absolute left-0 top-[0.6em] w-1.5 h-px bg-copper;
+}
+.md strong {
+  @apply text-ink font-semibold;
+}
+.md a {
+  @apply text-copper-bright no-underline;
+}
+.md code {
+  @apply font-mono text-nickel-bright text-[0.9em];
+}
+.md table {
+  @apply w-full my-3 text-sm border-collapse;
+}
+.md th {
+  @apply text-left font-mono text-xs uppercase tracking-wide text-faint
+    border-b border-line py-1.5 pr-4;
+}
+.md td {
+  @apply border-b border-line/60 py-1.5 pr-4 align-top;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { api } from '../api';
+import { useStore } from '../store';
+import { AnswerView } from './AnswerView';
+import { GraphView } from './GraphView';
+
+const EXAMPLES = [
+  'Какие методы обессоливания воды подходят для обогатительной фабрики, если сульфаты, хлориды, Ca, Mg, Na по 200–300 мг/л, а сухой остаток ≤1000 мг/дм³?',
+  'Какие технические решения циркуляции католита при электроэкстракции никеля в мировой практике, и какая скорость потока оптимальна?',
+  'Распределение Au, Ag и МПГ между медным/никелевым штейном и шлаком за последние 5 лет',
+  'Способы закачки шахтных вод в глубокие горизонты в России и за рубежом, технико-экономические показатели',
+];
+
+export function AskView() {
+  const { role, useLlm, answer, setAnswer, setSelectedNode } = useStore();
+  const [q, setQ] = useState('');
+
+  const ask = useMutation({
+    mutationFn: (query: string) => api.query(query, { role, useLlm }),
+    onSuccess: (a) => {
+      setAnswer(a);
+      setSelectedNode(null);
+    },
+  });
+
+  const submit = (text: string) => {
+    if (text.trim()) ask.mutate(text.trim());
+  };
+
+  return (
+    <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr,minmax(360px,42%)]">
+      {/* Left: query + answer */}
+      <section className="flex min-h-0 flex-col overflow-y-auto px-6 py-5">
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="panel p-1.5 shadow-panel focus-within:shadow-molten">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(q);
+                }}
+                rows={2}
+                placeholder="Задайте инженерный вопрос: материал + процесс + условия + числа + география…"
+                className="min-h-[52px] flex-1 resize-none bg-transparent px-3 py-2 text-[15px] leading-snug text-ink placeholder:text-faint focus:outline-none"
+              />
+              <button
+                onClick={() => submit(q)}
+                disabled={ask.isPending || !q.trim()}
+                className="btn-copper mb-1 mr-1 flex items-center gap-1.5"
+              >
+                {ask.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                <span className="hidden sm:inline">Распутать</span>
+              </button>
+            </div>
+          </div>
+
+          {!answer && !ask.isPending && (
+            <div className="mt-6">
+              <div className="eyebrow mb-2">Демо-вопросы постановки</div>
+              <div className="flex flex-col gap-2">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    onClick={() => {
+                      setQ(ex);
+                      submit(ex);
+                    }}
+                    className="group rounded-md border border-line bg-surface/40 px-3 py-2.5 text-left text-sm text-muted transition-colors hover:border-copper/40 hover:text-ink"
+                  >
+                    <ArrowRight
+                      size={13}
+                      className="mr-2 inline text-faint transition-colors group-hover:text-copper"
+                    />
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ask.isError && (
+            <div className="mt-4 rounded-md border border-contradiction/40 bg-contradiction/10 px-4 py-3 text-sm text-contradiction">
+              Не удалось получить ответ. Проверьте, запущен ли API (:8000).
+            </div>
+          )}
+
+          {ask.isPending && (
+            <div className="mt-8 flex items-center gap-3 text-muted">
+              <Loader2 size={18} className="animate-spin text-copper" />
+              <span className="font-mono text-sm">
+                Распутываю клубок: разбор запроса → поиск фактов → синтез с доказательствами…
+              </span>
+            </div>
+          )}
+
+          {answer && !ask.isPending && <AnswerView answer={answer} />}
+        </div>
+      </section>
+
+      {/* Right: the клубок */}
+      <section className="hidden min-h-0 border-l border-line bg-graphite/40 lg:flex lg:flex-col">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+          <div className="eyebrow">Клубок знаний · подграф ответа</div>
+          <GraphLegend />
+        </div>
+        <div className="min-h-0 flex-1">
+          {answer?.graph ? (
+            <GraphView data={answer.graph} onSelect={setSelectedNode} selectedId={useStore.getState().selectedNode?.id} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-faint font-mono text-sm">
+              граф появится после запроса
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function GraphLegend() {
+  const items = [
+    ['#C87941', 'решение'],
+    ['#8FA3B0', 'материал'],
+    ['#E0A23C', 'пробел'],
+    ['#E5484D', 'противоречие'],
+  ];
+  return (
+    <div className="flex gap-3">
+      {items.map(([c, l]) => (
+        <span key={l} className="flex items-center gap-1 font-mono text-[10px] text-faint">
+          <span className="h-2 w-2 rounded-full" style={{ background: c }} />
+          {l}
+        </span>
+      ))}
+    </div>
+  );
+}
