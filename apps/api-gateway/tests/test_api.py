@@ -92,6 +92,17 @@ def test_gap_scan(client: TestClient) -> None:
     assert "gaps" in res and "contradictions" in res and "run_id" in res
 
 
+def test_lineage(client: TestClient) -> None:
+    runs = client.get("/api/v1/admin/lineage").json()["runs"]
+    # the seed's ExtractorRun should appear
+    assert any(r["type"] == "ExtractorRun" for r in runs)
+
+
+def test_communities(client: TestClient) -> None:
+    res = client.post("/api/v1/admin/communities").json()
+    assert res["communities"] >= 1 and res["nodes_assigned"] >= 4
+
+
 def test_curation_edit_and_history(client: TestClient) -> None:
     r = client.post(
         "/api/v1/entities/material:nickel/edit",
