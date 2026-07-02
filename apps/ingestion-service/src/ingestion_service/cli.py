@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import random
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 from ingestion_service.parsers import SUPPORTED, ParsedDoc, parse_document
@@ -51,6 +51,16 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     if args.limit and args.limit > 0:  # limit <= 0 means "all docs"
         files = files[: args.limit]
 
+    # Resume: skip files already recorded as processed (fast, no re-parse).
+    resume_path = Path(args.resume_log)
+    done_paths: set[str] = set()
+    if resume_path.exists():
+        done_paths = set(resume_path.read_text(encoding="utf-8").splitlines())
+        files = [f for f in files if str(f) not in done_paths]
+        print(f"resume: skipping {len(done_paths)} already-processed files")
+    resume_path.parent.mkdir(parents=True, exist_ok=True)
+    resume_fh = resume_path.open("a", encoding="utf-8")
+
     store = KuzuGraphStore(s.kuzu_db_path)
     if not args.keep_seed and store.counts()["nodes"] == 0:
         from kg_retrievers.seed import build_seed_graph
@@ -79,18 +89,41 @@ def cmd_ingest(args: argparse.Namespace) -> None:
             pipe.stats.errors += 1
             _log.warning("ingest.doc_failed", title=parsed.title, error=str(exc)[:120])
 
+    def _record(path: str) -> None:
+        resume_fh.write(path + "\n")
+        resume_fh.flush()
+
     if args.workers > 1:
-        # Parse in parallel across processes; write to Kuzu serially (single writer).
+        # Parse in parallel with a BOUNDED in-flight window (avoids OOM from
+        # holding all ParsedDocs at once); write to Kuzu serially (single writer).
+        from concurrent.futures import FIRST_COMPLETED, wait
+
+        window = args.workers * 2
         with ProcessPoolExecutor(max_workers=args.workers) as pool:
-            futures = {pool.submit(_parse_one, str(f)): f for f in files}
-            for fut in as_completed(futures):
-                try:
-                    _ingest_parsed(fut.result())
-                except Exception:
-                    pipe.stats.errors += 1
+            it = iter(files)
+            inflight: dict = {}
+            for _ in range(window):
+                f = next(it, None)
+                if f is None:
+                    break
+                inflight[pool.submit(_parse_one, str(f))] = f
+            while inflight:
+                completed, _ = wait(list(inflight), return_when=FIRST_COMPLETED)
+                for fut in completed:
+                    f = inflight.pop(fut)
+                    try:
+                        _ingest_parsed(fut.result())
+                    except Exception:
+                        pipe.stats.errors += 1
+                    _record(str(f))
+                    nf = next(it, None)
+                    if nf is not None:
+                        inflight[pool.submit(_parse_one, str(nf))] = nf
     else:
         for f in files:
             _ingest_parsed(_parse_one(str(f)))
+            _record(str(f))
+    resume_fh.close()
 
     dt = time.time() - t0
     counts = store.counts()
@@ -134,6 +167,9 @@ def main() -> None:
     ing.add_argument("--seed", type=int, default=42)
     ing.add_argument("--keep-seed", action="store_true")
     ing.add_argument("--workers", type=int, default=1)
+    ing.add_argument(
+        "--resume-log", default=str(Path(get_settings().runtime_dir) / "ingest_done.txt")
+    )
     ing.set_defaults(func=cmd_ingest)
     args = ap.parse_args()
     args.func(args)
