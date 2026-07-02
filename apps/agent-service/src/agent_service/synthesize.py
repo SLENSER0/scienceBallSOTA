@@ -101,6 +101,11 @@ def build_context(retrieval: RetrievalResult, cite: dict[str, str]) -> str:
         lines.append("Пробелы (нет данных):")
         for g in retrieval.gaps:
             lines.append(f"  - {g.get('name')}")
+    # hybrid passages (unstructured corpus context, §24.9 fallback)
+    if getattr(retrieval, "passages", None):
+        lines.append("Обзорные фрагменты из корпуса (неструктурированные):")
+        for p in retrieval.passages[:5]:
+            lines.append(f"  - «{(p.get('text') or '')[:220]}» (док {p.get('doc_id')})")
     return "\n".join(lines)
 
 

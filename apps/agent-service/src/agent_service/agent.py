@@ -45,6 +45,18 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
 
     def n_retrieve(state: AgentState) -> dict[str, Any]:
         retrieval = retriever.retrieve(state["intent"])
+        # Hybrid fallback (§12): add corpus passages when a search index exists.
+        hybrid = _get_hybrid()
+        if hybrid is not None and hybrid.available():
+            for hit in hybrid.search(state["intent"].raw, limit=5):
+                retrieval.passages.append(
+                    {
+                        "text": hit.payload.get("text", ""),
+                        "doc_id": hit.payload.get("doc_id"),
+                        "page": hit.payload.get("page"),
+                        "score": round(hit.score, 4),
+                    }
+                )
         retrieval = apply_access_policy(retrieval, state.get("role", "researcher"))
         return {"retrieval": retrieval}
 
@@ -63,6 +75,21 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
     g.add_edge("retrieve", "synthesize")
     g.add_edge("synthesize", END)
     return g.compile()
+
+
+_hybrid_cache: list[Any] = []
+
+
+def _get_hybrid():  # type: ignore[no-untyped-def]
+    """Lazily open the on-disk hybrid stores; None if unavailable (graceful)."""
+    if not _hybrid_cache:
+        try:
+            from kg_retrievers.hybrid import HybridRetriever
+
+            _hybrid_cache.append(HybridRetriever.open_default())
+        except Exception:
+            _hybrid_cache.append(None)
+    return _hybrid_cache[0]
 
 
 _agents: dict[str, Any] = {}

@@ -43,6 +43,7 @@ class RetrievalResult:
     grouped_by_practice: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     graph: GraphResponse | None = None
     matched_ids: list[str] = field(default_factory=list)
+    passages: list[dict[str, Any]] = field(default_factory=list)  # hybrid fallback (§12)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -53,6 +54,7 @@ class RetrievalResult:
             "contradictions": self.contradictions,
             "grouped_by_practice": self.grouped_by_practice,
             "matched_ids": self.matched_ids,
+            "passages": self.passages,
         }
 
 

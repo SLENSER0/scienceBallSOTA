@@ -104,12 +104,27 @@ def cmd_ingest(args: argparse.Namespace) -> None:
     store.close()
 
 
+def cmd_index(args: argparse.Namespace) -> None:
+    s = get_settings()
+    s.ensure_runtime_dirs()
+    store = KuzuGraphStore(s.kuzu_db_path, read_only=True)
+    from kg_retrievers.indexer import index_graph
+
+    counts = index_graph(store, limit=args.limit or None, vector=not args.no_vector)
+    print("=== INDEX REPORT ===", counts)
+    store.close()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="ingestion")
     sub = ap.add_subparsers(dest="cmd", required=True)
     d = sub.add_parser("discover")
     d.add_argument("--data-dir", default=get_settings().data_dir)
     d.set_defaults(func=cmd_discover)
+    ix = sub.add_parser("index", help="build vector+keyword search indexes from the graph")
+    ix.add_argument("--limit", type=int, default=0)
+    ix.add_argument("--no-vector", action="store_true")
+    ix.set_defaults(func=cmd_index)
     ing = sub.add_parser("ingest")
     ing.add_argument("--data-dir", default=get_settings().data_dir)
     ing.add_argument("--limit", type=int, default=20)

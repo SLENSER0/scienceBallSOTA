@@ -69,6 +69,9 @@ vendor: ## Clone OSS reference repos into third_party/ (study only)
 ingest: ## Ingest the data corpus into the embedded KG (limit via N=)
 	$(PY) python -m ingestion_service.cli ingest --limit $(or $(N),20)
 
+index: ## Build vector+keyword search indexes from the graph
+	$(PY) python -m ingestion_service.cli index
+
 seed: ## Seed the demo graph (idempotent)
 	$(PY) python infra/neo4j/seed/seed_graph.py
 
