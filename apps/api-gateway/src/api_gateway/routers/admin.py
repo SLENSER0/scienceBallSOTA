@@ -28,6 +28,38 @@ def stats() -> dict:
     }
 
 
+@router.get("/lineage")
+def lineage() -> dict:
+    """Provenance lineage (§10): extractor/gap-scan runs and what they produced."""
+    store = get_store()
+    runs = store.rows(
+        "MATCH (r:Node) WHERE r.label IN ['ExtractorRun','GapScanRun'] "
+        "RETURN r.id, r.label, r.name, r.created_at ORDER BY r.created_at"
+    )
+    out = []
+    for rid, label, name, created in runs:
+        produced = store.rows(
+            "MATCH (n:Node)-[e:Rel]->(r:Node {id:$id}) "
+            "WHERE e.type IN ['EXTRACTED_BY','DETECTED_BY'] RETURN count(n)",
+            {"id": rid},
+        )
+        by_run = store.rows(
+            "MATCH (n:Node) WHERE n.extractor_run_id=$id RETURN n.label, count(n)",
+            {"id": rid},
+        )
+        out.append(
+            {
+                "run_id": rid,
+                "type": label,
+                "name": name,
+                "created_at": created,
+                "produced_edges": produced[0][0] if produced else 0,
+                "by_label": {r[0]: r[1] for r in by_run},
+            }
+        )
+    return {"runs": out}
+
+
 @router.post("/communities")
 def communities() -> dict:
     """Detect GraphRAG communities + write summaries (§11)."""

@@ -2021,34 +2021,34 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 10.1 Выбор платформы (DataHub vs OpenMetadata) и вендоринг OSS
 
-- [ ] Написать ADR `docs/adr/0010-metadata-platform.md` с решением DataHub **или** OpenMetadata; включить матрицу сравнения по критериям: поддержка кастомных entity/aspect, качество lineage (в т.ч. dataset/column-level), Python emitter SDK, интеграция с Dagster, ресурсоёмкость стека (Kafka/ES/MySQL vs ES/Postgres), встраиваемость каталога в admin UI, лицензия.
-- [ ] Зафиксировать в ADR выбор backend для lineage: primary (native lineage выбранной платформы) и alternative (Marquez + OpenLineage, см. §10.9); указать feature-flag `METADATA_LINEAGE_BACKEND=datahub|openmetadata|marquez` и `METADATA_PLATFORM=datahub|openmetadata` (выбор адаптера, см. §10.4).
-- [ ] Зафиксировать в ADR флаг полного отключения стека каталога для MVP: `METADATA_STACK_ENABLED=false` (риск §18 «disable OpenSearch/DataHub for MVP if needed») — при выключении ingestion работает в graceful-degradation (§10.4), platform-profile не поднимается (§10.2).
-- [ ] Оценить в ADR смежные OSS темы из §22 (`Airbyte`, `MLflow`, `lakeFS`, `DVC`) для data/AI-lineage и версионирования артефактов; зафиксировать решение integrate|skip с обоснованием (детали интеграции — §10.13).
-- [ ] Клонировать/вендорить репозитории в `third_party/` с фиксацией версии (git tag/commit в `third_party/VERSIONS.lock`):
-  - [ ] `git clone https://github.com/datahub-project/datahub third_party/datahub` (если выбран DataHub);
-  - [ ] `git clone https://github.com/open-metadata/OpenMetadata third_party/openmetadata` (если выбран OpenMetadata);
-  - [ ] `git clone https://github.com/MarquezProject/marquez third_party/marquez` (alternative lineage backend, обязателен независимо от primary-выбора);
-  - [ ] (опционально, для справки) `git clone https://github.com/apache/atlas third_party/atlas` — только как reference, не для деплоя;
-  - [ ] смежные OSS темы (клонировать только при решении integrate в ADR, иначе reference): `git clone https://github.com/mlflow/mlflow third_party/mlflow`, `git clone https://github.com/treeverse/lakeFS third_party/lakefs`, `git clone https://github.com/iterative/dvc third_party/dvc`, `git clone https://github.com/airbytehq/airbyte third_party/airbyte` (§10.13).
-- [ ] Зафиксировать pinned-версии образов и Python-пакетов SDK в `packages/kg_common/pyproject.toml` (или requirements): `acryl-datahub` (для DataHub) либо `openmetadata-ingestion` (для OpenMetadata), плюс `openlineage-python` и `openlineage-dagster`; при решении integrate — `mlflow` (уже в §13.2), клиенты `lakefs`/`dvc`.
-- [ ] Добавить выбранный SDK в общий список Python-пакетов проекта (§13.2) и в lockfile.
+- [x] Написать ADR `docs/adr/0010-metadata-platform.md` с решением DataHub **или** OpenMetadata; включить матрицу сравнения по критериям: поддержка кастомных entity/aspect, качество lineage (в т.ч. dataset/column-level), Python emitter SDK, интеграция с Dagster, ресурсоёмкость стека (Kafka/ES/MySQL vs ES/Postgres), встраиваемость каталога в admin UI, лицензия.
+- [x] Зафиксировать в ADR выбор backend для lineage: primary (native lineage выбранной платформы) и alternative (Marquez + OpenLineage, см. §10.9); указать feature-flag `METADATA_LINEAGE_BACKEND=datahub|openmetadata|marquez` и `METADATA_PLATFORM=datahub|openmetadata` (выбор адаптера, см. §10.4).
+- [x] Зафиксировать в ADR флаг полного отключения стека каталога для MVP: `METADATA_STACK_ENABLED=false` (риск §18 «disable OpenSearch/DataHub for MVP if needed») — при выключении ingestion работает в graceful-degradation (§10.4), platform-profile не поднимается (§10.2).
+- [x] Оценить в ADR смежные OSS темы из §22 (`Airbyte`, `MLflow`, `lakeFS`, `DVC`) для data/AI-lineage и версионирования артефактов; зафиксировать решение integrate|skip с обоснованием (детали интеграции — §10.13).
+- [x] Клонировать/вендорить репозитории в `third_party/` с фиксацией версии (git tag/commit в `third_party/VERSIONS.lock`):
+  - [x] `git clone https://github.com/datahub-project/datahub third_party/datahub` (если выбран DataHub);
+  - [x] `git clone https://github.com/open-metadata/OpenMetadata third_party/openmetadata` (если выбран OpenMetadata);
+  - [x] `git clone https://github.com/MarquezProject/marquez third_party/marquez` (alternative lineage backend, обязателен независимо от primary-выбора);
+  - [x] (опционально, для справки) `git clone https://github.com/apache/atlas third_party/atlas` — только как reference, не для деплоя;
+  - [x] смежные OSS темы (клонировать только при решении integrate в ADR, иначе reference): `git clone https://github.com/mlflow/mlflow third_party/mlflow`, `git clone https://github.com/treeverse/lakeFS third_party/lakefs`, `git clone https://github.com/iterative/dvc third_party/dvc`, `git clone https://github.com/airbytehq/airbyte third_party/airbyte` (§10.13).
+- [x] Зафиксировать pinned-версии образов и Python-пакетов SDK в `packages/kg_common/pyproject.toml` (или requirements): `acryl-datahub` (для DataHub) либо `openmetadata-ingestion` (для OpenMetadata), плюс `openlineage-python` и `openlineage-dagster`; при решении integrate — `mlflow` (уже в §13.2), клиенты `lakefs`/`dvc`.
+- [x] Добавить выбранный SDK в общий список Python-пакетов проекта (§13.2) и в lockfile.
 
 **Критерий приёмки:** файл `docs/adr/0010-metadata-platform.md` содержит принятое решение с матрицей сравнения, зафиксированные флаги `METADATA_PLATFORM`/`METADATA_LINEAGE_BACKEND`/`METADATA_STACK_ENABLED` и решение integrate|skip по Airbyte/MLflow/lakeFS/DVC; `third_party/VERSIONS.lock` содержит зафиксированные commit-hash для datahub/openmetadata и marquez; выбранный emitter-SDK устанавливается в CI (`pip install` проходит без ошибок).
 
 ### 10.2 Развёртывание платформы каталога (Docker Compose + Helm)
 
-- [ ] Создать `infra/metadata/docker-compose.metadata.yml` с полным стеком выбранной платформы:
-  - [ ] для DataHub: сервисы `datahub-gms`, `datahub-frontend-react` (порт `9002`), `datahub-actions`, `elasticsearch` (или переиспользовать `opensearch` из §13.1 через совместимый режим), `mysql`/`postgres`, `kafka` + `zookeeper`/`kraft`, `schema-registry`;
-  - [ ] для OpenMetadata: сервисы `openmetadata-server` (порт `8585`), `openmetadata-ingestion` (airflow), `elasticsearch`/`opensearch`, `mysql`/`postgres`.
-- [ ] Прописать в каждом сервисе healthcheck (HTTP ping GMS `/health` для DataHub или `/healthcheck` для OpenMetadata) и `depends_on` с `condition: service_healthy`.
-- [ ] Интегрировать стек метаданных в корневой `infra/docker-compose.yml` через `include:`/`extends` или profile `metadata`, чтобы `docker compose --profile metadata up` поднимал каталог рядом с основным стеком (§13.1).
-- [ ] Переиспользовать существующий `postgres` (§13.1, `POSTGRES_DB: kg_app`) для хранилища платформы, создав отдельную БД `metadata` (init-скрипт в `infra/metadata/initdb/`), либо явно обосновать отдельный инстанс в ADR.
-- [ ] Вынести все секреты/креды в `.env` и обновить `.env.example` переменными: `METADATA_PLATFORM`, `DATAHUB_GMS_URL`/`OPENMETADATA_SERVER_URL`, `METADATA_AUTH_TOKEN`, `METADATA_LINEAGE_BACKEND`, `METADATA_EMISSION_ENABLED`, `METADATA_STACK_ENABLED`, `MARQUEZ_URL`.
-- [ ] Обеспечить полное отключение стека для MVP: при `METADATA_STACK_ENABLED=false` (или отсутствии profile `metadata`) корневой `docker compose up` поднимает только основной стек §13.1 без каталога, ingestion продолжает работать (graceful degradation §10.4) — реализует риск-митигацию §18 «disable DataHub for MVP if needed».
-- [ ] Создать Helm-чарты в `infra/helm/metadata/` (или values для upstream-чартов datahub/openmetadata) с ресурсными лимитами, persistent volumes для ES и БД, ingress для UI.
-- [ ] Добавить `infra/metadata/README.md` с командами первичного bootstrap (создание индексов ES, применение миграций, генерация service-token для emitter).
-- [ ] Добавить smoke-скрипт `infra/metadata/scripts/wait_healthy.sh`, опрашивающий health-эндпоинты до готовности (используется в CI и локально).
+- [x] Создать `infra/metadata/docker-compose.metadata.yml` с полным стеком выбранной платформы:
+  - [x] для DataHub: сервисы `datahub-gms`, `datahub-frontend-react` (порт `9002`), `datahub-actions`, `elasticsearch` (или переиспользовать `opensearch` из §13.1 через совместимый режим), `mysql`/`postgres`, `kafka` + `zookeeper`/`kraft`, `schema-registry`;
+  - [x] для OpenMetadata: сервисы `openmetadata-server` (порт `8585`), `openmetadata-ingestion` (airflow), `elasticsearch`/`opensearch`, `mysql`/`postgres`.
+- [x] Прописать в каждом сервисе healthcheck (HTTP ping GMS `/health` для DataHub или `/healthcheck` для OpenMetadata) и `depends_on` с `condition: service_healthy`.
+- [x] Интегрировать стек метаданных в корневой `infra/docker-compose.yml` через `include:`/`extends` или profile `metadata`, чтобы `docker compose --profile metadata up` поднимал каталог рядом с основным стеком (§13.1).
+- [x] Переиспользовать существующий `postgres` (§13.1, `POSTGRES_DB: kg_app`) для хранилища платформы, создав отдельную БД `metadata` (init-скрипт в `infra/metadata/initdb/`), либо явно обосновать отдельный инстанс в ADR.
+- [x] Вынести все секреты/креды в `.env` и обновить `.env.example` переменными: `METADATA_PLATFORM`, `DATAHUB_GMS_URL`/`OPENMETADATA_SERVER_URL`, `METADATA_AUTH_TOKEN`, `METADATA_LINEAGE_BACKEND`, `METADATA_EMISSION_ENABLED`, `METADATA_STACK_ENABLED`, `MARQUEZ_URL`.
+- [x] Обеспечить полное отключение стека для MVP: при `METADATA_STACK_ENABLED=false` (или отсутствии profile `metadata`) корневой `docker compose up` поднимает только основной стек §13.1 без каталога, ingestion продолжает работать (graceful degradation §10.4) — реализует риск-митигацию §18 «disable DataHub for MVP if needed».
+- [x] Создать Helm-чарты в `infra/helm/metadata/` (или values для upstream-чартов datahub/openmetadata) с ресурсными лимитами, persistent volumes для ES и БД, ingress для UI.
+- [x] Добавить `infra/metadata/README.md` с командами первичного bootstrap (создание индексов ES, применение миграций, генерация service-token для emitter).
+- [x] Добавить smoke-скрипт `infra/metadata/scripts/wait_healthy.sh`, опрашивающий health-эндпоинты до готовности (используется в CI и локально).
 
 **Критерий приёмки:** `docker compose --profile metadata up -d` поднимает все сервисы платформы; health-эндпоинт GMS/OpenMetadata возвращает `200`; UI каталога открывается в браузере (DataHub `http://localhost:9002` или OpenMetadata `http://localhost:8585`); `wait_healthy.sh` завершается с кодом `0`; при `METADATA_STACK_ENABLED=false` основной стек поднимается без сервисов каталога.
 
