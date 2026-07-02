@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from kg_retrievers.community import CommunityResult, detect_communities
 from kg_retrievers.gap_analysis import GapScanner, ScanResult
 from kg_retrievers.graph_retriever import GraphRetriever, RetrievalResult
 from kg_retrievers.graph_store import KuzuGraphStore
@@ -22,4 +23,6 @@ __all__ = [
     "index_graph",
     "GapScanner",
     "ScanResult",
+    "detect_communities",
+    "CommunityResult",
 ]

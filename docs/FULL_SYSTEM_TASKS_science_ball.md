@@ -687,13 +687,13 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует §10.1 Mode D (graph algorithms) и §17 (similar materials, important labs, clusters), §11 (missing links).
 
-- [ ] Реализовать хелперы GDS-projection в `apps/graph-service/gds/`: `gds.graph.project` (или cypher-projection) для подграфов material-property-experiment и для entity-similarity.
-- [ ] Реализовать node embeddings через GDS FastRP (`gds.fastRP.write`) или node2vec, записываемые в `n.embedding` (dim=1024) для vector index (§3.13) — согласовать источник embeddings (GDS vs text-model) и зафиксировать выбор.
-- [ ] Реализовать community detection (`gds.louvain` / `gds.leiden`) с записью `community_id` на узлы — вход для GraphRAG community summaries (Mode C §10.1) и graph proximity `same community` (§10.3).
-- [ ] Реализовать centrality (`gds.pageRank` / `gds.betweenness`) для «important labs/teams» (§17) с записью score-property.
-- [ ] Реализовать similarity (`gds.nodeSimilarity` / KNN) для «similar materials» и кандидатов missing-link (§11 contradiction/gap inputs).
-- [ ] Обернуть каждую GDS-процедуру как параметризуемый job в graph-service с логированием run-id (provenance §3.7) и очисткой in-memory graph после расчёта.
-- [ ] Написать интеграционный тест на seed-графе: louvain даёт ≥1 непустую community; pageRank возвращает конечные значения для всех узлов проекции.
+- [x] Реализовать хелперы GDS-projection в `apps/graph-service/gds/`: `gds.graph.project` (или cypher-projection) для подграфов material-property-experiment и для entity-similarity.
+- [x] Реализовать node embeddings через GDS FastRP (`gds.fastRP.write`) или node2vec, записываемые в `n.embedding` (dim=1024) для vector index (§3.13) — согласовать источник embeddings (GDS vs text-model) и зафиксировать выбор.
+- [x] Реализовать community detection (`gds.louvain` / `gds.leiden`) с записью `community_id` на узлы — вход для GraphRAG community summaries (Mode C §10.1) и graph proximity `same community` (§10.3).
+- [x] Реализовать centrality (`gds.pageRank` / `gds.betweenness`) для «important labs/teams» (§17) с записью score-property.
+- [x] Реализовать similarity (`gds.nodeSimilarity` / KNN) для «similar materials» и кандидатов missing-link (§11 contradiction/gap inputs).
+- [x] Обернуть каждую GDS-процедуру как параметризуемый job в graph-service с логированием run-id (provenance §3.7) и очисткой in-memory graph после расчёта.
+- [x] Написать интеграционный тест на seed-графе: louvain даёт ≥1 непустую community; pageRank возвращает конечные значения для всех узлов проекции.
 
 **Критерий приёмки:** `gds.graph.project` создаёт именованный граф; FastRP пишет `embedding` длины 1024 на `:Entity`; louvain пишет `community_id`; pageRank/nodeSimilarity выполняются на seed-графе без ошибок; in-memory графы освобождаются (`gds.graph.list` пуст после job).
 
@@ -2209,14 +2209,14 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 11.1 Вендоринг microsoft/graphrag и структура модуля
 
-- [ ] Клонировать `microsoft/graphrag` (https://github.com/microsoft/graphrag) в `vendor/graphrag/`, зафиксировать конкретный тег/commit в `vendor/graphrag/VERSION.txt` (записать `git rev-parse HEAD` и tag).
-- [ ] Проверить лицензию (MIT) и добавить её в `vendor/graphrag/LICENSE` и в реестр лицензий проекта `docs/licenses/THIRD_PARTY.md` с указанием версии.
-- [ ] Принять решение о способе использования и зафиксировать в ADR `docs/adr/0011-graphrag-integration.md`: (а) `graphrag` как pip-зависимость с pinned-версией vs (б) частичный вендоринг форкнутых модулей; по умолчанию — pip-зависимость, vendor-каталог как источник справки и кастомных промптов.
-- [ ] Добавить `graphrag` (с pinned версией, совпадающей с `VERSION.txt`) в `apps/ingestion-service/pyproject.toml` и в общий список из §13.2 (`requirements`/`pyproject`), не ломая версии `llama-index`, `qdrant-client`, `neo4j`.
-- [ ] Создать пакет-обёртку `packages/kg_retrievers/graphrag/` с модулями: `__init__.py`, `config.py`, `input_adapter.py`, `pipeline.py`, `qdrant_store.py`, `neo4j_store.py`, `global_search.py`, `local_search.py`, `artifacts.py`, `versioning.py`.
-- [ ] Зафиксировать в ADR (`docs/adr/0011-graphrag-integration.md`) выбор `microsoft/graphrag` как reference-пайплайна (§4.1, таблица: «GraphRAG baseline») вместо самостоятельной реализации community-суммаризации; отметить `LlamaIndex PropertyGraphIndex` (§22, https://github.com/run-llama/llama_index) как рассмотренную альтернативу и причину отклонения.
-- [ ] Явно запретить написание собственных graph/community-алгоритмов (§4.1: «Не писать graph algorithms», §20: не строить своё): кластеризация (Leiden) и community reports берутся из vendored `graphrag`, community/centrality Mode D — из Neo4j GDS; в коде обёртки не должно быть кастомной реализации clustering.
-- [ ] Прогнать smoke-тест установки: `python -c "import graphrag; print(graphrag.__version__)"` возвращает pinned-версию; результат зафиксирован в CI job `graphrag-smoke`.
+- [x] Клонировать `microsoft/graphrag` (https://github.com/microsoft/graphrag) в `vendor/graphrag/`, зафиксировать конкретный тег/commit в `vendor/graphrag/VERSION.txt` (записать `git rev-parse HEAD` и tag).
+- [x] Проверить лицензию (MIT) и добавить её в `vendor/graphrag/LICENSE` и в реестр лицензий проекта `docs/licenses/THIRD_PARTY.md` с указанием версии.
+- [x] Принять решение о способе использования и зафиксировать в ADR `docs/adr/0011-graphrag-integration.md`: (а) `graphrag` как pip-зависимость с pinned-версией vs (б) частичный вендоринг форкнутых модулей; по умолчанию — pip-зависимость, vendor-каталог как источник справки и кастомных промптов.
+- [x] Добавить `graphrag` (с pinned версией, совпадающей с `VERSION.txt`) в `apps/ingestion-service/pyproject.toml` и в общий список из §13.2 (`requirements`/`pyproject`), не ломая версии `llama-index`, `qdrant-client`, `neo4j`.
+- [x] Создать пакет-обёртку `packages/kg_retrievers/graphrag/` с модулями: `__init__.py`, `config.py`, `input_adapter.py`, `pipeline.py`, `qdrant_store.py`, `neo4j_store.py`, `global_search.py`, `local_search.py`, `artifacts.py`, `versioning.py`.
+- [x] Зафиксировать в ADR (`docs/adr/0011-graphrag-integration.md`) выбор `microsoft/graphrag` как reference-пайплайна (§4.1, таблица: «GraphRAG baseline») вместо самостоятельной реализации community-суммаризации; отметить `LlamaIndex PropertyGraphIndex` (§22, https://github.com/run-llama/llama_index) как рассмотренную альтернативу и причину отклонения.
+- [x] Явно запретить написание собственных graph/community-алгоритмов (§4.1: «Не писать graph algorithms», §20: не строить своё): кластеризация (Leiden) и community reports берутся из vendored `graphrag`, community/centrality Mode D — из Neo4j GDS; в коде обёртки не должно быть кастомной реализации clustering.
+- [x] Прогнать smoke-тест установки: `python -c "import graphrag; print(graphrag.__version__)"` возвращает pinned-версию; результат зафиксирован в CI job `graphrag-smoke`.
 
 **Критерий приёмки:** `pip install`/`uv sync` в `ingestion-service` проходит без конфликтов зависимостей; `import graphrag` даёт зафиксированную в `VERSION.txt` версию; ADR и запись о лицензии присутствуют в репозитории.
 
@@ -2224,15 +2224,15 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 11.2 Конфигурация GraphRAG pipeline (settings.yaml, prompts, LLM/embeddings)
 
-- [ ] Создать каталог конфигурации `infra/graphrag/` c `settings.yaml`, `.env.example`, `prompts/` и `README.md`.
-- [ ] Сгенерировать базовый конфиг командой `graphrag init --root infra/graphrag` и закоммитить полученные `settings.yaml` и `prompts/*`.
-- [ ] В `settings.yaml` настроить LLM-провайдера (chat model) и embeddings через переменные окружения (`GRAPHRAG_API_KEY`, `GRAPHRAG_LLM_MODEL`, `GRAPHRAG_EMBEDDING_MODEL`), согласовав embedding-модель с той, что используется в §9 Step 8 / §10 (single source of truth в `packages/kg_common/config.py`).
-- [ ] Настроить `chunks` в `settings.yaml` (size/overlap) согласованно с chunking-стратегией из §9.3, чтобы `text_units` GraphRAG совпадали по границам с `Chunk` из графа (для трассируемости evidence, п. 11.11).
-- [ ] Настроить `input` на кастомный адаптер (п. 11.3): storage type, base_dir, file pattern.
-- [ ] Настроить `snapshots`/`storage`/`cache` на MinIO/S3 (`storage.type: blob` или локальный том, монтируемый из MinIO), путь артефактов `graphrag/output/<build_id>/`.
-- [ ] Настроить `community_reports` (max length, max input length) и `cluster_graph` (Leiden, `max_cluster_size`) параметры; зафиксировать выбранные значения в комментариях `settings.yaml`.
-- [ ] Выполнить prompt-tuning под научный корпус: `graphrag prompt-tune --root infra/graphrag --domain "materials science / experimental results"`, закоммитить адаптированные промпты в `infra/graphrag/prompts/` (entity extraction, community report, summarize descriptions).
-- [ ] Добавить конфиг-валидатор `packages/kg_retrievers/graphrag/config.py::load_and_validate_settings()` (Pydantic), который читает `settings.yaml`, проверяет обязательные ключи и падает с внятной ошибкой при отсутствии модели/ключей.
+- [x] Создать каталог конфигурации `infra/graphrag/` c `settings.yaml`, `.env.example`, `prompts/` и `README.md`.
+- [x] Сгенерировать базовый конфиг командой `graphrag init --root infra/graphrag` и закоммитить полученные `settings.yaml` и `prompts/*`.
+- [x] В `settings.yaml` настроить LLM-провайдера (chat model) и embeddings через переменные окружения (`GRAPHRAG_API_KEY`, `GRAPHRAG_LLM_MODEL`, `GRAPHRAG_EMBEDDING_MODEL`), согласовав embedding-модель с той, что используется в §9 Step 8 / §10 (single source of truth в `packages/kg_common/config.py`).
+- [x] Настроить `chunks` в `settings.yaml` (size/overlap) согласованно с chunking-стратегией из §9.3, чтобы `text_units` GraphRAG совпадали по границам с `Chunk` из графа (для трассируемости evidence, п. 11.11).
+- [x] Настроить `input` на кастомный адаптер (п. 11.3): storage type, base_dir, file pattern.
+- [x] Настроить `snapshots`/`storage`/`cache` на MinIO/S3 (`storage.type: blob` или локальный том, монтируемый из MinIO), путь артефактов `graphrag/output/<build_id>/`.
+- [x] Настроить `community_reports` (max length, max input length) и `cluster_graph` (Leiden, `max_cluster_size`) параметры; зафиксировать выбранные значения в комментариях `settings.yaml`.
+- [x] Выполнить prompt-tuning под научный корпус: `graphrag prompt-tune --root infra/graphrag --domain "materials science / experimental results"`, закоммитить адаптированные промпты в `infra/graphrag/prompts/` (entity extraction, community report, summarize descriptions).
+- [x] Добавить конфиг-валидатор `packages/kg_retrievers/graphrag/config.py::load_and_validate_settings()` (Pydantic), который читает `settings.yaml`, проверяет обязательные ключи и падает с внятной ошибкой при отсутствии модели/ключей.
 
 **Критерий приёмки:** `graphrag index --root infra/graphrag --dry-run` (или эквивалентная валидация конфига) проходит без ошибок; `load_and_validate_settings()` возвращает валидный объект для закоммиченного `settings.yaml`; embedding-модель в GraphRAG идентична модели §9/§10.
 

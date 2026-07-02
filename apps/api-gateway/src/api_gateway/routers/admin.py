@@ -28,6 +28,14 @@ def stats() -> dict:
     }
 
 
+@router.post("/communities")
+def communities() -> dict:
+    """Detect GraphRAG communities + write summaries (§11)."""
+    from kg_retrievers.community import detect_communities
+
+    return detect_communities(get_store()).as_dict()
+
+
 @router.get("/coverage")
 def coverage() -> dict:
     """Per-domain coverage metrics (§24.15): sources, facts, gaps, contradictions."""

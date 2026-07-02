@@ -13,6 +13,7 @@ dependencies = [
     "fastembed>=0.3",
     "rank-bm25>=0.2",
     "numpy>=1.26",
+    "networkx>=3.2",
 ]
 
 [build-system]
