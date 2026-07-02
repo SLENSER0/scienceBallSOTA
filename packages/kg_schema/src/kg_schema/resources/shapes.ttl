@@ -1,0 +1,51 @@
+# SHACL shapes for domain critical constraints (§24.19).
+# Interoperability/validation layer over the property-graph operational store.
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix kg:   <https://science-ball.example/ontology#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Every Measurement must have a unit OR carry a missing_unit gap.
+kg:MeasurementShape a sh:NodeShape ;
+    sh:targetClass kg:Measurement ;
+    sh:property [
+        sh:path kg:normalized_unit ;
+        sh:minCount 1 ;
+        sh:message "Measurement must have a unit (else a missing_unit gap)." ;
+    ] ;
+    sh:property [
+        sh:path kg:confidence ;
+        sh:minInclusive 0.0 ; sh:maxInclusive 1.0 ;
+    ] .
+
+# A Recommendation must be evidence-backed.
+kg:RecommendationShape a sh:NodeShape ;
+    sh:targetClass kg:Recommendation ;
+    sh:property [
+        sh:path kg:evidence_ids ;
+        sh:minCount 1 ;
+        sh:message "Recommendation must reference at least one Evidence." ;
+    ] .
+
+# A TechnologySolution must declare an applicability condition.
+kg:TechnologySolutionShape a sh:NodeShape ;
+    sh:targetClass kg:TechnologySolution ;
+    sh:property [
+        sh:path kg:has_applicability_condition ;
+        sh:minCount 1 ;
+        sh:message "TechnologySolution must have an applicability condition." ;
+    ] .
+
+# A practice claim must carry geography/practice_type.
+kg:PracticeClaimShape a sh:NodeShape ;
+    sh:targetClass kg:KnowledgeClaim ;
+    sh:property [
+        sh:path kg:practice_type ;
+        sh:minCount 1 ;
+        sh:message "Practice claim must state geography (russia/foreign/global)." ;
+    ] .
+
+# Evidence must have a source span.
+kg:EvidenceShape a sh:NodeShape ;
+    sh:targetClass kg:Evidence ;
+    sh:property [ sh:path kg:doc_id ; sh:minCount 1 ] ;
+    sh:property [ sh:path kg:text ; sh:minCount 1 ] .
