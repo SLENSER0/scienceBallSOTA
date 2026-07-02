@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 
 def attach_routers(app: FastAPI) -> None:
-    from api_gateway.routers import admin, evidence, export, graph, query, search
+    from api_gateway.routers import admin, evidence, export, gaps, graph, query, search
 
     app.include_router(query.router)
     app.include_router(graph.router)
@@ -15,3 +15,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(evidence.router)
     app.include_router(admin.router)
     app.include_router(export.router)
+    app.include_router(gaps.router)

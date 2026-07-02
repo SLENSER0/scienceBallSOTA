@@ -74,3 +74,13 @@ def test_export_markdown(client: TestClient) -> None:
         },
     )
     assert r.status_code == 200 and "Отчёт" in r.text
+
+
+def test_gaps_and_contradictions(client: TestClient) -> None:
+    assert client.get("/api/v1/gaps").json()["count"] >= 1
+    assert client.get("/api/v1/contradictions").json()["count"] >= 1
+
+
+def test_gap_scan(client: TestClient) -> None:
+    res = client.post("/api/v1/gaps/scan").json()
+    assert "gaps" in res and "contradictions" in res and "run_id" in res

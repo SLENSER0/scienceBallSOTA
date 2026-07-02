@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from kg_retrievers.gap_analysis import GapScanner, ScanResult
 from kg_retrievers.graph_retriever import GraphRetriever, RetrievalResult
 from kg_retrievers.graph_store import KuzuGraphStore
 from kg_retrievers.hybrid import HybridRetriever
@@ -19,4 +20,6 @@ __all__ = [
     "KeywordStore",
     "HybridRetriever",
     "index_graph",
+    "GapScanner",
+    "ScanResult",
 ]
