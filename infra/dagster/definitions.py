@@ -34,12 +34,12 @@ if _HAS_DAGSTER:
     @asset
     def corpus_graph(context: AssetExecutionContext) -> dict:
         """Parse + extract + evidence-first upsert of the corpus (§5/§6/§9)."""
-        from kg_common import get_settings
-        from kg_retrievers.graph_store import KuzuGraphStore
-
         from ingestion_service.cli import discover
         from ingestion_service.parsers import parse_document
         from ingestion_service.pipeline import IngestionPipeline
+
+        from kg_common import get_settings
+        from kg_retrievers.graph_store import KuzuGraphStore
 
         store = KuzuGraphStore(get_settings().kuzu_db_path)
         pipe = IngestionPipeline(store)
