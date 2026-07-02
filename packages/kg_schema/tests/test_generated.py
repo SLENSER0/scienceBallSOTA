@@ -8,7 +8,7 @@ import yaml
 
 from kg_schema import NodeLabel
 
-_ROOT = Path(__file__).resolve().parents[4]
+_ROOT = Path(__file__).resolve().parents[3]
 _LINKML = _ROOT / "packages/kg_schema/src/kg_schema/linkml/kg_ontology.yaml"
 _MIG = _ROOT / "infra/neo4j/migrations"
 
