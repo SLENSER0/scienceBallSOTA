@@ -1,0 +1,25 @@
+# Per-type ER decision thresholds (§8.7). match_probability >= auto_merge -> AUTO_MERGE;
+# >= review -> REVIEW_NEEDED; else SEPARATE. Person/ORCID and Material/formula are
+# high-precision so their auto thresholds are stricter to avoid wrong merges.
+default:
+  auto_merge: 0.92
+  review: 0.75
+
+Material:
+  auto_merge: 0.93
+  review: 0.75
+Alloy:
+  auto_merge: 0.93
+  review: 0.75
+Equipment:
+  auto_merge: 0.90
+  review: 0.72
+Person:
+  auto_merge: 0.95    # surname collisions are common; require strong evidence
+  review: 0.80
+Lab:
+  auto_merge: 0.90
+  review: 0.72
+ResearchTeam:
+  auto_merge: 0.90
+  review: 0.72
