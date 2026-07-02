@@ -32,6 +32,7 @@ source = { editable = "apps/agent-service" }
 dependencies = [
     { name = "fastapi" },
     { name = "kg-common" },
+    { name = "kg-extractors" },
     { name = "kg-retrievers" },
     { name = "kg-schema" },
     { name = "langchain-core" },
@@ -44,6 +45,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "kg-common", editable = "packages/kg_common" },
+    { name = "kg-extractors", editable = "packages/kg_extractors" },
     { name = "kg-retrievers", editable = "packages/kg_retrievers" },
     { name = "kg-schema", editable = "packages/kg_schema" },
     { name = "langchain-core", specifier = ">=0.3" },
@@ -995,6 +997,7 @@ source = { editable = "packages/kg_retrievers" }
 dependencies = [
     { name = "fastembed" },
     { name = "kg-common" },
+    { name = "kg-extractors" },
     { name = "kg-schema" },
     { name = "kuzu" },
     { name = "numpy" },
@@ -1006,6 +1009,7 @@ dependencies = [
 requires-dist = [
     { name = "fastembed", specifier = ">=0.3" },
     { name = "kg-common", editable = "packages/kg_common" },
+    { name = "kg-extractors", editable = "packages/kg_extractors" },
     { name = "kg-schema", editable = "packages/kg_schema" },
     { name = "kuzu", specifier = ">=0.7" },
     { name = "numpy", specifier = ">=1.26" },

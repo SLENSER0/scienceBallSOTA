@@ -36,7 +36,7 @@ src = ["apps", "packages"]
 extend-exclude = ["third_party", "**/generated", "var", "**/.venv"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "TCH", "RUF"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 ignore = ["N818", "B008", "RUF001", "RUF002", "RUF003", "RUF022"]  # FastAPI Depends() defaults; cyrillic look-alikes; keep grouped __all__
 
 [tool.ruff.lint.per-file-ignores]

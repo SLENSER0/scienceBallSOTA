@@ -8,6 +8,7 @@ dependencies = [
     "kg-common",
     "kg-schema",
     "kg-retrievers",
+    "kg-extractors",
     "langgraph>=0.2",
     "langchain-core>=0.3",
     "langchain-openai>=0.2",
@@ -26,3 +27,4 @@ packages = ["src/agent_service"]
 kg-common = { workspace = true }
 kg-schema = { workspace = true }
 kg-retrievers = { workspace = true }
+kg-extractors = { workspace = true }
