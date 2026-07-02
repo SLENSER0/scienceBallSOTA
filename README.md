@@ -32,6 +32,41 @@ The **embedded profile** (default, `RUNTIME_PROFILE=embedded`) runs the whole
 system with no Docker daemon — see `docs/adr/0005-embedded-runtime-profile.md`.
 The **server profile** uses the docker-compose stack in `infra/`.
 
+## Features
+
+- **Ingestion** — PDF/DOCX/PPTX/XLSX parsing (RU/EN), chunking, rule + OSS-LLM
+  extraction of entities/relations/measurements with evidence spans, unit
+  normalization (pint), entity resolution, evidence-first upsert; resumable,
+  ~1.3s/doc.
+- **Knowledge graph** — 33+ domain labels, declarative edge schema, deterministic
+  IDs, provenance/versioning, generated LinkML ontology + Neo4j migrations.
+- **Retrieval** — structured graph templates + vector (fastembed→Qdrant) + keyword
+  (BM25) + RRF hybrid fusion + GraphRAG community summaries.
+- **Agent (LangGraph)** — parse → retrieve → access-filter → synthesize a grounded,
+  **cited** literature-review answer with confidence, tables, gaps, contradictions.
+- **Verification** — gap analysis (9 gap types) + contradiction detection;
+  every answer is evidence-first with source/confidence/geography.
+- **Domain** — RU↔EN taxonomy (218 terms), numeric constraints (≤1000 мг/дм³ …),
+  domestic/foreign practice, comparison tables, coverage dashboards.
+- **Governance** — JWT auth + RBAC (6 roles) + row-level access, audit log,
+  expert curation (edit/merge/history, protected re-ingestion), notifications,
+  Markdown/JSON-LD export, SHACL shapes, FAIR metadata.
+- **UI** — React/Vite workspace: chat + the *клубок* graph (d3-force), coverage,
+  gaps & review, glossary, evidence inspector.
+
+## Verified end-to-end
+
+- All **4 mandatory acceptance queries** pass (`make demo`; report in
+  `docs/eval/domain_science_ball_report.md`), with RU/EN parity, numeric filters,
+  geography, contradictions and evidence.
+- **Real corpus**: 60 documents ingested → 19.7k nodes / 57k rels; hybrid index
+  over 3.1k chunks; gap-scan found 88 gaps + 292 contradictions; the OSS
+  DeepSeek-V3 LLM answers all four queries on real data
+  (`docs/eval/demo_report.md`).
+- **Adversarially reviewed** (multi-agent), 15 correctness bugs fixed with
+  regression tests (`docs/eval/adversarial_review_findings.md`).
+- ~100 tests pass, ruff clean.
+
 ## Licensing (OSS-only)
 
 Per the hackathon rules every component is under a permitted OSS license
