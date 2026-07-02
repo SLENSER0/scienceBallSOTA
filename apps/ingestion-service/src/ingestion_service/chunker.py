@@ -16,7 +16,7 @@ class Chunk:
     char_start: int
 
 
-def chunk_pages(pages: list[tuple[int, str]], size: int = 1200, overlap: int = 150) -> list[Chunk]:
+def chunk_pages(pages: list[tuple[int, str]], size: int = 2200, overlap: int = 120) -> list[Chunk]:
     chunks: list[Chunk] = []
     idx = 0
     for page_no, text in pages:

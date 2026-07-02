@@ -70,6 +70,7 @@ class IngestionPipeline:
         self.run_id = make_id("ExtractorRun", f"ingest-{datetime.now(UTC).date()}")
         self._now = datetime.now(UTC).isoformat()
         self.stats = IngestStats()
+        self._entity_cache: set[str] = set()
         self.store.upsert_node(
             self.run_id,
             "ExtractorRun",
@@ -94,18 +95,21 @@ class IngestionPipeline:
         entry = self.tax.by_id(canonical)
         if entry:
             nid = entry.node_id
-            self.store.upsert_node(
-                nid,
-                entry.node_type,
-                name=entry.canonical_ru or entry.canonical_en,
-                canonical_name=entry.canonical_en,
-                domain=entry.domain,
-                material_class=entry.material_class,
-                practice_type=entry.practice_type,
-                aliases_text="|".join(entry.all_terms),
-                **self._prov(confidence=0.7),
-            )
-            self.stats.by_label[entry.node_type] += 1
+            # canonical entities have stable props — upsert the node only once per run
+            if nid not in self._entity_cache:
+                self.store.upsert_node(
+                    nid,
+                    entry.node_type,
+                    name=entry.canonical_ru or entry.canonical_en,
+                    canonical_name=entry.canonical_en,
+                    domain=entry.domain,
+                    material_class=entry.material_class,
+                    practice_type=entry.practice_type,
+                    aliases_text="|".join(entry.all_terms),
+                    **self._prov(confidence=0.7),
+                )
+                self._entity_cache.add(nid)
+                self.stats.by_label[entry.node_type] += 1
             return nid
         if node_type in {
             "Material",
@@ -170,24 +174,31 @@ class IngestionPipeline:
         self.stats.docs += 1
         self.stats.by_label["Document"] += 1
 
-        for ch in chunks:
-            chunk_id = make_id("Chunk", f"{doc_id}:{ch.index}")
-            self.store.upsert_node(
-                chunk_id, "Chunk", text=ch.text[:2000], page=ch.page, doc_id=doc_id, **self._prov()
-            )
-            self.store.upsert_edge(doc_id, chunk_id, "HAS_CHUNK", **self._prov())
-            self.stats.chunks += 1
+        # batch all of a document's writes into one Kuzu transaction (faster bulk load)
+        with self.store.batch():
+            for ch in chunks:
+                chunk_id = make_id("Chunk", f"{doc_id}:{ch.index}")
+                self.store.upsert_node(
+                    chunk_id,
+                    "Chunk",
+                    text=ch.text[:2000],
+                    page=ch.page,
+                    doc_id=doc_id,
+                    **self._prov(),
+                )
+                self.store.upsert_edge(doc_id, chunk_id, "HAS_CHUNK", **self._prov())
+                self.stats.chunks += 1
 
-            ex = extract_rules(ch.text)
-            if self.use_llm and llm_used < self.llm_max_chunks and len(ch.text) > 200:
-                from kg_extractors.llm_extractor import extract_llm
+                ex = extract_rules(ch.text)
+                if self.use_llm and llm_used < self.llm_max_chunks and len(ch.text) > 200:
+                    from kg_extractors.llm_extractor import extract_llm
 
-                merged = extract_llm(ch.text)
-                ex = _merge(ex, merged)
-                llm_used += 1
-                self.stats.llm_chunks += 1
+                    merged = extract_llm(ch.text)
+                    ex = _merge(ex, merged)
+                    llm_used += 1
+                    self.stats.llm_chunks += 1
 
-            self._apply_extraction(ex, doc_id, chunk_id, ch.page)
+                self._apply_extraction(ex, doc_id, chunk_id, ch.page)
 
         return {"status": "ok", "title": doc.title, "chunks": len(chunks)}
 
