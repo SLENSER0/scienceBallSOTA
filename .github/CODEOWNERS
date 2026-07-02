@@ -1,0 +1,10 @@
+# Default owners
+*                       @SLENSER0
+
+/packages/kg_schema/    @SLENSER0
+/packages/kg_common/    @SLENSER0
+/apps/api-gateway/      @SLENSER0
+/apps/agent-service/    @SLENSER0
+/apps/ingestion-service/ @SLENSER0
+/infra/                 @SLENSER0
+/docs/                  @SLENSER0

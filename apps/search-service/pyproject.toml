@@ -1,0 +1,23 @@
+[project]
+name = "search-service"
+version = "0.1.0"
+description = "Vector + keyword indexing/search over Qdrant(local) + BM25."
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = [
+    "kg-common",
+    "kg-schema",
+    "kg-retrievers",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/search_service"]
+
+[tool.uv.sources]
+kg-common = { workspace = true }
+kg-schema = { workspace = true }
+kg-retrievers = { workspace = true }

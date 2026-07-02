@@ -1,1 +1,43 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# --- uv ---
+# uv.lock IS committed (reproducibility) — do not ignore it.
+
+# --- Node / frontend ---
+node_modules/
+apps/frontend/dist/
+.turbo/
+*.tsbuildinfo
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Data & runtime stores (embedded profile) ---
 data/
+var/
+*.log
+.DS_Store
+
+# --- Vendored / cloned OSS reference repos (study only, not committed) ---
+third_party/*/
+!third_party/CATALOG.md
+!third_party/README.md
+
+# --- Neo4j / MinIO mount artifacts ---
+infra/**/data/
+infra/**/plugins/
+infra/**/logs/

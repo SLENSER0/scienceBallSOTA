@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.xls binary
+*.xlsx binary
+*.docx binary
+*.pptx binary
+*.zip binary
+*.rar binary
+
+uv.lock linguist-generated=true
+apps/frontend/pnpm-lock.yaml linguist-generated=true

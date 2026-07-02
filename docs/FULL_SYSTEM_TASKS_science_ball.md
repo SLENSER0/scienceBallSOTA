@@ -47,15 +47,15 @@
 
 ### 1.1 Инициализация репозитория и корневая структура каталогов (§6.1)
 
-- [ ] Инициализировать git-репозиторий в корне `/Users/basil/science_ball_v2` (`git init`, ветка по умолчанию `main`); зафиксировать первый коммит с корневым `README.md`.
-- [ ] Создать корневой `README.md` с описанием проекта «SOTA Knowledge Graph», кратким деревом каталогов из §6.1 и quick-start (`make bootstrap`, `make up`, `make dev`).
-- [ ] Создать корневой `.gitignore` (Python: `__pycache__/`, `.venv/`, `*.pyc`, `.mypy_cache/`, `.ruff_cache/`, `.pytest_cache/`; Node: `node_modules/`, `dist/`, `.turbo/`; env: `.env`, `.env.*` кроме `.env.example`; данные: `data/`, `*.log`, `.DS_Store`; артефакты MinIO/Neo4j монтирования).
-- [ ] Создать корневой `.gitattributes` (нормализация `* text=auto eol=lf`, бинарные маски для `*.pdf`, `*.png`).
-- [ ] Создать каталоги `apps/` со всеми сервисами из §6.1: `apps/api-gateway/`, `apps/agent-service/`, `apps/ingestion-service/`, `apps/graph-service/`, `apps/search-service/`, `apps/extraction-service/`, `apps/curation-service/`, `apps/frontend/`.
-- [ ] Создать каталоги `packages/` из §6.1: `packages/kg_schema/`, `packages/kg_extractors/`, `packages/kg_retrievers/`, `packages/kg_eval/`, `packages/kg_common/`.
-- [ ] Создать каталоги `infra/` из §6.1: `infra/docker-compose.yml` (пустая заготовка-плейсхолдер), `infra/helm/`, `infra/dagster/`, `infra/neo4j/`, `infra/opensearch/`, `infra/qdrant/` (с `.gitkeep` в пустых).
-- [ ] Создать вспомогательные корневые каталоги: `docs/` (для ADR и конвенций), `scripts/` (утилиты/seed), `third_party/` (vendored OSS), `.github/` (CI и шаблоны).
-- [ ] Добавить в каждый сервис/пакет минимальный `README.md` с назначением из §6.1 (одна-две строки на компонент) и указанием порта (для `apps/*`: api-gateway 8000, agent-service 8010, ingestion-service 8020 по §13.1).
+- [x] Инициализировать git-репозиторий в корне `/Users/basil/science_ball_v2` (`git init`, ветка по умолчанию `main`); зафиксировать первый коммит с корневым `README.md`.
+- [x] Создать корневой `README.md` с описанием проекта «SOTA Knowledge Graph», кратким деревом каталогов из §6.1 и quick-start (`make bootstrap`, `make up`, `make dev`).
+- [x] Создать корневой `.gitignore` (Python: `__pycache__/`, `.venv/`, `*.pyc`, `.mypy_cache/`, `.ruff_cache/`, `.pytest_cache/`; Node: `node_modules/`, `dist/`, `.turbo/`; env: `.env`, `.env.*` кроме `.env.example`; данные: `data/`, `*.log`, `.DS_Store`; артефакты MinIO/Neo4j монтирования).
+- [x] Создать корневой `.gitattributes` (нормализация `* text=auto eol=lf`, бинарные маски для `*.pdf`, `*.png`).
+- [x] Создать каталоги `apps/` со всеми сервисами из §6.1: `apps/api-gateway/`, `apps/agent-service/`, `apps/ingestion-service/`, `apps/graph-service/`, `apps/search-service/`, `apps/extraction-service/`, `apps/curation-service/`, `apps/frontend/`.
+- [x] Создать каталоги `packages/` из §6.1: `packages/kg_schema/`, `packages/kg_extractors/`, `packages/kg_retrievers/`, `packages/kg_eval/`, `packages/kg_common/`.
+- [x] Создать каталоги `infra/` из §6.1: `infra/docker-compose.yml` (пустая заготовка-плейсхолдер), `infra/helm/`, `infra/dagster/`, `infra/neo4j/`, `infra/opensearch/`, `infra/qdrant/` (с `.gitkeep` в пустых).
+- [x] Создать вспомогательные корневые каталоги: `docs/` (для ADR и конвенций), `scripts/` (утилиты/seed), `third_party/` (vendored OSS), `.github/` (CI и шаблоны).
+- [x] Добавить в каждый сервис/пакет минимальный `README.md` с назначением из §6.1 (одна-две строки на компонент) и указанием порта (для `apps/*`: api-gateway 8000, agent-service 8010, ingestion-service 8020 по §13.1).
 
 **Критерий приёмки:** команда `find apps packages infra -maxdepth 1 -type d` выводит ровно набор каталогов из §6.1; `git status` чистый после первого коммита; каждый из 8 `apps/*`, 5 `packages/*` и 6 `infra/*` каталогов существует и содержит `README.md`/`.gitkeep`.
 
@@ -63,14 +63,14 @@
 
 ### 1.2 Python-workspace и менеджер зависимостей (uv/poetry)
 
-- [ ] Выбрать `uv` как основной менеджер (быстрее, нативный workspace); зафиксировать решение в `docs/adr/0001-python-package-manager.md` (ADR с альтернативой poetry и обоснованием).
-- [ ] Создать корневой `pyproject.toml` с секцией `[tool.uv.workspace]` и `members = ["apps/*", "packages/*"]`, объявить общий `requires-python = ">=3.12"`.
-- [ ] Создать в каждом Python-пакете (`packages/kg_common`, `kg_schema`, `kg_extractors`, `kg_retrievers`, `kg_eval`) свой `pyproject.toml` с `[project]` (name `kg-common` и т.д.), `version = "0.1.0"`, build-backend `hatchling`, и src-layout (`packages/<pkg>/src/<pkg>/__init__.py`).
-- [ ] Создать в каждом Python-сервисе (`apps/api-gateway`, `apps/agent-service`, `apps/ingestion-service`, `apps/graph-service`, `apps/search-service`, `apps/extraction-service`, `apps/curation-service`) `pyproject.toml` с зависимостью на локальные пакеты через `tool.uv.sources` (`kg-common = { workspace = true }` и т.п.).
-- [ ] Зафиксировать общий набор runtime-зависимостей из §13.2 (`fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `neo4j`, `qdrant-client`, `opensearch-py`, `langgraph`, `langchain-core`, `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant`, `haystack-ai`, `pandas`, `polars`, `duckdb`, `splink`, `gliner`, `sentence-transformers`, `fastembed`, `pint`, `pymatgen`, `networkx`, `orjson`, `structlog`, `opentelemetry-sdk`, `mlflow`, `ragas`, `deepeval`), распределив их по соответствующим `apps/*`/`packages/*` (напр. `neo4j` в graph-service/kg_retrievers, `qdrant-client`/`opensearch-py` в search-service).
-- [ ] Объявить dev-группу зависимостей (`[dependency-groups] dev`) с `ruff`, `mypy`, `pytest`, `pytest-cov`, `pytest-asyncio`, `types-*`-stubs, `pre-commit` на корневом уровне.
-- [ ] Сгенерировать `uv.lock` командой `uv lock` и закоммитить его; проверить воспроизводимость через `uv sync --frozen`.
-- [ ] Создать target `make bootstrap`, выполняющий `uv sync --all-packages` (установка всех members workspace в единый `.venv`).
+- [x] Выбрать `uv` как основной менеджер (быстрее, нативный workspace); зафиксировать решение в `docs/adr/0001-python-package-manager.md` (ADR с альтернативой poetry и обоснованием).
+- [x] Создать корневой `pyproject.toml` с секцией `[tool.uv.workspace]` и `members = ["apps/*", "packages/*"]`, объявить общий `requires-python = ">=3.12"`.
+- [x] Создать в каждом Python-пакете (`packages/kg_common`, `kg_schema`, `kg_extractors`, `kg_retrievers`, `kg_eval`) свой `pyproject.toml` с `[project]` (name `kg-common` и т.д.), `version = "0.1.0"`, build-backend `hatchling`, и src-layout (`packages/<pkg>/src/<pkg>/__init__.py`).
+- [x] Создать в каждом Python-сервисе (`apps/api-gateway`, `apps/agent-service`, `apps/ingestion-service`, `apps/graph-service`, `apps/search-service`, `apps/extraction-service`, `apps/curation-service`) `pyproject.toml` с зависимостью на локальные пакеты через `tool.uv.sources` (`kg-common = { workspace = true }` и т.п.).
+- [x] Зафиксировать общий набор runtime-зависимостей из §13.2 (`fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `neo4j`, `qdrant-client`, `opensearch-py`, `langgraph`, `langchain-core`, `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant`, `haystack-ai`, `pandas`, `polars`, `duckdb`, `splink`, `gliner`, `sentence-transformers`, `fastembed`, `pint`, `pymatgen`, `networkx`, `orjson`, `structlog`, `opentelemetry-sdk`, `mlflow`, `ragas`, `deepeval`), распределив их по соответствующим `apps/*`/`packages/*` (напр. `neo4j` в graph-service/kg_retrievers, `qdrant-client`/`opensearch-py` в search-service).
+- [x] Объявить dev-группу зависимостей (`[dependency-groups] dev`) с `ruff`, `mypy`, `pytest`, `pytest-cov`, `pytest-asyncio`, `types-*`-stubs, `pre-commit` на корневом уровне.
+- [x] Сгенерировать `uv.lock` командой `uv lock` и закоммитить его; проверить воспроизводимость через `uv sync --frozen`.
+- [x] Создать target `make bootstrap`, выполняющий `uv sync --all-packages` (установка всех members workspace в единый `.venv`).
 
 **Критерий приёмки:** `uv sync --frozen` успешно ставит окружение с нуля; `uv run python -c "import kg_common, kg_schema, kg_extractors, kg_retrievers, kg_eval"` завершается без ошибок; `uv.lock` присутствует в git.
 
@@ -78,14 +78,14 @@
 
 ### 1.3 Пакеты-заготовки `packages/*`
 
-- [ ] `packages/kg_common`: создать модули-заготовки `config.py` (Settings, см. §1.6), `logging.py` (structlog setup, см. §1.12), `dto.py` (базовые Pydantic DTO), `telemetry.py` (OpenTelemetry init), `__init__.py` с реэкспортом; добавить `py.typed` маркер.
-- [ ] В `packages/kg_common/.../dto.py` объявить Pydantic-DTO с полями строго по контрактам дизайна: `GraphNode` (`id`, `label`, `type` ∈ {Material, Experiment, ProcessingRegime, Property, Equipment, Paper, Claim, Lab, Person, Gap}, `confidence?`, `evidenceCount?`, `verified?`, `missingFields?`, `properties?`), `GraphEdge` (`id`, `source`, `target`, `label`, `type`, `confidence?`, `evidenceCount?`, `inferred?`, `contradicted?`, `evidenceIds?`), `GraphResponse` (`nodes`, `edges`, `layoutHints?`, `queryContext?`) — по §5.3; `EvidenceRef` (`evidence_id`, `source_id`, `doc_id?`, `page?`, `span_start?`, `span_end?`, `confidence`) и `EntityMention` (`text`, `canonical_id?`, `entity_type?`, `confidence`) — по §7.3; тип-объединение `ChatStreamEvent` (`token|tool_start|tool_end|evidence|graph|table|gap|error`) — по §5.3. Обеспечить парность имён полей с TS-типами фронтенда (camelCase-алиасы через `Field(alias=...)` + `populate_by_name`).
-- [ ] `packages/kg_schema`: заготовка под Pydantic + LinkML определения (§8) — модуль `labels.py`, `relationships.py`, `evidence.py` (пока с `# TODO §8` и заглушечными классами), `py.typed`.
-- [ ] `packages/kg_extractors`: заготовка под LlamaIndex/GLiNER/materials-экстракторы (§9.2 Step 4) — пакетный `__init__.py`, подкаталоги `llm/`, `gliner/`, `materials/` с `__init__.py`, `py.typed`.
-- [ ] `packages/kg_retrievers`: заготовка под graph/vector/hybrid retrievers (§10) — модули-заглушки `graph.py`, `vector.py`, `hybrid.py`, `py.typed`.
-- [ ] `packages/kg_eval`: заготовка под evaluation harness (§15) — модули `golden.py`, `metrics.py`, `runner.py` (заглушки), `py.typed`.
-- [ ] Для каждого пакета создать `tests/` с одним smoke-тестом `test_import.py`, проверяющим импорт публичного API пакета.
-- [ ] Настроить экспорт версии пакета (`__version__`) и проверить, что `uv run python -m build`/`uv build` собирает wheel для каждого пакета без ошибок.
+- [x] `packages/kg_common`: создать модули-заготовки `config.py` (Settings, см. §1.6), `logging.py` (structlog setup, см. §1.12), `dto.py` (базовые Pydantic DTO), `telemetry.py` (OpenTelemetry init), `__init__.py` с реэкспортом; добавить `py.typed` маркер.
+- [x] В `packages/kg_common/.../dto.py` объявить Pydantic-DTO с полями строго по контрактам дизайна: `GraphNode` (`id`, `label`, `type` ∈ {Material, Experiment, ProcessingRegime, Property, Equipment, Paper, Claim, Lab, Person, Gap}, `confidence?`, `evidenceCount?`, `verified?`, `missingFields?`, `properties?`), `GraphEdge` (`id`, `source`, `target`, `label`, `type`, `confidence?`, `evidenceCount?`, `inferred?`, `contradicted?`, `evidenceIds?`), `GraphResponse` (`nodes`, `edges`, `layoutHints?`, `queryContext?`) — по §5.3; `EvidenceRef` (`evidence_id`, `source_id`, `doc_id?`, `page?`, `span_start?`, `span_end?`, `confidence`) и `EntityMention` (`text`, `canonical_id?`, `entity_type?`, `confidence`) — по §7.3; тип-объединение `ChatStreamEvent` (`token|tool_start|tool_end|evidence|graph|table|gap|error`) — по §5.3. Обеспечить парность имён полей с TS-типами фронтенда (camelCase-алиасы через `Field(alias=...)` + `populate_by_name`).
+- [x] `packages/kg_schema`: заготовка под Pydantic + LinkML определения (§8) — модуль `labels.py`, `relationships.py`, `evidence.py` (пока с `# TODO §8` и заглушечными классами), `py.typed`.
+- [x] `packages/kg_extractors`: заготовка под LlamaIndex/GLiNER/materials-экстракторы (§9.2 Step 4) — пакетный `__init__.py`, подкаталоги `llm/`, `gliner/`, `materials/` с `__init__.py`, `py.typed`.
+- [x] `packages/kg_retrievers`: заготовка под graph/vector/hybrid retrievers (§10) — модули-заглушки `graph.py`, `vector.py`, `hybrid.py`, `py.typed`.
+- [x] `packages/kg_eval`: заготовка под evaluation harness (§15) — модули `golden.py`, `metrics.py`, `runner.py` (заглушки), `py.typed`.
+- [x] Для каждого пакета создать `tests/` с одним smoke-тестом `test_import.py`, проверяющим импорт публичного API пакета.
+- [x] Настроить экспорт версии пакета (`__version__`) и проверить, что `uv run python -m build`/`uv build` собирает wheel для каждого пакета без ошибок.
 
 **Критерий приёмки:** `uv run pytest packages/` проходит (smoke-импорты зелёные); каждый `packages/*` имеет `src/<pkg>/`, `py.typed`, `tests/` и собирается в wheel через `uv build`.
 
@@ -93,13 +93,13 @@
 
 ### 1.4 Сервисы-заготовки `apps/*` (backend)
 
-- [ ] Для каждого backend-сервиса (`api-gateway`, `agent-service`, `ingestion-service`, `graph-service`, `search-service`, `extraction-service`, `curation-service`) создать src-layout `apps/<svc>/src/<svc_pkg>/` с `__init__.py`, `main.py`, `py.typed`.
-- [ ] В `apps/api-gateway/src/.../main.py` создать FastAPI-приложение с health-endpoint `GET /api/v1/admin/health` (возвращает `{"status":"ok"}`) и `GET /api/v1/admin/metrics`-заглушкой (по §6.2), подключить `uvicorn` запуск на порту 8000.
-- [ ] В `apps/agent-service`, `apps/ingestion-service` создать минимальные FastAPI-приложения с `GET /health` на портах 8010 и 8020 соответственно (§13.1).
-- [ ] Для `graph-service`, `search-service`, `extraction-service`, `curation-service` создать заготовки-модули с `def create_app()`/сервисным классом и smoke-тестом (эти сервисы могут быть библиотечными/worker без публичного порта на этом этапе).
-- [ ] Создать в каждом сервисе `Dockerfile` (multi-stage: базовый `python:3.12-slim`, `uv sync --frozen`, запуск через `uvicorn`), совместимый с `build: ./apps/<svc>` из §13.1 (реальный compose — раздел инфраструктуры, здесь только Dockerfile-заготовки).
-- [ ] Создать в каждом сервисе `tests/test_health.py`, использующий `fastapi.testclient`/`httpx` для проверки health-роутов (там где есть FastAPI-app).
-- [ ] Прописать в `pyproject.toml` каждого сервиса console-script/entrypoint (`[project.scripts]`) для локального запуска, напр. `api-gateway = "api_gateway.main:run"`.
+- [x] Для каждого backend-сервиса (`api-gateway`, `agent-service`, `ingestion-service`, `graph-service`, `search-service`, `extraction-service`, `curation-service`) создать src-layout `apps/<svc>/src/<svc_pkg>/` с `__init__.py`, `main.py`, `py.typed`.
+- [x] В `apps/api-gateway/src/.../main.py` создать FastAPI-приложение с health-endpoint `GET /api/v1/admin/health` (возвращает `{"status":"ok"}`) и `GET /api/v1/admin/metrics`-заглушкой (по §6.2), подключить `uvicorn` запуск на порту 8000.
+- [x] В `apps/agent-service`, `apps/ingestion-service` создать минимальные FastAPI-приложения с `GET /health` на портах 8010 и 8020 соответственно (§13.1).
+- [x] Для `graph-service`, `search-service`, `extraction-service`, `curation-service` создать заготовки-модули с `def create_app()`/сервисным классом и smoke-тестом (эти сервисы могут быть библиотечными/worker без публичного порта на этом этапе).
+- [x] Создать в каждом сервисе `Dockerfile` (multi-stage: базовый `python:3.12-slim`, `uv sync --frozen`, запуск через `uvicorn`), совместимый с `build: ./apps/<svc>` из §13.1 (реальный compose — раздел инфраструктуры, здесь только Dockerfile-заготовки).
+- [x] Создать в каждом сервисе `tests/test_health.py`, использующий `fastapi.testclient`/`httpx` для проверки health-роутов (там где есть FastAPI-app).
+- [x] Прописать в `pyproject.toml` каждого сервиса console-script/entrypoint (`[project.scripts]`) для локального запуска, напр. `api-gateway = "api_gateway.main:run"`.
 
 **Критерий приёмки:** `uv run pytest apps/api-gateway apps/agent-service apps/ingestion-service` зелёный; локальный запуск `uv run uvicorn api_gateway.main:app` отвечает 200 на `GET /api/v1/admin/health`; `docker build ./apps/api-gateway` собирается успешно.
 
@@ -107,12 +107,12 @@
 
 ### 1.5 Ruff (lint + format)
 
-- [ ] Добавить в корневой `pyproject.toml` секцию `[tool.ruff]` (`line-length = 100`, `target-version = "py312"`, `src = ["apps", "packages"]`).
-- [ ] Настроить `[tool.ruff.lint]` с набором правил: `E`, `F`, `W`, `I` (isort), `N`, `UP`, `B`, `C4`, `SIM`, `TCH`, `RUF`; задать `per-file-ignores` для `tests/*` (`S101` и т.п.).
-- [ ] Включить `[tool.ruff.format]` (замена black; `quote-style = "double"`) и удалить необходимость в отдельном black.
-- [ ] Настроить isort-совместимость через `[tool.ruff.lint.isort]` с `known-first-party = ["kg_common","kg_schema","kg_extractors","kg_retrievers","kg_eval"]`.
-- [ ] Прогнать `uv run ruff check .` и `uv run ruff format --check .` на всей кодовой базе-заготовке; устранить нарушения так, чтобы вывод был чистым.
-- [ ] Добавить make-targets `make lint` (`ruff check`) и `make fmt` (`ruff format`).
+- [x] Добавить в корневой `pyproject.toml` секцию `[tool.ruff]` (`line-length = 100`, `target-version = "py312"`, `src = ["apps", "packages"]`).
+- [x] Настроить `[tool.ruff.lint]` с набором правил: `E`, `F`, `W`, `I` (isort), `N`, `UP`, `B`, `C4`, `SIM`, `TCH`, `RUF`; задать `per-file-ignores` для `tests/*` (`S101` и т.п.).
+- [x] Включить `[tool.ruff.format]` (замена black; `quote-style = "double"`) и удалить необходимость в отдельном black.
+- [x] Настроить isort-совместимость через `[tool.ruff.lint.isort]` с `known-first-party = ["kg_common","kg_schema","kg_extractors","kg_retrievers","kg_eval"]`.
+- [x] Прогнать `uv run ruff check .` и `uv run ruff format --check .` на всей кодовой базе-заготовке; устранить нарушения так, чтобы вывод был чистым.
+- [x] Добавить make-targets `make lint` (`ruff check`) и `make fmt` (`ruff format`).
 
 **Критерий приёмки:** `uv run ruff check .` завершается кодом 0 без findings; `uv run ruff format --check .` не предлагает изменений.
 
@@ -133,12 +133,12 @@
 
 ### 1.7 Pytest (тестовый фреймворк)
 
-- [ ] Добавить `[tool.pytest.ini_options]` в корневой `pyproject.toml`: `testpaths = ["apps","packages"]`, `addopts = "-ra --strict-markers --cov=. --cov-report=term-missing"`, `asyncio_mode = "auto"`.
-- [ ] Настроить `[tool.coverage.run]`/`[tool.coverage.report]` (source по `apps`+`packages`, `fail_under = 60` на старте, omit для `tests/*` и `__init__.py`).
-- [ ] Создать корневой `conftest.py` с общими фикстурами (напр. `settings` из test `.env`, фейковые клиенты) и регистрацией маркеров (`unit`, `integration`, `slow`).
-- [ ] Обеспечить наличие smoke/health-тестов из §1.3 и §1.4, чтобы `pytest` собирал ненулевой набор тестов.
-- [ ] Прогнать `uv run pytest -q` — все тесты зелёные, покрытие не падает ниже `fail_under`.
-- [ ] Добавить make-targets `make test` (`pytest`) и `make test-cov`.
+- [x] Добавить `[tool.pytest.ini_options]` в корневой `pyproject.toml`: `testpaths = ["apps","packages"]`, `addopts = "-ra --strict-markers --cov=. --cov-report=term-missing"`, `asyncio_mode = "auto"`.
+- [x] Настроить `[tool.coverage.run]`/`[tool.coverage.report]` (source по `apps`+`packages`, `fail_under = 60` на старте, omit для `tests/*` и `__init__.py`).
+- [x] Создать корневой `conftest.py` с общими фикстурами (напр. `settings` из test `.env`, фейковые клиенты) и регистрацией маркеров (`unit`, `integration`, `slow`).
+- [x] Обеспечить наличие smoke/health-тестов из §1.3 и §1.4, чтобы `pytest` собирал ненулевой набор тестов.
+- [x] Прогнать `uv run pytest -q` — все тесты зелёные, покрытие не падает ниже `fail_under`.
+- [x] Добавить make-targets `make test` (`pytest`) и `make test-cov`.
 
 **Критерий приёмки:** `uv run pytest -q` завершается кодом 0, собирает ≥1 тест на каждый пакет/сервис с FastAPI-app, coverage ≥ порога.
 
@@ -164,14 +164,14 @@
 
 ### 1.9 Конфигурация и секреты (pydantic-settings, `.env.example`, секрет-менеджмент)
 
-- [ ] Реализовать в `packages/kg_common/src/kg_common/config.py` класс `Settings(BaseSettings)` на `pydantic-settings` с секциями/префиксами по сервисам: Neo4j (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`), Qdrant (`QDRANT_URL`), OpenSearch (`OPENSEARCH_URL`, `OPENSEARCH_USER`, `OPENSEARCH_PASSWORD`), Postgres (`POSTGRES_DSN`), Redis (`REDIS_URL`), MinIO (`MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`), Docling (`DOCLING_SERVE_URL`), Dagster (`DAGSTER_URL`), LLM/embeddings (`LLM_API_BASE`, `LLM_API_KEY`, `EMBEDDING_MODEL`), observability (`OTEL_EXPORTER_OTLP_ENDPOINT`, `MLFLOW_TRACKING_URI`, `LANGSMITH_API_KEY`), а также `APP_ENV` и `LOG_LEVEL` (используются логированием/телеметрией из §1.12).
-- [ ] Настроить `model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="ignore")`; секреты типизировать `SecretStr`.
-- [ ] Реализовать `@lru_cache`-фабрику `get_settings()` и re-export из `kg_common`.
-- [ ] Создать корневой `.env.example`, перечисляющий ВСЕ переменные и порты из §13.1 с дефолтами локального compose (`NEO4J_AUTH=neo4j/password` → `NEO4J_USER=neo4j`/`NEO4J_PASSWORD=password`, `NEO4J_PLUGINS=["apoc"]`, `POSTGRES_USER=kg`/`POSTGRES_PASSWORD=kg`/`POSTGRES_DB=kg_app`, `MINIO_ROOT_USER=minio`/`MINIO_ROOT_PASSWORD=minio123`, `OPENSEARCH_INITIAL_ADMIN_PASSWORD=adminadminadmin`, `discovery.type=single-node`, `plugins.security.disabled=true`, `DOCLING_SERVE_ENABLE_UI=1`; полный набор портов сервисов §13.1: frontend 3000, api 8000, agent 8010, ingestion 8020, docling 5001, neo4j 7474/7687, qdrant 6333/6334, opensearch 9200, postgres 5432, redis 6379, minio 9000/9001, dagster 3001) — без реальных секретов.
-- [ ] Написать тест `packages/kg_common/tests/test_config.py`, который загружает `.env.example` и подтверждает, что `Settings` валидируется без ошибок и все обязательные поля покрыты (защита от «забыл переменную»).
-- [ ] Задокументировать секрет-менеджмент в `docs/secrets.md`: локально — `.env` (в `.gitignore`); в проде — HashiCorp Vault / Docker/K8s secrets; описать соглашение о путях Vault (`secret/kg/<env>/<service>`) и запрет коммита реальных секретов.
-- [ ] Добавить в pre-commit hook детектор секретов (`detect-secrets` или `gitleaks`) со scan корня.
-- [ ] Добавить `make check-env`, проверяющий что все ключи из `.env.example` присутствуют (diff по ключам с локальным `.env`).
+- [x] Реализовать в `packages/kg_common/src/kg_common/config.py` класс `Settings(BaseSettings)` на `pydantic-settings` с секциями/префиксами по сервисам: Neo4j (`NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`), Qdrant (`QDRANT_URL`), OpenSearch (`OPENSEARCH_URL`, `OPENSEARCH_USER`, `OPENSEARCH_PASSWORD`), Postgres (`POSTGRES_DSN`), Redis (`REDIS_URL`), MinIO (`MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`), Docling (`DOCLING_SERVE_URL`), Dagster (`DAGSTER_URL`), LLM/embeddings (`LLM_API_BASE`, `LLM_API_KEY`, `EMBEDDING_MODEL`), observability (`OTEL_EXPORTER_OTLP_ENDPOINT`, `MLFLOW_TRACKING_URI`, `LANGSMITH_API_KEY`), а также `APP_ENV` и `LOG_LEVEL` (используются логированием/телеметрией из §1.12).
+- [x] Настроить `model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="ignore")`; секреты типизировать `SecretStr`.
+- [x] Реализовать `@lru_cache`-фабрику `get_settings()` и re-export из `kg_common`.
+- [x] Создать корневой `.env.example`, перечисляющий ВСЕ переменные и порты из §13.1 с дефолтами локального compose (`NEO4J_AUTH=neo4j/password` → `NEO4J_USER=neo4j`/`NEO4J_PASSWORD=password`, `NEO4J_PLUGINS=["apoc"]`, `POSTGRES_USER=kg`/`POSTGRES_PASSWORD=kg`/`POSTGRES_DB=kg_app`, `MINIO_ROOT_USER=minio`/`MINIO_ROOT_PASSWORD=minio123`, `OPENSEARCH_INITIAL_ADMIN_PASSWORD=adminadminadmin`, `discovery.type=single-node`, `plugins.security.disabled=true`, `DOCLING_SERVE_ENABLE_UI=1`; полный набор портов сервисов §13.1: frontend 3000, api 8000, agent 8010, ingestion 8020, docling 5001, neo4j 7474/7687, qdrant 6333/6334, opensearch 9200, postgres 5432, redis 6379, minio 9000/9001, dagster 3001) — без реальных секретов.
+- [x] Написать тест `packages/kg_common/tests/test_config.py`, который загружает `.env.example` и подтверждает, что `Settings` валидируется без ошибок и все обязательные поля покрыты (защита от «забыл переменную»).
+- [x] Задокументировать секрет-менеджмент в `docs/secrets.md`: локально — `.env` (в `.gitignore`); в проде — HashiCorp Vault / Docker/K8s secrets; описать соглашение о путях Vault (`secret/kg/<env>/<service>`) и запрет коммита реальных секретов.
+- [x] Добавить в pre-commit hook детектор секретов (`detect-secrets` или `gitleaks`) со scan корня.
+- [x] Добавить `make check-env`, проверяющий что все ключи из `.env.example` присутствуют (diff по ключам с локальным `.env`).
 
 **Критерий приёмки:** `uv run pytest packages/kg_common/tests/test_config.py` проходит; `.env.example` содержит каждую переменную, используемую в `Settings` и в §13.1; gitleaks/detect-secrets не находит секретов в репозитории.
 
@@ -179,12 +179,12 @@
 
 ### 1.10 Pre-commit hooks
 
-- [ ] Создать `.pre-commit-config.yaml` с хуками: `ruff` (`ruff check --fix`), `ruff-format`, `mypy` (на изменённые файлы), стандартные `pre-commit-hooks` (`end-of-file-fixer`, `trailing-whitespace`, `check-yaml`, `check-json`, `check-merge-conflict`, `check-added-large-files`), `gitleaks`/`detect-secrets`.
-- [ ] Добавить локальный хук для frontend: `prettier --check` и `eslint` на файлах `apps/frontend/**`.
-- [ ] Добавить хук `commitizen`/`conventional-pre-commit` для валидации сообщений коммитов по Conventional Commits (см. §1.13).
-- [ ] Закрепить версии хуков (`rev:`), выполнить `uv run pre-commit install` и `pre-commit install --hook-type commit-msg`.
-- [ ] Прогнать `uv run pre-commit run --all-files` и добиться, чтобы все хуки прошли (allowlist/исправления по мере необходимости).
-- [ ] Добавить make-target `make pre-commit` (`pre-commit run --all-files`).
+- [x] Создать `.pre-commit-config.yaml` с хуками: `ruff` (`ruff check --fix`), `ruff-format`, `mypy` (на изменённые файлы), стандартные `pre-commit-hooks` (`end-of-file-fixer`, `trailing-whitespace`, `check-yaml`, `check-json`, `check-merge-conflict`, `check-added-large-files`), `gitleaks`/`detect-secrets`.
+- [x] Добавить локальный хук для frontend: `prettier --check` и `eslint` на файлах `apps/frontend/**`.
+- [x] Добавить хук `commitizen`/`conventional-pre-commit` для валидации сообщений коммитов по Conventional Commits (см. §1.13).
+- [x] Закрепить версии хуков (`rev:`), выполнить `uv run pre-commit install` и `pre-commit install --hook-type commit-msg`.
+- [x] Прогнать `uv run pre-commit run --all-files` и добиться, чтобы все хуки прошли (allowlist/исправления по мере необходимости).
+- [x] Добавить make-target `make pre-commit` (`pre-commit run --all-files`).
 
 **Критерий приёмки:** `uv run pre-commit run --all-files` завершается со статусом Passed по всем хукам; попытка коммита с невалидным сообщением или секретом блокируется хуком.
 
@@ -192,11 +192,11 @@
 
 ### 1.11 Makefile / Taskfile (автоматизация задач)
 
-- [ ] Создать корневой `Makefile` с фонемами и целями: `bootstrap` (uv sync + pnpm install), `up`/`down` (docker compose из `infra/`), `dev` (параллельный запуск api+frontend), `lint`, `fmt`, `type`, `test`, `test-cov`, `fe-lint`, `fe-build`, `fe-test`, `pre-commit`, `check` (агрегирует lint+type+test), `clean`.
-- [ ] Обеспечить, что `make check` — единая команда, воспроизводящая проверки CI локально (lint + format-check + mypy + pytest + frontend lint/build).
-- [ ] Добавить `.PHONY` для всех целей и `help`-цель, печатающую список задач с описаниями (self-documenting Makefile).
-- [ ] (Опционально) Продублировать ключевые задачи в `Taskfile.yml` для кроссплатформенности; зафиксировать выбор Make vs Task в `docs/adr/0002-task-runner.md`.
-- [ ] Проверить каждую цель Makefile «в холодном» окружении (после `make clean`).
+- [x] Создать корневой `Makefile` с фонемами и целями: `bootstrap` (uv sync + pnpm install), `up`/`down` (docker compose из `infra/`), `dev` (параллельный запуск api+frontend), `lint`, `fmt`, `type`, `test`, `test-cov`, `fe-lint`, `fe-build`, `fe-test`, `pre-commit`, `check` (агрегирует lint+type+test), `clean`.
+- [x] Обеспечить, что `make check` — единая команда, воспроизводящая проверки CI локально (lint + format-check + mypy + pytest + frontend lint/build).
+- [x] Добавить `.PHONY` для всех целей и `help`-цель, печатающую список задач с описаниями (self-documenting Makefile).
+- [x] (Опционально) Продублировать ключевые задачи в `Taskfile.yml` для кроссплатформенности; зафиксировать выбор Make vs Task в `docs/adr/0002-task-runner.md`.
+- [x] Проверить каждую цель Makefile «в холодном» окружении (после `make clean`).
 
 **Критерий приёмки:** `make help` выводит все цели с описаниями; `make check` на чистом чекауте проходит все проверки и завершается кодом 0.
 
@@ -204,10 +204,10 @@
 
 ### 1.12 Общие библиотеки: логирование и телеметрия (structlog, OpenTelemetry)
 
-- [ ] Реализовать `packages/kg_common/src/kg_common/logging.py`: конфигурация `structlog` (JSON-рендер в проде, консоль в dev), инъекция `request_id`/`trace_id`, уровень из `Settings.LOG_LEVEL`.
-- [ ] Реализовать `telemetry.py`: инициализация OpenTelemetry SDK (`opentelemetry-sdk`), OTLP-экспортер по `OTEL_EXPORTER_OTLP_ENDPOINT`, ресурсные атрибуты (`service.name` = имя сервиса) — заготовка под §16 Phase 9 «add OpenTelemetry traces».
-- [ ] Добавить хелпер `setup_observability(service_name)` для вызова из `main.py` каждого сервиса.
-- [ ] Написать тесты, что логгер выдаёт структурированную запись с обязательными полями и что `setup_observability` не падает без коллектора (graceful no-op).
+- [x] Реализовать `packages/kg_common/src/kg_common/logging.py`: конфигурация `structlog` (JSON-рендер в проде, консоль в dev), инъекция `request_id`/`trace_id`, уровень из `Settings.LOG_LEVEL`.
+- [x] Реализовать `telemetry.py`: инициализация OpenTelemetry SDK (`opentelemetry-sdk`), OTLP-экспортер по `OTEL_EXPORTER_OTLP_ENDPOINT`, ресурсные атрибуты (`service.name` = имя сервиса) — заготовка под §16 Phase 9 «add OpenTelemetry traces».
+- [x] Добавить хелпер `setup_observability(service_name)` для вызова из `main.py` каждого сервиса.
+- [x] Написать тесты, что логгер выдаёт структурированную запись с обязательными полями и что `setup_observability` не падает без коллектора (graceful no-op).
 
 **Критерий приёмки:** импорт и вызов `kg_common.logging.configure()` + `setup_observability("api-gateway")` работает в smoke-тесте; лог-запись содержит `event`, `level`, `service`, `timestamp`.
 
@@ -215,17 +215,17 @@
 
 ### 1.13 Contribution-конвенции и документация процессов
 
-- [ ] Создать `CONTRIBUTING.md`: правила ветвления (trunk-based / feature-branches), запрет прямых пушей в `main`, требование `make check` перед PR, стиль кода (ruff/prettier), политика тестов (новый код — с тестами).
-- [ ] Задать конвенцию сообщений коммитов Conventional Commits в `docs/conventions/commits.md` (типы `feat|fix|docs|refactor|test|chore|ci|build`, scope = имя сервиса/пакета) и связать с хуком из §1.10.
-- [ ] Создать `CODEOWNERS` (`.github/CODEOWNERS`) с ответственными по областям (`/apps/api-gateway/`, `/packages/kg_schema/` и т.д.).
-- [ ] Создать шаблоны GitHub: `.github/pull_request_template.md` (чеклист: тесты, lint, docs, ADR при архитектурных решениях) и `.github/ISSUE_TEMPLATE/{bug,feature}.md`.
-- [ ] Создать каталог `docs/adr/` с `0000-template.md` (MADR-формат) и завести ADR из §1.2/§1.11 (`0001`, `0002`).
-- [ ] Создать `docs/architecture.md` с деревом монорепо (§6.1), картой сервисов/портов (§13.1) и ссылкой на дизайн-документ как source of truth.
-- [ ] Добавить `LICENSE` (согласовать лицензию проекта) и `SECURITY.md` (процедура репорта уязвимостей).
-- [ ] Описать конвенцию именования пакетов/модулей (snake_case для Python `kg_*`, kebab-case для dist-имён) в `docs/conventions/naming.md`.
-- [ ] Создать корневой `.editorconfig` (`charset=utf-8`, `end_of_line=lf`, `insert_final_newline=true`, `trim_trailing_whitespace=true`, `indent_style=space`, `max_line_length=100` — согласовано с ruff `line-length=100` и prettier `printWidth=100`) для единообразия редакторов по всему монорепо (Python + TS).
-- [ ] Завести ADR `docs/adr/0003-core-technology-stack.md`, фиксирующий выбор целевого стека по §4.1/§21 (Neo4j, Qdrant, OpenSearch, LangGraph, Reagraph, LlamaIndex PropertyGraphIndex, Splink, Dagster, DataHub/OpenMetadata) и рассмотренные-отклонённые альтернативы: графовые БД (ArangoDB, Memgraph, TypeDB), graph-UI (AntV G6, Graphin, React Flow), lineage (Airbyte, Apache Atlas) — со ссылкой на каталог §1.14.
-- [ ] Задокументировать в `docs/conventions/api-contracts.md` конвенцию синхронизации контрактов backend↔frontend: FastAPI экспортирует OpenAPI-схему, TS-типы фронтенда (§5.3 `GraphResponse`/`GraphNode`/`GraphEdge`/`ChatStreamEvent`) и Pydantic-DTO (`kg_common.dto`, §7.3) держатся в паритете (кодогенерация типов из OpenAPI либо ревью-чеклист); нарушение паритета ловится в CI/PR-чеклисте.
+- [x] Создать `CONTRIBUTING.md`: правила ветвления (trunk-based / feature-branches), запрет прямых пушей в `main`, требование `make check` перед PR, стиль кода (ruff/prettier), политика тестов (новый код — с тестами).
+- [x] Задать конвенцию сообщений коммитов Conventional Commits в `docs/conventions/commits.md` (типы `feat|fix|docs|refactor|test|chore|ci|build`, scope = имя сервиса/пакета) и связать с хуком из §1.10.
+- [x] Создать `CODEOWNERS` (`.github/CODEOWNERS`) с ответственными по областям (`/apps/api-gateway/`, `/packages/kg_schema/` и т.д.).
+- [x] Создать шаблоны GitHub: `.github/pull_request_template.md` (чеклист: тесты, lint, docs, ADR при архитектурных решениях) и `.github/ISSUE_TEMPLATE/{bug,feature}.md`.
+- [x] Создать каталог `docs/adr/` с `0000-template.md` (MADR-формат) и завести ADR из §1.2/§1.11 (`0001`, `0002`).
+- [x] Создать `docs/architecture.md` с деревом монорепо (§6.1), картой сервисов/портов (§13.1) и ссылкой на дизайн-документ как source of truth.
+- [x] Добавить `LICENSE` (согласовать лицензию проекта) и `SECURITY.md` (процедура репорта уязвимостей).
+- [x] Описать конвенцию именования пакетов/модулей (snake_case для Python `kg_*`, kebab-case для dist-имён) в `docs/conventions/naming.md`.
+- [x] Создать корневой `.editorconfig` (`charset=utf-8`, `end_of_line=lf`, `insert_final_newline=true`, `trim_trailing_whitespace=true`, `indent_style=space`, `max_line_length=100` — согласовано с ruff `line-length=100` и prettier `printWidth=100`) для единообразия редакторов по всему монорепо (Python + TS).
+- [x] Завести ADR `docs/adr/0003-core-technology-stack.md`, фиксирующий выбор целевого стека по §4.1/§21 (Neo4j, Qdrant, OpenSearch, LangGraph, Reagraph, LlamaIndex PropertyGraphIndex, Splink, Dagster, DataHub/OpenMetadata) и рассмотренные-отклонённые альтернативы: графовые БД (ArangoDB, Memgraph, TypeDB), graph-UI (AntV G6, Graphin, React Flow), lineage (Airbyte, Apache Atlas) — со ссылкой на каталог §1.14.
+- [x] Задокументировать в `docs/conventions/api-contracts.md` конвенцию синхронизации контрактов backend↔frontend: FastAPI экспортирует OpenAPI-схему, TS-типы фронтенда (§5.3 `GraphResponse`/`GraphNode`/`GraphEdge`/`ChatStreamEvent`) и Pydantic-DTO (`kg_common.dto`, §7.3) держатся в паритете (кодогенерация типов из OpenAPI либо ревью-чеклист); нарушение паритета ловится в CI/PR-чеклисте.
 
 **Критерий приёмки:** присутствуют `CONTRIBUTING.md`, `CODEOWNERS`, PR/issue-шаблоны, `.editorconfig`, ≥4 ADR-файла (template + 3 решения `0001`–`0003`), `docs/conventions/api-contracts.md` и `docs/architecture.md` с актуальным деревом §6.1; ссылки в документах ведут на существующие пути.
 
@@ -233,9 +233,9 @@
 
 ### 1.14 Вендоринг/клонирование OSS-репозиториев (§22)
 
-- [ ] Установить конвенцию вендоринга в `third_party/README.md`: способ (git submodule для reference-форков; pin по конкретному commit/tag), запрет модификации кода in-place без обёртки, каталог `third_party/<name>/`.
-- [ ] Создать `scripts/vendor.sh`, который клонирует/обновляет reference-репозитории по pinned-ревизиям (идемпотентно) и вызывается из `make vendor`.
-- [ ] Зафиксировать в `third_party/CATALOG.md` полный перечень OSS-репозиториев из §22 с git-URL и указанием, в каком разделе плана они используются (чтобы тяжёлый вендоринг делали профильные разделы, а здесь — только каталог и механизм). Обязательные записи каталога:
+- [x] Установить конвенцию вендоринга в `third_party/README.md`: способ (git submodule для reference-форков; pin по конкретному commit/tag), запрет модификации кода in-place без обёртки, каталог `third_party/<name>/`.
+- [x] Создать `scripts/vendor.sh`, который клонирует/обновляет reference-репозитории по pinned-ревизиям (идемпотентно) и вызывается из `make vendor`.
+- [x] Зафиксировать в `third_party/CATALOG.md` полный перечень OSS-репозиториев из §22 с git-URL и указанием, в каком разделе плана они используются (чтобы тяжёлый вендоринг делали профильные разделы, а здесь — только каталог и механизм). Обязательные записи каталога:
   - LangGraph — `https://github.com/langchain-ai/langgraph` (agent-service);
   - LlamaIndex — `https://github.com/run-llama/llama_index` (kg_extractors/kg_retrievers); LlamaIndex Property Graph Index docs — `https://developers.llamaindex.ai/python/framework/module_guides/indexing/lpg_index_guide/`;
   - Microsoft GraphRAG — `https://github.com/microsoft/graphrag` (retrieval Mode C);
@@ -249,8 +249,8 @@
   - MatKG — `https://github.com/olivettigroup/MatKG`; MatBERT — `https://github.com/lbnlp/MatBERT`; MatEntityRecognition — `https://github.com/CederGroupHub/MatEntityRecognition`; Matscholar — `https://github.com/materialsintelligence/matscholar`; Propnet — `https://github.com/materialsintelligence/propnet`; Materials Project API — `https://github.com/materialsproject/api`; pymatgen — `https://github.com/materialsproject/pymatgen`;
   - eLabFTW — `https://github.com/elabftw/elabftw`; openBIS — `https://github.com/openbis`;
   - §21-only опциональные (упомянуты в дизайне вне §22, отслеживать в каталоге): Superset — `https://github.com/apache/superset` (dashboards); Protégé — `https://github.com/protegeproject/protege` и LinkML — `https://github.com/linkml/linkml` (ontology governance для `kg_schema`, §6.1/§8).
-- [ ] Клонировать как reference-форк (submodule) минимально необходимое для старта: `neo4j-labs/llm-graph-builder` в `third_party/llm-graph-builder` (internal reference per §21) и добавить его в `.gitmodules`.
-- [ ] Добавить в `.gitignore`/CI-исключения тяжёлые submodule-каталоги, чтобы lint/mypy/pytest НЕ сканировали `third_party/*` (исключить в `[tool.ruff]`, `[tool.mypy]`, `testpaths`).
+- [x] Клонировать как reference-форк (submodule) минимально необходимое для старта: `neo4j-labs/llm-graph-builder` в `third_party/llm-graph-builder` (internal reference per §21) и добавить его в `.gitmodules`.
+- [x] Добавить в `.gitignore`/CI-исключения тяжёлые submodule-каталоги, чтобы lint/mypy/pytest НЕ сканировали `third_party/*` (исключить в `[tool.ruff]`, `[tool.mypy]`, `testpaths`).
 
 **Критерий приёмки:** `make vendor` идемпотентно инициализирует submodules; `third_party/CATALOG.md` перечисляет все репозитории §22 с корректными git-URL; инструменты lint/type/test игнорируют `third_party/`.
 
@@ -258,15 +258,15 @@
 
 ### 1.15 CI на GitHub Actions (lint / type / test)
 
-- [ ] Создать `.github/workflows/ci.yml`, триггеры `push` (в `main`) и `pull_request`; concurrency-group для отмены устаревших ранов.
-- [ ] Job `python-quality`: setup Python 3.12, установка `uv` (`astral-sh/setup-uv` с кэшем), `uv sync --frozen`, шаги `ruff check .`, `ruff format --check .`, `mypy apps packages`, `pytest --cov` с загрузкой coverage-артефакта.
-- [ ] Job `frontend-quality`: setup Node + `pnpm` (с кэшем), `pnpm --dir apps/frontend install --frozen-lockfile`, шаги `eslint`, `prettier --check`, `tsc --noEmit`, `vitest run`, `pnpm build`.
-- [ ] Job `secrets-scan`: запуск `gitleaks`/`detect-secrets` на diff.
-- [ ] Job `pre-commit`: `pre-commit run --all-files` (гарантирует паритет локальных и CI-проверок).
-- [ ] Настроить матрицу/кэширование зависимостей (`uv` cache, pnpm store) для ускорения; ограничить `timeout-minutes`.
-- [ ] Настроить в репозитории branch protection на `main`: required status checks = `python-quality`, `frontend-quality`, `secrets-scan`; запрет merge при красном CI (задокументировать в `CONTRIBUTING.md`).
-- [ ] Добавить status-badge CI в корневой `README.md`.
-- [ ] Не выполнять клонирование `third_party/*` submodules в CI по умолчанию (`submodules: false`), кроме отдельного nightly-job при необходимости.
+- [x] Создать `.github/workflows/ci.yml`, триггеры `push` (в `main`) и `pull_request`; concurrency-group для отмены устаревших ранов.
+- [x] Job `python-quality`: setup Python 3.12, установка `uv` (`astral-sh/setup-uv` с кэшем), `uv sync --frozen`, шаги `ruff check .`, `ruff format --check .`, `mypy apps packages`, `pytest --cov` с загрузкой coverage-артефакта.
+- [x] Job `frontend-quality`: setup Node + `pnpm` (с кэшем), `pnpm --dir apps/frontend install --frozen-lockfile`, шаги `eslint`, `prettier --check`, `tsc --noEmit`, `vitest run`, `pnpm build`.
+- [x] Job `secrets-scan`: запуск `gitleaks`/`detect-secrets` на diff.
+- [x] Job `pre-commit`: `pre-commit run --all-files` (гарантирует паритет локальных и CI-проверок).
+- [x] Настроить матрицу/кэширование зависимостей (`uv` cache, pnpm store) для ускорения; ограничить `timeout-minutes`.
+- [x] Настроить в репозитории branch protection на `main`: required status checks = `python-quality`, `frontend-quality`, `secrets-scan`; запрет merge при красном CI (задокументировать в `CONTRIBUTING.md`).
+- [x] Добавить status-badge CI в корневой `README.md`.
+- [x] Не выполнять клонирование `third_party/*` submodules в CI по умолчанию (`submodules: false`), кроме отдельного nightly-job при необходимости.
 
 **Критерий приёмки:** тестовый PR запускает workflow; jobs `python-quality`, `frontend-quality`, `secrets-scan`, `pre-commit` зелёные; CI падает при внесении lint/type/test-ошибки (проверено «negative»-коммитом); в `README.md` виден CI-бейдж.
 

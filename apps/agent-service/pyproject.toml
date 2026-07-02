@@ -1,0 +1,28 @@
+[project]
+name = "agent-service"
+version = "0.1.0"
+description = "LangGraph agent service: query planning, retrieval orchestration, synthesis."
+requires-python = ">=3.12"
+readme = "README.md"
+dependencies = [
+    "kg-common",
+    "kg-schema",
+    "kg-retrievers",
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.2",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_service"]
+
+[tool.uv.sources]
+kg-common = { workspace = true }
+kg-schema = { workspace = true }
+kg-retrievers = { workspace = true }

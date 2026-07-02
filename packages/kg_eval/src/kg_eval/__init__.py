@@ -1,0 +1,3 @@
+"""Evaluation harness: golden datasets, metrics, runner."""
+
+__version__ = "0.1.0"
