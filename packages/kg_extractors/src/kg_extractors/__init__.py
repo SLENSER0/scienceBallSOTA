@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from kg_extractors.entity_resolution import EntityResolver, ResolvedEntity, get_resolver
+from kg_extractors.er_advanced import Cluster, blocking, resolve_records, score_pair
 from kg_extractors.llm import LLMClient, get_llm, is_oss_model
 from kg_extractors.query_parser import QueryIntent, parse_query, scan_taxonomy
 from kg_extractors.units import (
@@ -28,4 +29,8 @@ __all__ = [
     "LLMClient",
     "get_llm",
     "is_oss_model",
+    "blocking",
+    "score_pair",
+    "resolve_records",
+    "Cluster",
 ]
