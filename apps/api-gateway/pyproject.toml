@@ -9,6 +9,7 @@ dependencies = [
     "kg-schema",
     "kg-retrievers",
     "kg-extractors",
+    "agent-service",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
@@ -28,3 +29,4 @@ kg-common = { workspace = true }
 kg-schema = { workspace = true }
 kg-retrievers = { workspace = true }
 kg-extractors = { workspace = true }
+agent-service = { workspace = true }

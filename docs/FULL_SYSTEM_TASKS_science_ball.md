@@ -3039,45 +3039,45 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 14.1 Каркас сервиса, конфигурация и структура (apps/api-gateway/)
 
-- [ ] Создать пакет `apps/api-gateway/` с `pyproject.toml`, зафиксировать зависимости из §13.2 (`fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `orjson`, `structlog`, `opentelemetry-sdk`) плюс `redis`, `httpx`, `python-multipart`, `sse-starlette`, `websockets`, `slowapi`/собственный лимитер; собирается `pip install -e apps/api-gateway`.
-- [ ] Создать структуру внутри `apps/api-gateway/app/`:
-    - [ ] `main.py` — фабрика `create_app()`, монтирование роутеров, middleware, lifespan.
-    - [ ] `config.py` — `Settings(BaseSettings)` через `pydantic-settings`, читает `.env` (§13.1): URL и креды `NEO4J_URI`, `QDRANT_URL`, `OPENSEARCH_URL`, `POSTGRES_DSN`, `REDIS_URL`, `MINIO_*`, `AGENT_SERVICE_URL=http://agent:8010`, `INGESTION_SERVICE_URL=http://ingestion:8020`, `GRAPH_SERVICE_URL`, `SEARCH_SERVICE_URL`, `CURATION_SERVICE_URL`, `JWT_SECRET`, `RATE_LIMIT_*`, `ENABLE_GRAPHQL_PROXY`.
-    - [ ] `routers/` — по одному модулю на группу endpoints §6.2 (`chat.py`, `entities.py`, `graph.py`, `search.py`, `experiments.py`, `evidence.py`, `gaps.py`, `documents.py`, `ingest.py`, `admin.py`, `graphql_proxy.py`) плюс `curation.py`, `views.py` (derived-endpoints §5.2).
-    - [ ] `schemas/` — Pydantic-модели request/response, реэкспорт из `packages/kg_common` и `packages/kg_schema`.
-    - [ ] `clients/` — httpx-обёртки к внутренним сервисам (`agent_client.py`, `graph_client.py`, `search_client.py`, `ingestion_client.py`, `curation_client.py`) и драйверы (`neo4j_client.py`, `qdrant_client.py`, `opensearch_client.py`, `redis_client.py`, `minio_client.py`, `postgres_client.py`).
-    - [ ] `middleware/` — auth, rate limit, request-id, audit, error handling.
-    - [ ] `deps.py` — FastAPI dependencies (`get_current_user`, `get_db`, `get_redis`, пагинация).
-- [ ] Настроить единый префикс роутинга `/api/v1` через `APIRouter(prefix="/api/v1")`; проверяемо: все пути из §6.2 доступны под этим префиксом.
-- [ ] Настроить `ORJSONResponse` как `default_response_class` (пакет `orjson` из §13.2); проверяемо: заголовок `content-type: application/json`, сериализация `datetime`/`UUID` без ошибок.
-- [ ] Реализовать `lifespan`-контекст: инициализация пулов Neo4j/Qdrant/OpenSearch/Redis/Postgres/MinIO при старте и корректное закрытие при shutdown; при недоступности зависимости — fail-fast с понятной ошибкой в лог `structlog`.
-- [ ] Написать `Dockerfile` (`apps/api-gateway/Dockerfile`) под сервис `api` из §13.1 (`ports: ["8000:8000"]`, `env_file: .env`, `depends_on: [postgres, redis, neo4j, qdrant, opensearch]`); `docker compose up api` поднимает сервис, healthcheck зелёный.
-- [ ] Настроить структурированное логирование `structlog` (§13.2): JSON-логи с полями `request_id`, `user_id`, `route`, `latency_ms`, `status_code`.
+- [x] Создать пакет `apps/api-gateway/` с `pyproject.toml`, зафиксировать зависимости из §13.2 (`fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `orjson`, `structlog`, `opentelemetry-sdk`) плюс `redis`, `httpx`, `python-multipart`, `sse-starlette`, `websockets`, `slowapi`/собственный лимитер; собирается `pip install -e apps/api-gateway`.
+- [x] Создать структуру внутри `apps/api-gateway/app/`:
+    - [x] `main.py` — фабрика `create_app()`, монтирование роутеров, middleware, lifespan.
+    - [x] `config.py` — `Settings(BaseSettings)` через `pydantic-settings`, читает `.env` (§13.1): URL и креды `NEO4J_URI`, `QDRANT_URL`, `OPENSEARCH_URL`, `POSTGRES_DSN`, `REDIS_URL`, `MINIO_*`, `AGENT_SERVICE_URL=http://agent:8010`, `INGESTION_SERVICE_URL=http://ingestion:8020`, `GRAPH_SERVICE_URL`, `SEARCH_SERVICE_URL`, `CURATION_SERVICE_URL`, `JWT_SECRET`, `RATE_LIMIT_*`, `ENABLE_GRAPHQL_PROXY`.
+    - [x] `routers/` — по одному модулю на группу endpoints §6.2 (`chat.py`, `entities.py`, `graph.py`, `search.py`, `experiments.py`, `evidence.py`, `gaps.py`, `documents.py`, `ingest.py`, `admin.py`, `graphql_proxy.py`) плюс `curation.py`, `views.py` (derived-endpoints §5.2).
+    - [x] `schemas/` — Pydantic-модели request/response, реэкспорт из `packages/kg_common` и `packages/kg_schema`.
+    - [x] `clients/` — httpx-обёртки к внутренним сервисам (`agent_client.py`, `graph_client.py`, `search_client.py`, `ingestion_client.py`, `curation_client.py`) и драйверы (`neo4j_client.py`, `qdrant_client.py`, `opensearch_client.py`, `redis_client.py`, `minio_client.py`, `postgres_client.py`).
+    - [x] `middleware/` — auth, rate limit, request-id, audit, error handling.
+    - [x] `deps.py` — FastAPI dependencies (`get_current_user`, `get_db`, `get_redis`, пагинация).
+- [x] Настроить единый префикс роутинга `/api/v1` через `APIRouter(prefix="/api/v1")`; проверяемо: все пути из §6.2 доступны под этим префиксом.
+- [x] Настроить `ORJSONResponse` как `default_response_class` (пакет `orjson` из §13.2); проверяемо: заголовок `content-type: application/json`, сериализация `datetime`/`UUID` без ошибок.
+- [x] Реализовать `lifespan`-контекст: инициализация пулов Neo4j/Qdrant/OpenSearch/Redis/Postgres/MinIO при старте и корректное закрытие при shutdown; при недоступности зависимости — fail-fast с понятной ошибкой в лог `structlog`.
+- [x] Написать `Dockerfile` (`apps/api-gateway/Dockerfile`) под сервис `api` из §13.1 (`ports: ["8000:8000"]`, `env_file: .env`, `depends_on: [postgres, redis, neo4j, qdrant, opensearch]`); `docker compose up api` поднимает сервис, healthcheck зелёный.
+- [x] Настроить структурированное логирование `structlog` (§13.2): JSON-логи с полями `request_id`, `user_id`, `route`, `latency_ms`, `status_code`.
 
 **Критерий приёмки:** `docker compose up api` запускает сервис на `:8000`, `GET /api/v1/admin/health` возвращает `200`, OpenAPI-схема `/openapi.json` содержит все 36 endpoint'ов из §6.2, все роутеры зарегистрированы под `/api/v1`.
 
 ### 14.2 Общие модели, валидация запросов и обработка ошибок
 
-- [ ] Определить в `schemas/common.py` базовые модели: `PageParams(limit:int<=200, offset:int>=0)`, `ErrorResponse(code:str, message:str, details:dict, request_id:str)`, `Paginated[T](items, total, limit, offset)`.
-- [ ] Настроить глобальный exception handler для `RequestValidationError` → `422` с телом `ErrorResponse` (поле `details` = список ошибок Pydantic); проверяемо: невалидный body возвращает `422` со списком путей полей.
-- [ ] Настроить handler для `HTTPException` и кастомных доменных исключений (`EntityNotFound`→`404`, `Conflict`→`409`, `RateLimited`→`429`, `Unauthorized`→`401`, `Forbidden`→`403`, `UpstreamUnavailable`→`503`).
-- [ ] Реализовать проброс ошибок вышестоящих сервисов: при `5xx`/timeout от `agent`/`graph`/`search`/`ingestion`/`curation` возвращать `502/504` с `ErrorResponse`, не раскрывая внутренние стектрейсы.
-- [ ] Включить строгую валидацию: `model_config = ConfigDict(extra="forbid")` для всех входных моделей; неизвестные поля → `422`.
-- [ ] Реализовать серверную пагинацию и сортировку как переиспользуемую dependency (`limit`, `offset`, `sort`); проверяемо на `entities/search`, `experiments`, `gaps`, `ingest/jobs`, `chat/sessions`, `curation/review-queue`, `documents`.
-- [ ] Добавить request-size-limit middleware (например 25 MB для JSON, отдельный лимит для upload — см. 14.9); превышение → `413`.
+- [x] Определить в `schemas/common.py` базовые модели: `PageParams(limit:int<=200, offset:int>=0)`, `ErrorResponse(code:str, message:str, details:dict, request_id:str)`, `Paginated[T](items, total, limit, offset)`.
+- [x] Настроить глобальный exception handler для `RequestValidationError` → `422` с телом `ErrorResponse` (поле `details` = список ошибок Pydantic); проверяемо: невалидный body возвращает `422` со списком путей полей.
+- [x] Настроить handler для `HTTPException` и кастомных доменных исключений (`EntityNotFound`→`404`, `Conflict`→`409`, `RateLimited`→`429`, `Unauthorized`→`401`, `Forbidden`→`403`, `UpstreamUnavailable`→`503`).
+- [x] Реализовать проброс ошибок вышестоящих сервисов: при `5xx`/timeout от `agent`/`graph`/`search`/`ingestion`/`curation` возвращать `502/504` с `ErrorResponse`, не раскрывая внутренние стектрейсы.
+- [x] Включить строгую валидацию: `model_config = ConfigDict(extra="forbid")` для всех входных моделей; неизвестные поля → `422`.
+- [x] Реализовать серверную пагинацию и сортировку как переиспользуемую dependency (`limit`, `offset`, `sort`); проверяемо на `entities/search`, `experiments`, `gaps`, `ingest/jobs`, `chat/sessions`, `curation/review-queue`, `documents`.
+- [x] Добавить request-size-limit middleware (например 25 MB для JSON, отдельный лимит для upload — см. 14.9); превышение → `413`.
 
 **Критерий приёмки:** любой endpoint при некорректном вводе отдаёт `422` с телом `ErrorResponse`; отсутствие ресурса — `404`; при падении upstream — `502/504`; все ответы об ошибке содержат `request_id`.
 
 ### 14.3 Auth и session management
 
-- [ ] Реализовать `middleware/auth.py`: проверка JWT (Bearer) через `JWT_SECRET`, извлечение `user_id`, `roles`; невалидный/просроченный токен → `401`.
-- [ ] Реализовать endpoints логина/выдачи токена (или интеграцию с внешним IdP) достаточные для frontend; хранить refresh/session в Redis (`REDIS_URL` из §13.1) с TTL.
-- [ ] Реализовать dependency `get_current_user()` и `require_roles(...)` для RBAC (роли: `viewer`, `curator`, `admin`) — согласовано с Phase 9 «add role-based access».
-    - [ ] `viewer` — только read endpoints (search/entities/graph/experiments/evidence read/gaps read/documents read/chat/views).
-    - [ ] `curator` — плюс `entities/merge`, `entities/{id}/split`, `entities/{id}/aliases`, `evidence/{id}/review`, `evidence` (manual create), `experiments/{id}/verify`, `gaps/scan`, `gaps/{id}/annotate`, `curation/review-queue` actions, `relations/{id}/mark-inferred`, `documents/upload`, `reindex`.
-    - [ ] `admin` — плюс `admin/*`, `ingest/jobs/*/cancel`, `schema/terms` (edit schema terms).
-- [ ] Реализовать серверные chat-сессии как отдельный ресурс (не путать с auth-сессиями): хранение метаданных сессии в Postgres (`kg_app`), сообщений — в Postgres, привязка к `user_id`.
-- [ ] Защитить все `/api/v1/*` endpoints auth-зависимостью, кроме `admin/health` (liveness) и, опционально, `admin/metrics` (закрыт internal-токеном).
+- [x] Реализовать `middleware/auth.py`: проверка JWT (Bearer) через `JWT_SECRET`, извлечение `user_id`, `roles`; невалидный/просроченный токен → `401`.
+- [x] Реализовать endpoints логина/выдачи токена (или интеграцию с внешним IdP) достаточные для frontend; хранить refresh/session в Redis (`REDIS_URL` из §13.1) с TTL.
+- [x] Реализовать dependency `get_current_user()` и `require_roles(...)` для RBAC (роли: `viewer`, `curator`, `admin`) — согласовано с Phase 9 «add role-based access».
+    - [x] `viewer` — только read endpoints (search/entities/graph/experiments/evidence read/gaps read/documents read/chat/views).
+    - [x] `curator` — плюс `entities/merge`, `entities/{id}/split`, `entities/{id}/aliases`, `evidence/{id}/review`, `evidence` (manual create), `experiments/{id}/verify`, `gaps/scan`, `gaps/{id}/annotate`, `curation/review-queue` actions, `relations/{id}/mark-inferred`, `documents/upload`, `reindex`.
+    - [x] `admin` — плюс `admin/*`, `ingest/jobs/*/cancel`, `schema/terms` (edit schema terms).
+- [x] Реализовать серверные chat-сессии как отдельный ресурс (не путать с auth-сессиями): хранение метаданных сессии в Postgres (`kg_app`), сообщений — в Postgres, привязка к `user_id`.
+- [x] Защитить все `/api/v1/*` endpoints auth-зависимостью, кроме `admin/health` (liveness) и, опционально, `admin/metrics` (закрыт internal-токеном).
 
 **Критерий приёмки:** запрос без валидного JWT к защищённому endpoint возвращает `401`; `viewer` при вызове `POST /entities/merge` получает `403`; chat-сессия создаётся и привязывается к `user_id`, доступ к чужой сессии → `403/404`.
 
