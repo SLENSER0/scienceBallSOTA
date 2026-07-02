@@ -1,0 +1,37 @@
+# Server-profile deployment values (§2 / §13.1). Data services (Neo4j, Qdrant,
+# OpenSearch, Postgres, MinIO) are provisioned as subcharts or managed services;
+# only the app services are templated here.
+runtimeProfile: server
+
+images:
+  apiGateway: ghcr.io/slenser0/science-ball-api:0.1.0
+  agentService: ghcr.io/slenser0/science-ball-agent:0.1.0
+  ingestionService: ghcr.io/slenser0/science-ball-ingestion:0.1.0
+  frontend: ghcr.io/slenser0/science-ball-frontend:0.1.0
+
+replicas:
+  apiGateway: 2
+  agentService: 2
+  frontend: 2
+
+resources:
+  requests: { cpu: "250m", memory: "512Mi" }
+  limits: { cpu: "1", memory: "2Gi" }
+
+env:
+  NEO4J_URI: bolt://neo4j:7687
+  QDRANT_URL: http://qdrant:6333
+  OPENSEARCH_URL: http://opensearch:9200
+  LLM_API_BASE: https://openrouter.ai/api/v1
+  # OSS-only models (ADR-0006)
+  LLM_MODEL_EXTRACT: qwen/qwen-2.5-7b-instruct
+  LLM_MODEL_SYNTH: deepseek/deepseek-chat-v3-0324
+
+secrets:
+  # provided via a K8s Secret (see docs/secrets.md); never committed
+  openrouterApiKey: ""
+  jwtSecret: ""
+
+ingress:
+  enabled: true
+  host: nauchny-klubok.example

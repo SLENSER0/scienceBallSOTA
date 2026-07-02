@@ -295,25 +295,25 @@
 
 ### 2.1 Базовая структура репозитория и инструментарий
 
-- [ ] Создать monorepo-структуру каталогов строго по §6.1: `apps/{api-gateway,agent-service,ingestion-service,graph-service,search-service,extraction-service,curation-service,frontend}`, `packages/{kg_schema,kg_extractors,kg_retrievers,kg_eval,kg_common}`, `infra/{helm,dagster,neo4j,opensearch,qdrant}` и `infra/docker-compose.yml`.
-- [ ] Инициализировать git-репозиторий, добавить `.gitignore` (Python `__pycache__`, `.venv`, `node_modules`, `dist`, `.env`, `*.dump`, `*.snapshot`, локальные тома `infra/volumes/`).
-- [ ] Добавить корневой `README.md` с командой быстрого старта (`docker compose up`) и матрицей портов всех 12+ сервисов из §13.1.
-- [ ] Настроить Python-тулинг на уровне monorepo: `pyproject.toml` с конфигурацией `ruff`, `mypy`, `pytest`; единая версия Python (3.12+) закреплена в `.python-version`.
-- [ ] Настроить frontend-тулинг: `eslint`, `prettier` в `apps/frontend`; `package.json` с lint/format-скриптами.
-- [ ] Добавить `pre-commit` конфиг (`.pre-commit-config.yaml`) с хуками `ruff`, `ruff-format`, `mypy`, `eslint`, проверкой отсутствия секретов (`detect-secrets`).
-- [ ] Создать корневой `Makefile` с целями: `up`, `down`, `logs`, `ps`, `init-db`, `seed`, `backup`, `restore`, `test`, `lint`, `fmt` — каждая цель вызывает соответствующий compose/скрипт.
-- [ ] Добавить в `Makefile` дополнительные цели: `worker` (запуск RQ/Celery воркера), `demo` (поднять стек + загрузить демо-набор §19), `deploy-prod` (`docker compose ... prod` / `helm upgrade`), `dr-test` (прогон backup→wipe→restore), `smoke` (compose-smoke health-check).
+- [x] Создать monorepo-структуру каталогов строго по §6.1: `apps/{api-gateway,agent-service,ingestion-service,graph-service,search-service,extraction-service,curation-service,frontend}`, `packages/{kg_schema,kg_extractors,kg_retrievers,kg_eval,kg_common}`, `infra/{helm,dagster,neo4j,opensearch,qdrant}` и `infra/docker-compose.yml`.
+- [x] Инициализировать git-репозиторий, добавить `.gitignore` (Python `__pycache__`, `.venv`, `node_modules`, `dist`, `.env`, `*.dump`, `*.snapshot`, локальные тома `infra/volumes/`).
+- [x] Добавить корневой `README.md` с командой быстрого старта (`docker compose up`) и матрицей портов всех 12+ сервисов из §13.1.
+- [x] Настроить Python-тулинг на уровне monorepo: `pyproject.toml` с конфигурацией `ruff`, `mypy`, `pytest`; единая версия Python (3.12+) закреплена в `.python-version`.
+- [x] Настроить frontend-тулинг: `eslint`, `prettier` в `apps/frontend`; `package.json` с lint/format-скриптами.
+- [x] Добавить `pre-commit` конфиг (`.pre-commit-config.yaml`) с хуками `ruff`, `ruff-format`, `mypy`, `eslint`, проверкой отсутствия секретов (`detect-secrets`).
+- [x] Создать корневой `Makefile` с целями: `up`, `down`, `logs`, `ps`, `init-db`, `seed`, `backup`, `restore`, `test`, `lint`, `fmt` — каждая цель вызывает соответствующий compose/скрипт.
+- [x] Добавить в `Makefile` дополнительные цели: `worker` (запуск RQ/Celery воркера), `demo` (поднять стек + загрузить демо-набор §19), `deploy-prod` (`docker compose ... prod` / `helm upgrade`), `dr-test` (прогон backup→wipe→restore), `smoke` (compose-smoke health-check).
 
 **Критерий приёмки:** дерево каталогов совпадает с §6.1 (проверяется скриптом-линтером структуры); `make lint` и `pre-commit run --all-files` проходят на пустом скелете без ошибок.
 
 ### 2.2 Конфигурация окружения и профили (local vs prod)
 
-- [ ] Создать `.env.example` со ВСЕМИ переменными для 12 сервисов §13.1: `NEO4J_AUTH`, `NEO4J_URI`, `NEO4J_PLUGINS`, `QDRANT_URL`, `OPENSEARCH_URL`, `OPENSEARCH_INITIAL_ADMIN_PASSWORD`, `POSTGRES_USER/PASSWORD/DB/HOST/PORT`, `REDIS_URL`, `MINIO_ROOT_USER/PASSWORD`, `MINIO_ENDPOINT`, `DOCLING_SERVE_URL`, `DAGSTER_HOME`, `LLM_API_KEY`, `EMBEDDING_MODEL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `MLFLOW_TRACKING_URI`.
-- [ ] Дополнить `.env.example` переменными смежных подсистем: `CELERY_BROKER_URL`/`RQ_REDIS_URL` (= `REDIS_URL`) для воркера быстрых фоновых задач UI/API из §1; `LLM_API_BASE`, `RERANKER_MODEL` (cross-encoder из §10.2); трейсинг агента `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT` (§15.3, опционально); governance-эндпоинты `DATAHUB_GMS_URL` / `OPENMETADATA_HOST_PORT` (Phase 8); `NEO4J_PLUGINS: '["apoc","graph-data-science"]'` (§10.4 Mode D graph algorithms).
-- [ ] Реализовать типизированную загрузку конфигурации через `pydantic-settings` в `packages/kg_common/config.py` (single source of truth для всех сервисов), c валидацией обязательных переменных на старте.
-- [ ] Разделить профили через Docker Compose overrides: `infra/docker-compose.yml` (base) + `infra/docker-compose.local.yml` (dev: bind-mounts исходников, hot-reload, открытые порты, dev-пароли) + `infra/docker-compose.prod.yml` (prod: собранные образы из registry, без bind-mount, closed-порты, секреты из внешнего источника).
-- [ ] Определить Compose `profiles` для опциональных сервисов (`observability`, `governance`, `fallback-parsers`), чтобы `docker compose --profile observability up` поднимал Prometheus/Grafana/OTel-collector отдельно.
-- [ ] Задокументировать в `infra/README.md` разницу local vs prod, список профилей и переменных, порядок запуска.
+- [x] Создать `.env.example` со ВСЕМИ переменными для 12 сервисов §13.1: `NEO4J_AUTH`, `NEO4J_URI`, `NEO4J_PLUGINS`, `QDRANT_URL`, `OPENSEARCH_URL`, `OPENSEARCH_INITIAL_ADMIN_PASSWORD`, `POSTGRES_USER/PASSWORD/DB/HOST/PORT`, `REDIS_URL`, `MINIO_ROOT_USER/PASSWORD`, `MINIO_ENDPOINT`, `DOCLING_SERVE_URL`, `DAGSTER_HOME`, `LLM_API_KEY`, `EMBEDDING_MODEL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `MLFLOW_TRACKING_URI`.
+- [x] Дополнить `.env.example` переменными смежных подсистем: `CELERY_BROKER_URL`/`RQ_REDIS_URL` (= `REDIS_URL`) для воркера быстрых фоновых задач UI/API из §1; `LLM_API_BASE`, `RERANKER_MODEL` (cross-encoder из §10.2); трейсинг агента `LANGCHAIN_TRACING_V2`, `LANGSMITH_API_KEY`, `LANGSMITH_ENDPOINT` (§15.3, опционально); governance-эндпоинты `DATAHUB_GMS_URL` / `OPENMETADATA_HOST_PORT` (Phase 8); `NEO4J_PLUGINS: '["apoc","graph-data-science"]'` (§10.4 Mode D graph algorithms).
+- [x] Реализовать типизированную загрузку конфигурации через `pydantic-settings` в `packages/kg_common/config.py` (single source of truth для всех сервисов), c валидацией обязательных переменных на старте.
+- [x] Разделить профили через Docker Compose overrides: `infra/docker-compose.yml` (base) + `infra/docker-compose.local.yml` (dev: bind-mounts исходников, hot-reload, открытые порты, dev-пароли) + `infra/docker-compose.prod.yml` (prod: собранные образы из registry, без bind-mount, closed-порты, секреты из внешнего источника).
+- [x] Определить Compose `profiles` для опциональных сервисов (`observability`, `governance`, `fallback-parsers`), чтобы `docker compose --profile observability up` поднимал Prometheus/Grafana/OTel-collector отдельно.
+- [x] Задокументировать в `infra/README.md` разницу local vs prod, список профилей и переменных, порядок запуска.
 
 **Критерий приёмки:** `docker compose --env-file .env.example -f infra/docker-compose.yml -f infra/docker-compose.local.yml config` валидируется без ошибок; отсутствие обязательной переменной приводит к явной ошибке валидации `pydantic-settings` при старте сервиса.
 
@@ -1832,43 +1832,43 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 9.1 Вендоринг Dagster и базовый проект оркестрации
 
-- [ ] Склонировать/вендорить референсный репозиторий Dagster в `vendor/dagster/`: `git clone https://github.com/dagster-io/dagster` (git-URL из §22 «Metadata / orchestration / lineage»); зафиксировать используемую версию в `infra/dagster/DAGSTER_VERSION` (например, git tag/commit).
-- [ ] Создать каталог оркестрации по §6.1: `infra/dagster/` со структурой:
+- [x] Склонировать/вендорить референсный репозиторий Dagster в `vendor/dagster/`: `git clone https://github.com/dagster-io/dagster` (git-URL из §22 «Metadata / orchestration / lineage»); зафиксировать используемую версию в `infra/dagster/DAGSTER_VERSION` (например, git tag/commit).
+- [x] Создать каталог оркестрации по §6.1: `infra/dagster/` со структурой:
   - `infra/dagster/pyproject.toml` (пакет `kg_orchestration`, зависимость `dagster`, `dagster-webserver`, `dagster-postgres`, `dagster-aws`);
   - `infra/dagster/kg_orchestration/__init__.py` с объектом `Definitions`;
   - `infra/dagster/kg_orchestration/assets/`, `.../resources/`, `.../schedules/`, `.../sensors/`, `.../jobs/`, `.../partitions/`, `.../io_managers/`;
   - `infra/dagster/workspace.yaml`, `infra/dagster/dagster.yaml`, `infra/dagster/Dockerfile`, `infra/dagster/README.md`.
-- [ ] В `infra/dagster/Dockerfile` собрать образ (соответствует `build: ./infra/dagster` из §13.1), установить `kg_orchestration` вместе с локальными пакетами `packages/kg_*` (editable install), выставить порт `3001`.
-- [ ] Настроить `infra/dagster/dagster.yaml`: storage на Postgres (`run_storage`, `event_log_storage`, `schedule_storage` через `dagster-postgres`, БД `kg_app` из §13.1), `run_launcher`/`run_coordinator` (`QueuedRunCoordinator` с лимитом одновременных runs), директория `compute_logs`.
-- [ ] Настроить `infra/dagster/workspace.yaml`: единственная code location `kg_orchestration` (module `kg_orchestration`); проверить загрузку через `dagster definitions validate`.
-- [ ] Обновить `infra/docker-compose.yml` (§13.1): сервис `dagster` (webserver + `dagster-daemon`), `env_file: .env`, `depends_on: [postgres, redis, minio, docling]`, проброс кода `infra/dagster`; при необходимости отдельный контейнер `dagster-daemon` для schedules/sensors.
-- [ ] Добавить в `.env.example` переменные: `DAGSTER_HOME`, `DAGSTER_PG_*`, `DAGSTER_WEBSERVER_PORT=3001`, а также хосты ресурсов (`NEO4J_URI`, `QDRANT_URL`, `OPENSEARCH_URL`, `S3_ENDPOINT`, `DOCLING_URL`, `REDIS_URL`).
-- [ ] Добавить `Makefile`/скрипты: `dagster-dev` (локальный `dagster dev`), `dagster-materialize` (CLI materialize), `dagster-validate`.
+- [x] В `infra/dagster/Dockerfile` собрать образ (соответствует `build: ./infra/dagster` из §13.1), установить `kg_orchestration` вместе с локальными пакетами `packages/kg_*` (editable install), выставить порт `3001`.
+- [x] Настроить `infra/dagster/dagster.yaml`: storage на Postgres (`run_storage`, `event_log_storage`, `schedule_storage` через `dagster-postgres`, БД `kg_app` из §13.1), `run_launcher`/`run_coordinator` (`QueuedRunCoordinator` с лимитом одновременных runs), директория `compute_logs`.
+- [x] Настроить `infra/dagster/workspace.yaml`: единственная code location `kg_orchestration` (module `kg_orchestration`); проверить загрузку через `dagster definitions validate`.
+- [x] Обновить `infra/docker-compose.yml` (§13.1): сервис `dagster` (webserver + `dagster-daemon`), `env_file: .env`, `depends_on: [postgres, redis, minio, docling]`, проброс кода `infra/dagster`; при необходимости отдельный контейнер `dagster-daemon` для schedules/sensors.
+- [x] Добавить в `.env.example` переменные: `DAGSTER_HOME`, `DAGSTER_PG_*`, `DAGSTER_WEBSERVER_PORT=3001`, а также хосты ресурсов (`NEO4J_URI`, `QDRANT_URL`, `OPENSEARCH_URL`, `S3_ENDPOINT`, `DOCLING_URL`, `REDIS_URL`).
+- [x] Добавить `Makefile`/скрипты: `dagster-dev` (локальный `dagster dev`), `dagster-materialize` (CLI materialize), `dagster-validate`.
 
 **Критерий приёмки:** `docker compose up dagster` поднимает Dagit на `http://localhost:3001`, code location `kg_orchestration` загружается без ошибок; `dagster definitions validate` проходит; на графе ассетов виден весь pipeline из §9.1.
 
 ### 9.2 Asset graph всего ingestion/indexing пайплайна (§9.1)
 
-- [ ] Реализовать в `infra/dagster/kg_orchestration/assets/` по одному Dagster software-defined asset на каждый шаг §9.1, сохраняя порядок зависимостей из mermaid-графа:
-  - [ ] `source_registration` (Step 1 §9.2): регистрирует source в Postgres (source id, file hash, source type, owner/lab, access policy, ingestion job id, version) и эмитит регистрацию источника в каталог DataHub/OpenMetadata (§9.1 REGISTER «Register source in Postgres/DataHub», §9.8).
-  - [ ] `docling_parse` (Step 2): вызывает Docling Serve (`DOCLING_URL`, порт 5001), получает markdown/structured JSON/tables/hierarchy/page refs.
-  - [ ] `store_parsed_artifacts` (Step 2): пишет в S3/MinIO по путям `s3://kg-raw/documents/{doc_id}/original.pdf`, `s3://kg-parsed/documents/{doc_id}/docling.json`, `.../document.md`, `.../tables/table_001.json`.
-  - [ ] `chunking` (Step 3): structure-aware чанки (title/abstract, methods, results, captions, table rows, procedure paragraphs, measurement rows) со схемой chunk из §9.2 (`chunk_id`, `doc_id`, `section_path`, `page_start/end`, `text`, `chunk_type`, `tokens`).
-  - [ ] `extraction` (Step 4): комбинирует rule/domain extractors (regex единиц °C/h/wt%/at%/MPa/GPa/HV/HRC, composition/processing/property vocab), GLiNER NER, LLM schema-guided extraction по Pydantic-схемам `ExperimentExtract`/`ProcessingRegimeExtract`/`MeasurementExtract` из §9.2 (`packages/kg_extractors/`, `packages/kg_schema/`); требование evidence span для каждого факта.
-  - [ ] `units_normalization` (Step 5): `pint` + кастомные маппинги HV/HRC/MPa/GPa; сохраняет `value_raw/value/unit/value_normalized/normalized_unit/normalization_method`; выполняет и нормализацию названий материалов (canonical naming — §9.1 NORMALIZE «Normalize units/material names»), передавая канонические формы в `entity_resolution`.
-  - [ ] `entity_resolution` (Step 6): Splink jobs для Material/Equipment/Person/Lab/Property; выдаёт `candidate_id/mentions/match_probability/decision`.
-  - [ ] `schema_validation` (VALIDATE): валидация Pydantic/LinkML (`packages/kg_schema/`); невалидные факты уходят в отдельный output/review.
-  - [ ] `graph_upsert` (Step 7): `MERGE` по caнonical id в Neo4j (`apps/graph-service/`), правила upsert §9.2 (deterministic IDs, never overwrite reviewed fields, store extraction run id, preserve previous versions).
-  - [ ] `qdrant_indexing` (Step 8): индексирует chunks/table rows/claims/entity descriptions/neighborhood & community summaries с payload из §9.2 (`doc_id/chunk_id/entity_ids/material_ids/property_ids/processing_operation/temperature_c/time_h/source_type/confidence/review_status`).
-  - [ ] `opensearch_indexing` (Step 8): full text/keywords/facets/numeric ranges/highlight fields (`apps/search-service/`).
-  - [ ] `community_summarization` (§10.3, §4/§21 GraphRAG): community detection над графом после `graph_upsert` (Neo4j GDS Louvain/Leiden или Microsoft GraphRAG reference pipeline) + LLM-генерация neighborhood- и community-summaries; корпус-уровневый ассет, чей выход индексируется в Qdrant (Step 8 «graph neighborhood summaries; community summaries»).
-  - [ ] `gap_scan` (GAP §11): запускает gap-scan Cypher (`missing_baseline`, material/regime/property matrix gaps) после `graph_upsert`.
-  - [ ] `retrieval_eval` (EVAL §15): прогоняет retrieval eval после индексации.
-- [ ] Задать корректные `deps`/`ins` между ассетами строго по mermaid §9.1: `graph_upsert` и `*_indexing` оба зависят от `schema_validation`; `gap_scan` от `graph_upsert`; `retrieval_eval` от `qdrant_indexing`+`opensearch_indexing`; `community_summarization` от `graph_upsert`, а индексация community/neighborhood summaries в `qdrant_indexing` — от `community_summarization` (отдельная корпус-уровневая ветка от per-document индексации чанков).
-- [ ] Присвоить всем ассетам `AssetKey` с префиксами-группами (`raw`, `parse`, `extract`, `graph`, `index`, `analytics`) и `group_name`, чтобы Dagit показывал слои пайплайна.
-- [ ] Определить агрегирующий `job` `full_ingestion_job` (через `define_asset_job`) и подмножества: `parse_only_job`, `extract_only_job`, `reindex_job` (`qdrant_indexing`+`opensearch_indexing`), `community_summary_job` (`community_summarization`+переиндексация summaries), `gap_scan_job`.
-- [ ] Собрать `Definitions` в `infra/dagster/kg_orchestration/__init__.py`: все assets, jobs, schedules, sensors, resources, io_managers.
-- [ ] Для каждого ассета вернуть `MaterializeResult`/`Output` с метаданными (см. §9.7): число обработанных элементов, размеры артефактов, ссылки на S3.
+- [x] Реализовать в `infra/dagster/kg_orchestration/assets/` по одному Dagster software-defined asset на каждый шаг §9.1, сохраняя порядок зависимостей из mermaid-графа:
+  - [x] `source_registration` (Step 1 §9.2): регистрирует source в Postgres (source id, file hash, source type, owner/lab, access policy, ingestion job id, version) и эмитит регистрацию источника в каталог DataHub/OpenMetadata (§9.1 REGISTER «Register source in Postgres/DataHub», §9.8).
+  - [x] `docling_parse` (Step 2): вызывает Docling Serve (`DOCLING_URL`, порт 5001), получает markdown/structured JSON/tables/hierarchy/page refs.
+  - [x] `store_parsed_artifacts` (Step 2): пишет в S3/MinIO по путям `s3://kg-raw/documents/{doc_id}/original.pdf`, `s3://kg-parsed/documents/{doc_id}/docling.json`, `.../document.md`, `.../tables/table_001.json`.
+  - [x] `chunking` (Step 3): structure-aware чанки (title/abstract, methods, results, captions, table rows, procedure paragraphs, measurement rows) со схемой chunk из §9.2 (`chunk_id`, `doc_id`, `section_path`, `page_start/end`, `text`, `chunk_type`, `tokens`).
+  - [x] `extraction` (Step 4): комбинирует rule/domain extractors (regex единиц °C/h/wt%/at%/MPa/GPa/HV/HRC, composition/processing/property vocab), GLiNER NER, LLM schema-guided extraction по Pydantic-схемам `ExperimentExtract`/`ProcessingRegimeExtract`/`MeasurementExtract` из §9.2 (`packages/kg_extractors/`, `packages/kg_schema/`); требование evidence span для каждого факта.
+  - [x] `units_normalization` (Step 5): `pint` + кастомные маппинги HV/HRC/MPa/GPa; сохраняет `value_raw/value/unit/value_normalized/normalized_unit/normalization_method`; выполняет и нормализацию названий материалов (canonical naming — §9.1 NORMALIZE «Normalize units/material names»), передавая канонические формы в `entity_resolution`.
+  - [x] `entity_resolution` (Step 6): Splink jobs для Material/Equipment/Person/Lab/Property; выдаёт `candidate_id/mentions/match_probability/decision`.
+  - [x] `schema_validation` (VALIDATE): валидация Pydantic/LinkML (`packages/kg_schema/`); невалидные факты уходят в отдельный output/review.
+  - [x] `graph_upsert` (Step 7): `MERGE` по caнonical id в Neo4j (`apps/graph-service/`), правила upsert §9.2 (deterministic IDs, never overwrite reviewed fields, store extraction run id, preserve previous versions).
+  - [x] `qdrant_indexing` (Step 8): индексирует chunks/table rows/claims/entity descriptions/neighborhood & community summaries с payload из §9.2 (`doc_id/chunk_id/entity_ids/material_ids/property_ids/processing_operation/temperature_c/time_h/source_type/confidence/review_status`).
+  - [x] `opensearch_indexing` (Step 8): full text/keywords/facets/numeric ranges/highlight fields (`apps/search-service/`).
+  - [x] `community_summarization` (§10.3, §4/§21 GraphRAG): community detection над графом после `graph_upsert` (Neo4j GDS Louvain/Leiden или Microsoft GraphRAG reference pipeline) + LLM-генерация neighborhood- и community-summaries; корпус-уровневый ассет, чей выход индексируется в Qdrant (Step 8 «graph neighborhood summaries; community summaries»).
+  - [x] `gap_scan` (GAP §11): запускает gap-scan Cypher (`missing_baseline`, material/regime/property matrix gaps) после `graph_upsert`.
+  - [x] `retrieval_eval` (EVAL §15): прогоняет retrieval eval после индексации.
+- [x] Задать корректные `deps`/`ins` между ассетами строго по mermaid §9.1: `graph_upsert` и `*_indexing` оба зависят от `schema_validation`; `gap_scan` от `graph_upsert`; `retrieval_eval` от `qdrant_indexing`+`opensearch_indexing`; `community_summarization` от `graph_upsert`, а индексация community/neighborhood summaries в `qdrant_indexing` — от `community_summarization` (отдельная корпус-уровневая ветка от per-document индексации чанков).
+- [x] Присвоить всем ассетам `AssetKey` с префиксами-группами (`raw`, `parse`, `extract`, `graph`, `index`, `analytics`) и `group_name`, чтобы Dagit показывал слои пайплайна.
+- [x] Определить агрегирующий `job` `full_ingestion_job` (через `define_asset_job`) и подмножества: `parse_only_job`, `extract_only_job`, `reindex_job` (`qdrant_indexing`+`opensearch_indexing`), `community_summary_job` (`community_summarization`+переиндексация summaries), `gap_scan_job`.
+- [x] Собрать `Definitions` в `infra/dagster/kg_orchestration/__init__.py`: все assets, jobs, schedules, sensors, resources, io_managers.
+- [x] Для каждого ассета вернуть `MaterializeResult`/`Output` с метаданными (см. §9.7): число обработанных элементов, размеры артефактов, ссылки на S3.
 
 **Критерий приёмки:** в Dagit виден полный asset graph, топологически совпадающий с §9.1 (12+ ассетов); `dagster asset materialize --select full_ingestion_job` для одного seed-документа проходит от `source_registration` до `retrieval_eval`, создавая узлы в Neo4j и записи в Qdrant/OpenSearch.
 

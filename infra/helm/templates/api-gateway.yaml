@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api-gateway
+  labels: { app: api-gateway }
+spec:
+  replicas: {{ .Values.replicas.apiGateway }}
+  selector:
+    matchLabels: { app: api-gateway }
+  template:
+    metadata:
+      labels: { app: api-gateway }
+    spec:
+      containers:
+        - name: api-gateway
+          image: {{ .Values.images.apiGateway }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: RUNTIME_PROFILE
+              value: {{ .Values.runtimeProfile | quote }}
+            {{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef: { name: {{ .Release.Name }}-secrets, key: openrouterApiKey }
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: {{ .Release.Name }}-secrets, key: jwtSecret }
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /api/v1/admin/health, port: 8000 }
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/v1/admin/health, port: 8000 }
+            initialDelaySeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api-gateway
+spec:
+  selector: { app: api-gateway }
+  ports:
+    - port: 8000
+      targetPort: 8000
