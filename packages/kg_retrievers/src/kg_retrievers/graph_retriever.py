@@ -22,10 +22,10 @@ SOLUTION_LABELS = ["TechnologySolution", "Method"]
 CANDIDATE_LABELS = [*SOLUTION_LABELS, "ProcessingRegime", "Material", "Equipment"]
 
 # Caps so a dense real corpus doesn't flood an answer with hundreds of items.
-MAX_CANDIDATES = 30
-MAX_FACTS = 30
-MAX_SOLUTIONS = 20
-MAX_EVIDENCE = 25
+MAX_CANDIDATES = 60
+MAX_FACTS = 40
+MAX_SOLUTIONS = 25
+MAX_EVIDENCE = 40
 MAX_GAPS = 15
 MAX_CONTRADICTIONS = 15
 
@@ -148,13 +148,10 @@ class GraphRetriever:
 
     def retrieve(self, intent: QueryIntent) -> RetrievalResult:
         res = RetrievalResult(intent=intent)
-        candidates = self._candidates(intent)
-        # prefer solutions/methods, then higher-confidence nodes; cap for focus
-        candidates.sort(
-            key=lambda c: (c.get("label") in SOLUTION_LABELS, c.get("confidence") or 0.0),
-            reverse=True,
-        )
-        candidates = candidates[:MAX_CANDIDATES]
+        # _candidates already returns in relevance order (exact taxonomy → domain →
+        # alias). Keep that order (do NOT re-sort by confidence, which favours
+        # generic corpus nodes over evidence-rich ones) and just cap for focus.
+        candidates = self._candidates(intent)[:MAX_CANDIDATES]
         res.matched_ids = [c["id"] for c in candidates]
 
         ev_ids: set[str] = set()
