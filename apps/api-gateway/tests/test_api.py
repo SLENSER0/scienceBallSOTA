@@ -124,6 +124,19 @@ def test_rbac_via_jwt(client: TestClient) -> None:
     assert len(partner["citations"]) <= len(researcher["citations"])
 
 
+def test_comparison_cells_evidence_or_gap(client: TestClient) -> None:
+    r = client.post(
+        "/api/v1/comparison",
+        json={"query": "методы обессоливания воды обратный осмос ионный обмен"},
+    ).json()
+    assert r["columns"] and r["rows"]
+    # §24.13: every metric cell is either evidence-backed or explicitly a gap
+    for row in r["rows"]:
+        for _col, cell in row.items():
+            if isinstance(cell, dict):
+                assert cell.get("gap") is True or "evidence_ids" in cell
+
+
 def test_audit_log_records(client: TestClient) -> None:
     admin_tok = client.post(
         "/api/v1/auth/login", json={"username": "boss", "role": "admin"}
