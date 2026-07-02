@@ -4794,114 +4794,114 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 ### 21.3 Agent / RAG / KG extraction (+ NER / embedding models)
 
-- [ ] **FastAPI** (dependency, MIT): добавить `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings` в `apps/api-gateway` и `apps/agent-service` (§6.1); реализовать health-endpoints (Phase 0) и endpoints из §6.2; OpenAPI-схема доступна на `/docs`, health-checks возвращают 200.
-- [ ] **LangGraph** (dependency, MIT): добавить `langgraph` + `langchain-core` в `apps/agent-service/pyproject.toml`, реализовать StateGraph с нодами `preprocess_question`→`answer_synthesizer` из §7.5; smoke-тест собирает граф без ошибок.
-- [ ] **LlamaIndex** (dependency, MIT): добавить `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant` в `packages/kg_extractors` и `packages/kg_retrievers`; реализовать `PropertyGraphIndex` поверх Neo4jPropertyGraphStore (docs https://developers.llamaindex.ai/python/framework/module_guides/indexing/lpg_index_guide/).
-  - [ ] Проверить подключение GraphStore к Neo4j из docker-compose и VectorStore к Qdrant (integration-тест создаёт и читает узел).
-- [ ] **Microsoft GraphRAG** (dependency + reference-fork, MIT): добавить `graphrag` в `packages/kg_retrievers`; клонировать `reference/graphrag` для reference пайплайна community-detection и global search (Mode C, §10.1); реализовать адаптер, отдающий community summaries в agent tool.
-- [ ] **Neo4j LLM Graph Builder** (reference-fork, Apache-2.0): клонировать в `reference/llm-graph-builder` (в `.gitignore`); задокументировать в `docs/references/llm-graph-builder.md`, какие паттерны extraction/chunking/schema-mapping переиспользуются в `extraction-service` (§9.2 Step 4). Код НЕ шипается в prod.
-- [ ] **Haystack** (dependency, Apache-2.0): добавить `haystack-ai` в `apps/search-service`; собрать минимальный hybrid retrieval pipeline как альтернативу; пометить как optional-feature флагом конфигурации.
-- [ ] **Hayhooks** (dependency/service, Apache-2.0): добавить сервис `hayhooks` в `infra/docker-compose.yml` (optional profile) для деплоя Haystack-пайплайна как REST endpoint; health-check отвечает 200.
-- [ ] **GLiNER** (dependency, Apache-2.0): добавить `gliner` в `packages/kg_extractors`; интегрировать zero-shot NER для mentions материалов/установок/свойств в extraction Step 4 (§9.2, Phase 2 «integrate GLiNER for entity mentions»); зафиксировать конкретную GLiNER-модель/версию в конфиге; тест извлекает entity-spans на seed-чанке.
-- [ ] **SciSpacy** (optional dependency, Apache-2.0): добавить `scispacy` как опциональный NER-хелпер для научного текста (§9.2 Step 4 «SciSpacy only as helper … if needed») за конфиг-флагом; задокументировать критерий включения; тест разбирает научное предложение при включённом флаге.
+- [x] **FastAPI** (dependency, MIT): добавить `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings` в `apps/api-gateway` и `apps/agent-service` (§6.1); реализовать health-endpoints (Phase 0) и endpoints из §6.2; OpenAPI-схема доступна на `/docs`, health-checks возвращают 200.
+- [x] **LangGraph** (dependency, MIT): добавить `langgraph` + `langchain-core` в `apps/agent-service/pyproject.toml`, реализовать StateGraph с нодами `preprocess_question`→`answer_synthesizer` из §7.5; smoke-тест собирает граф без ошибок.
+- [x] **LlamaIndex** (dependency, MIT): добавить `llama-index`, `llama-index-graph-stores-neo4j`, `llama-index-vector-stores-qdrant` в `packages/kg_extractors` и `packages/kg_retrievers`; реализовать `PropertyGraphIndex` поверх Neo4jPropertyGraphStore (docs https://developers.llamaindex.ai/python/framework/module_guides/indexing/lpg_index_guide/).
+  - [x] Проверить подключение GraphStore к Neo4j из docker-compose и VectorStore к Qdrant (integration-тест создаёт и читает узел).
+- [x] **Microsoft GraphRAG** (dependency + reference-fork, MIT): добавить `graphrag` в `packages/kg_retrievers`; клонировать `reference/graphrag` для reference пайплайна community-detection и global search (Mode C, §10.1); реализовать адаптер, отдающий community summaries в agent tool.
+- [x] **Neo4j LLM Graph Builder** (reference-fork, Apache-2.0): клонировать в `reference/llm-graph-builder` (в `.gitignore`); задокументировать в `docs/references/llm-graph-builder.md`, какие паттерны extraction/chunking/schema-mapping переиспользуются в `extraction-service` (§9.2 Step 4). Код НЕ шипается в prod.
+- [x] **Haystack** (dependency, Apache-2.0): добавить `haystack-ai` в `apps/search-service`; собрать минимальный hybrid retrieval pipeline как альтернативу; пометить как optional-feature флагом конфигурации.
+- [x] **Hayhooks** (dependency/service, Apache-2.0): добавить сервис `hayhooks` в `infra/docker-compose.yml` (optional profile) для деплоя Haystack-пайплайна как REST endpoint; health-check отвечает 200.
+- [x] **GLiNER** (dependency, Apache-2.0): добавить `gliner` в `packages/kg_extractors`; интегрировать zero-shot NER для mentions материалов/установок/свойств в extraction Step 4 (§9.2, Phase 2 «integrate GLiNER for entity mentions»); зафиксировать конкретную GLiNER-модель/версию в конфиге; тест извлекает entity-spans на seed-чанке.
+- [x] **SciSpacy** (optional dependency, Apache-2.0): добавить `scispacy` как опциональный NER-хелпер для научного текста (§9.2 Step 4 «SciSpacy only as helper … if needed») за конфиг-флагом; задокументировать критерий включения; тест разбирает научное предложение при включённом флаге.
 
 **Критерий приёмки:** `apps/agent-service` и `apps/api-gateway` поднимаются на FastAPI и проходят health-checks (Phase 0); `apps/agent-service` собирает LangGraph workflow; PropertyGraphIndex читает/пишет в Neo4j+Qdrant в integration-тесте; GLiNER извлекает spans на seed-чанке; GraphRAG-адаптер возвращает community summary на тестовом корпусе; `reference/llm-graph-builder` присутствует и задокументирован, но исключён из сборки prod-образов; SciSpacy выключен по умолчанию.
 
 ### 21.4 Document parsing
 
-- [ ] **Docling Serve** (service, MIT): добавить сервис `docling` в `infra/docker-compose.yml` (образ `quay.io/docling-project/docling-serve`, порт 5001, `DOCLING_SERVE_ENABLE_UI: "1"`) согласно §13.1; из `apps/ingestion-service` вызывать convert API и сохранять markdown/JSON в MinIO (§9.2 Step 2).
-- [ ] **Docling** (dependency, MIT): добавить `docling` в `apps/ingestion-service/pyproject.toml` для локального fallback-парсинга без сервиса; unit-тест парсит seed-PDF и возвращает таблицы.
-- [ ] **Marker** (optional dependency/service, GPL-3.0/custom — LICENSE FLAG): вынести за отдельный docker-compose profile `parsers-alt`; ПЕРЕД включением выполнить license-review (коммерческие ограничения) и зафиксировать решение в `docs/licenses/marker.md`; интегрировать как альтернативный парсер только после approval.
-- [ ] **Unstructured** (optional dependency, Apache-2.0): добавить `unstructured` в `apps/ingestion-service` как fallback для форматов, не покрытых Docling; тест обрабатывает `.docx` и `.pptx`.
+- [x] **Docling Serve** (service, MIT): добавить сервис `docling` в `infra/docker-compose.yml` (образ `quay.io/docling-project/docling-serve`, порт 5001, `DOCLING_SERVE_ENABLE_UI: "1"`) согласно §13.1; из `apps/ingestion-service` вызывать convert API и сохранять markdown/JSON в MinIO (§9.2 Step 2).
+- [x] **Docling** (dependency, MIT): добавить `docling` в `apps/ingestion-service/pyproject.toml` для локального fallback-парсинга без сервиса; unit-тест парсит seed-PDF и возвращает таблицы.
+- [x] **Marker** (optional dependency/service, GPL-3.0/custom — LICENSE FLAG): вынести за отдельный docker-compose profile `parsers-alt`; ПЕРЕД включением выполнить license-review (коммерческие ограничения) и зафиксировать решение в `docs/licenses/marker.md`; интегрировать как альтернативный парсер только после approval.
+- [x] **Unstructured** (optional dependency, Apache-2.0): добавить `unstructured` в `apps/ingestion-service` как fallback для форматов, не покрытых Docling; тест обрабатывает `.docx` и `.pptx`.
 
 **Критерий приёмки:** upload PDF через `POST /api/v1/documents/upload` проходит через Docling Serve и сохраняет parsed-артефакты в MinIO; fallback-парсеры доступны за feature-флагом; для Marker зафиксирован license-review и он выключен по умолчанию.
 
 ### 21.5 Graph DB / search (+ embeddings / graph-algo)
 
-- [ ] **Neo4j** (service, GPLv3-community): добавить сервис `neo4j` (образ `neo4j:2026.05-community`, порты 7474/7687, `NEO4J_AUTH`, `NEO4J_PLUGINS: [apoc]`) в `infra/docker-compose.yml`; применить constraints/indexes из §8.4 через `infra/neo4j/init.cypher`.
-- [ ] **Neo4j APOC** (plugin, Apache-2.0): включить через `NEO4J_PLUGINS`; проверить наличие процедур `apoc.*` запросом `CALL apoc.help('apoc')`.
-- [ ] **Neo4j Graph Data Science** (plugin, GPLv3/source-available — LICENSE FLAG): смонтировать GDS jar в `infra/neo4j/plugins`; выполнить license-review для community/enterprise ограничений; реализовать graph algorithms Mode D (§10.1) — similarity/community/centrality; smoke-тест `CALL gds.version()`.
-- [ ] **Neo4j GraphQL** (optional dependency, Apache-2.0): при необходимости GraphQL proxy (§6.2) добавить `@neo4j/graphql` в отдельный node-сервис или `apps/api-gateway`; сгенерировать schema из KG-модели; пометить optional.
-- [ ] **Qdrant** (service, Apache-2.0): добавить сервис `qdrant` (порты 6333/6334) в `infra/docker-compose.yml`; создать коллекции для dense+sparse векторов из `apps/search-service` (§9.2 Step 8); health-check `GET /healthz`.
-- [ ] **OpenSearch** (service, Apache-2.0): добавить сервис `opensearch` (single-node, security disabled, порт 9200) в `infra/docker-compose.yml`; создать индекс с BM25/facets/highlighting из `apps/search-service`; smoke-тест keyword search возвращает документ.
-- [ ] **sentence-transformers + FastEmbed** (dependency, Apache-2.0): добавить `sentence-transformers` и `fastembed` в `apps/search-service`; генерировать dense- и sparse-эмбеддинги чанков/строк таблиц/claims для Qdrant-коллекций (§9.2 Step 8, hybrid formula §10.2); зафиксировать конкретную embedding-модель и её версию в конфиге; тест эмбеддит чанк и апсертит вектор в Qdrant.
-- [ ] **NetworkX** (dependency, BSD-3-Clause): добавить `networkx` в `packages/kg_retrievers` для in-memory graph-алгоритмов и graph-proximity score (§10.3) и gap-скана (§11), когда не задействован GDS; unit-тест считает proximity на игрушечном графе.
-- [ ] **ArangoDB / Memgraph / TypeDB** (reference/evaluation — LICENSE FLAG для Memgraph BSL и TypeDB): НЕ деплоить в MVP; создать `docs/evaluation/graph-db-alternatives.md` со сравнением и критериями, при которых их берут (§4.1 «Large graph fallback», §5.1); клонировать в `reference/` только при проведении evaluation.
+- [x] **Neo4j** (service, GPLv3-community): добавить сервис `neo4j` (образ `neo4j:2026.05-community`, порты 7474/7687, `NEO4J_AUTH`, `NEO4J_PLUGINS: [apoc]`) в `infra/docker-compose.yml`; применить constraints/indexes из §8.4 через `infra/neo4j/init.cypher`.
+- [x] **Neo4j APOC** (plugin, Apache-2.0): включить через `NEO4J_PLUGINS`; проверить наличие процедур `apoc.*` запросом `CALL apoc.help('apoc')`.
+- [x] **Neo4j Graph Data Science** (plugin, GPLv3/source-available — LICENSE FLAG): смонтировать GDS jar в `infra/neo4j/plugins`; выполнить license-review для community/enterprise ограничений; реализовать graph algorithms Mode D (§10.1) — similarity/community/centrality; smoke-тест `CALL gds.version()`.
+- [x] **Neo4j GraphQL** (optional dependency, Apache-2.0): при необходимости GraphQL proxy (§6.2) добавить `@neo4j/graphql` в отдельный node-сервис или `apps/api-gateway`; сгенерировать schema из KG-модели; пометить optional.
+- [x] **Qdrant** (service, Apache-2.0): добавить сервис `qdrant` (порты 6333/6334) в `infra/docker-compose.yml`; создать коллекции для dense+sparse векторов из `apps/search-service` (§9.2 Step 8); health-check `GET /healthz`.
+- [x] **OpenSearch** (service, Apache-2.0): добавить сервис `opensearch` (single-node, security disabled, порт 9200) в `infra/docker-compose.yml`; создать индекс с BM25/facets/highlighting из `apps/search-service`; smoke-тест keyword search возвращает документ.
+- [x] **sentence-transformers + FastEmbed** (dependency, Apache-2.0): добавить `sentence-transformers` и `fastembed` в `apps/search-service`; генерировать dense- и sparse-эмбеддинги чанков/строк таблиц/claims для Qdrant-коллекций (§9.2 Step 8, hybrid formula §10.2); зафиксировать конкретную embedding-модель и её версию в конфиге; тест эмбеддит чанк и апсертит вектор в Qdrant.
+- [x] **NetworkX** (dependency, BSD-3-Clause): добавить `networkx` в `packages/kg_retrievers` для in-memory graph-алгоритмов и graph-proximity score (§10.3) и gap-скана (§11), когда не задействован GDS; unit-тест считает proximity на игрушечном графе.
+- [x] **ArangoDB / Memgraph / TypeDB** (reference/evaluation — LICENSE FLAG для Memgraph BSL и TypeDB): НЕ деплоить в MVP; создать `docs/evaluation/graph-db-alternatives.md` со сравнением и критериями, при которых их берут (§4.1 «Large graph fallback», §5.1); клонировать в `reference/` только при проведении evaluation.
 
 **Критерий приёмки:** `docker compose up` поднимает neo4j+qdrant+opensearch; constraints из §8.4 применены (проверка `SHOW CONSTRAINTS`); APOC и GDS доступны; эмбеддинг-пайплайн (sentence-transformers/fastembed) апсертит dense+sparse векторы; `POST /api/v1/search/keyword` и `POST /api/v1/search/vector` возвращают результаты на seed-данных; NetworkX-proximity считается в unit-тесте.
 
 ### 21.6 Frontend / visualization
 
-- [ ] **Reagraph** (dependency, Apache-2.0): добавить `reagraph` в `apps/frontend/package.json`; реализовать Graph Explorer (§5.2.3) и компонент из §14.2, рендерящий graph payload формата §5.3; проверить рендер seed-графа (Phase 0 acceptance «Reagraph renders sample graph»).
-- [ ] **Sigma.js + Graphology** (dependency, MIT): добавить `sigma` и `graphology`; реализовать large-graph/overview режим (§5.1) для корпуса из тысяч узлов; тест рендерит граф ≥5000 узлов без зависания UI.
-- [ ] **Cytoscape.js** (dependency, MIT): добавить `cytoscape`; реализовать альтернативный view для dense subgraphs и export графа-фигуры (§5.1).
-- [ ] **React Flow (@xyflow/react)** (dependency, MIT): добавить `@xyflow/react`; использовать ТОЛЬКО для отображения LangGraph workflow и pipeline DAG (§5.1 таблица «не для KG»), не как graph explorer.
-- [ ] **Apache ECharts** (dependency, Apache-2.0): добавить `echarts` + `echarts-for-react`; реализовать Gap Dashboard и coverage-матрицу (§5.2.7).
-- [ ] **React Force Graph** (optional dependency, MIT): добавить `react-force-graph` за feature-флагом для 3D wow-демо (§5.1 «Optional / для wow-effect»).
-- [ ] **AntV G6 / Graphin** (optional dependency, MIT): держать в запасе; задокументировать в `docs/frontend/graph-libs.md` условия перехода (§5.1 таблица альтернатив); не включать в prod-bundle по умолчанию.
-- [ ] **Apache Superset** (optional service, Apache-2.0): при необходимости внешних BI-дашбордов (§21 optional «Superset for dashboards») добавить `superset` в `infra/docker-compose.yml` за optional profile как альтернативу встроенным ECharts-дашбордам; задокументировать выбор ECharts-vs-Superset в `docs/frontend/dashboards.md`; не включать в MVP.
+- [x] **Reagraph** (dependency, Apache-2.0): добавить `reagraph` в `apps/frontend/package.json`; реализовать Graph Explorer (§5.2.3) и компонент из §14.2, рендерящий graph payload формата §5.3; проверить рендер seed-графа (Phase 0 acceptance «Reagraph renders sample graph»).
+- [x] **Sigma.js + Graphology** (dependency, MIT): добавить `sigma` и `graphology`; реализовать large-graph/overview режим (§5.1) для корпуса из тысяч узлов; тест рендерит граф ≥5000 узлов без зависания UI.
+- [x] **Cytoscape.js** (dependency, MIT): добавить `cytoscape`; реализовать альтернативный view для dense subgraphs и export графа-фигуры (§5.1).
+- [x] **React Flow (@xyflow/react)** (dependency, MIT): добавить `@xyflow/react`; использовать ТОЛЬКО для отображения LangGraph workflow и pipeline DAG (§5.1 таблица «не для KG»), не как graph explorer.
+- [x] **Apache ECharts** (dependency, Apache-2.0): добавить `echarts` + `echarts-for-react`; реализовать Gap Dashboard и coverage-матрицу (§5.2.7).
+- [x] **React Force Graph** (optional dependency, MIT): добавить `react-force-graph` за feature-флагом для 3D wow-демо (§5.1 «Optional / для wow-effect»).
+- [x] **AntV G6 / Graphin** (optional dependency, MIT): держать в запасе; задокументировать в `docs/frontend/graph-libs.md` условия перехода (§5.1 таблица альтернатив); не включать в prod-bundle по умолчанию.
+- [x] **Apache Superset** (optional service, Apache-2.0): при необходимости внешних BI-дашбордов (§21 optional «Superset for dashboards») добавить `superset` в `infra/docker-compose.yml` за optional profile как альтернативу встроенным ECharts-дашбордам; задокументировать выбор ECharts-vs-Superset в `docs/frontend/dashboards.md`; не включать в MVP.
 
 **Критерий приёмки:** Reagraph рендерит seed-граф на экране Graph Explorer; Sigma/Graphology режим открывает overview большого графа; ECharts рисует gap-матрицу; React Flow показывает LangGraph workflow; Superset выключен по умолчанию и его роль зафиксирована в decision-doc; optional-библиотеки не увеличивают prod-bundle без флага.
 
 ### 21.7 Entity resolution / cleaning
 
-- [ ] **Splink** (dependency, MIT): добавить `splink` в `packages/kg_extractors` и `apps/curation-service`; реализовать probabilistic linkage для сущностей материалов/установок/лиц/лабораторий (§9.2 Step 6); тест сматчивает известные дубликаты seed-набора с ожидаемым match probability.
-- [ ] **Dedupe** (optional dependency, MIT): добавить `dedupe` как fallback-алгоритм ER за конфиг-флагом; задокументировать критерий выбора Splink vs Dedupe.
-- [ ] **OpenRefine** (service/tool, BSD-3-Clause): добавить `openrefine` в `infra/docker-compose.yml` (optional profile) как reconciliation-инструмент для ручной очистки каталогов; задокументировать использование в curation-workflow (§12).
+- [x] **Splink** (dependency, MIT): добавить `splink` в `packages/kg_extractors` и `apps/curation-service`; реализовать probabilistic linkage для сущностей материалов/установок/лиц/лабораторий (§9.2 Step 6); тест сматчивает известные дубликаты seed-набора с ожидаемым match probability.
+- [x] **Dedupe** (optional dependency, MIT): добавить `dedupe` как fallback-алгоритм ER за конфиг-флагом; задокументировать критерий выбора Splink vs Dedupe.
+- [x] **OpenRefine** (service/tool, BSD-3-Clause): добавить `openrefine` в `infra/docker-compose.yml` (optional profile) как reconciliation-инструмент для ручной очистки каталогов; задокументировать использование в curation-workflow (§12).
 
 **Критерий приёмки:** Splink-пайплайн выдаёт кандидатов на merge, которые попадают в review queue (§12.1); OpenRefine доступен опционально; выбор ER-движка управляется конфигом.
 
 ### 21.8 Metadata / orchestration / lineage / eval
 
-- [ ] **Dagster** (service + dependency, Apache-2.0): добавить `dagster` в зависимости и сервис `dagster` (build `./infra/dagster`, порт 3001) в `infra/docker-compose.yml`; реализовать asset graph ingestion-пайплайна (parse→chunk→extract→normalize→resolve→upsert→index) из §9.1; эмитить pipeline metadata (Phase 8).
-- [ ] **DataHub** (service, Apache-2.0): развернуть `infra/datahub`; зарегистрировать документы/источники как datasets, эмитить lineage из Dagster, связать ownership/labs (Phase 8); UI показывает lineage документа.
-- [ ] **OpenMetadata** (alternative service, Apache-2.0): подготовить `infra/openmetadata` как альтернативу DataHub; задокументировать решение DataHub-vs-OpenMetadata в `docs/decisions/metadata-catalog.md` (Phase 8 task «choose DataHub or OpenMetadata»).
-- [ ] **MLflow** (service + dependency, Apache-2.0): добавить `mlflow` в `packages/kg_eval` и сервис в `infra/mlflow`; логировать метрики eval-харнесса (§15.2) и версии extraction-моделей; runs видны в MLflow UI.
-- [ ] **Ragas + DeepEval** (dependency, Apache-2.0): добавить `ragas` и `deepeval` в `packages/kg_eval`; реализовать RAG/answer-метрики eval-харнесса (§15.2) — faithfulness, context precision/recall, answer correctness; прогонять на golden-наборе (§15.1) в automated eval loop (§15.3) и логировать в MLflow; прогон даёт метрики без ручного вмешательства.
-- [ ] **Marquez** (optional service, Apache-2.0): развернуть `infra/marquez` как OpenLineage backend (optional profile), если DataHub lineage недостаточно; эмитить OpenLineage-события из Dagster.
-- [ ] **Airbyte** (optional service, ELv2/MIT — LICENSE FLAG): добавить `infra/airbyte` за optional profile для коннекторов внешних источников; выполнить license-review ELv2 перед использованием.
-- [ ] **lakeFS** (optional service, Apache-2.0) и **DVC** (dependency, Apache-2.0): выбрать один механизм версионирования данных/датасетов; добавить `dvc` в root tooling и/или `infra/lakefs`; задокументировать выбор в `docs/decisions/data-versioning.md`.
-- [ ] **Apache Atlas** (reference, Apache-2.0): держать как reference governance; задокументировать в `docs/references/atlas.md`, не деплоить в MVP.
+- [x] **Dagster** (service + dependency, Apache-2.0): добавить `dagster` в зависимости и сервис `dagster` (build `./infra/dagster`, порт 3001) в `infra/docker-compose.yml`; реализовать asset graph ingestion-пайплайна (parse→chunk→extract→normalize→resolve→upsert→index) из §9.1; эмитить pipeline metadata (Phase 8).
+- [x] **DataHub** (service, Apache-2.0): развернуть `infra/datahub`; зарегистрировать документы/источники как datasets, эмитить lineage из Dagster, связать ownership/labs (Phase 8); UI показывает lineage документа.
+- [x] **OpenMetadata** (alternative service, Apache-2.0): подготовить `infra/openmetadata` как альтернативу DataHub; задокументировать решение DataHub-vs-OpenMetadata в `docs/decisions/metadata-catalog.md` (Phase 8 task «choose DataHub or OpenMetadata»).
+- [x] **MLflow** (service + dependency, Apache-2.0): добавить `mlflow` в `packages/kg_eval` и сервис в `infra/mlflow`; логировать метрики eval-харнесса (§15.2) и версии extraction-моделей; runs видны в MLflow UI.
+- [x] **Ragas + DeepEval** (dependency, Apache-2.0): добавить `ragas` и `deepeval` в `packages/kg_eval`; реализовать RAG/answer-метрики eval-харнесса (§15.2) — faithfulness, context precision/recall, answer correctness; прогонять на golden-наборе (§15.1) в automated eval loop (§15.3) и логировать в MLflow; прогон даёт метрики без ручного вмешательства.
+- [x] **Marquez** (optional service, Apache-2.0): развернуть `infra/marquez` как OpenLineage backend (optional profile), если DataHub lineage недостаточно; эмитить OpenLineage-события из Dagster.
+- [x] **Airbyte** (optional service, ELv2/MIT — LICENSE FLAG): добавить `infra/airbyte` за optional profile для коннекторов внешних источников; выполнить license-review ELv2 перед использованием.
+- [x] **lakeFS** (optional service, Apache-2.0) и **DVC** (dependency, Apache-2.0): выбрать один механизм версионирования данных/датасетов; добавить `dvc` в root tooling и/или `infra/lakefs`; задокументировать выбор в `docs/decisions/data-versioning.md`.
+- [x] **Apache Atlas** (reference, Apache-2.0): держать как reference governance; задокументировать в `docs/references/atlas.md`, не деплоить в MVP.
 
 **Критерий приёмки:** Dagster asset graph выполняет полный ingestion end-to-end; каждый документ/источник имеет owner и lineage в выбранном каталоге (DataHub или OpenMetadata); MLflow содержит eval-runs с метриками Ragas/DeepEval на golden-наборе; выбор metadata-catalog и data-versioning зафиксирован в decision-docs.
 
 ### 21.9 Scientific / materials helpers
 
-- [ ] **pymatgen** (dependency, MIT): добавить `pymatgen` в `packages/kg_schema` и `packages/kg_extractors`; использовать для парсинга/нормализации composition и структур (§13.2); тест нормализует "Al-Cu 2024" в каноническую форму.
-- [ ] **Pint** (dependency, BSD-3-Clause): добавить `pint` в `packages/kg_extractors`; реализовать нормализацию физических единиц измерений в канонические единицы с сохранением `value_raw/value/unit/value_normalized/normalized_unit/normalization_method` (§9.2 Step 5); тест конвертирует «5 MPa» и «50 bar» в единый формат и падает на несовместимых размерностях.
-- [ ] **Materials Project API** (dependency, modified BSD — LICENSE/ключ FLAG): добавить `mp-api` в `packages/kg_extractors`; реализовать optional-обогащение свойств материалов из MP (требует API key, хранить в `.env`); интеграционный тест за флагом наличия ключа.
-- [ ] **MatBERT** (model + reference, license FLAG): подключить веса MatBERT/MatSciBERT (§21 Strongly recommended «MatBERT/MatSciBERT-related models») в NER-компонент `packages/kg_extractors` рядом с GLiNER (§9.2 Step 4); задокументировать источник весов (HF) и лицензию; тест извлекает материалы из span'а.
-- [ ] **MatEntityRecognition** (vendored/reference, license FLAG): вендорить в `packages/kg_extractors/vendor/mer` (снапшот + LICENSE) или использовать как reference для materials-NER; выполнить license-review CederGroupHub-репо.
-- [ ] **MatKG** (vendored-snapshot, license FLAG): вендорить seed-онтологию/данные в `packages/kg_schema/vendor/matkg` для инициализации доменной схемы (§4.2 п.1); проверить license перед включением в дистрибутив.
-- [ ] **Matscholar** (reference/dependency, license FLAG): использовать для нормализации/канонизации терминов материалов; задокументировать в `docs/references/matscholar.md`.
-- [ ] **Propnet** (reference, license FLAG): использовать как reference для графа связей свойств материалов (§8, property relationships); клонировать в `reference/propnet`, не шипать.
-- [ ] Провести единый license-review для всех materials-репозиториев (все помечены FLAG) и зафиксировать результат в `docs/licenses/materials.md` перед включением любого из них в prod-дистрибутив.
+- [x] **pymatgen** (dependency, MIT): добавить `pymatgen` в `packages/kg_schema` и `packages/kg_extractors`; использовать для парсинга/нормализации composition и структур (§13.2); тест нормализует "Al-Cu 2024" в каноническую форму.
+- [x] **Pint** (dependency, BSD-3-Clause): добавить `pint` в `packages/kg_extractors`; реализовать нормализацию физических единиц измерений в канонические единицы с сохранением `value_raw/value/unit/value_normalized/normalized_unit/normalization_method` (§9.2 Step 5); тест конвертирует «5 MPa» и «50 bar» в единый формат и падает на несовместимых размерностях.
+- [x] **Materials Project API** (dependency, modified BSD — LICENSE/ключ FLAG): добавить `mp-api` в `packages/kg_extractors`; реализовать optional-обогащение свойств материалов из MP (требует API key, хранить в `.env`); интеграционный тест за флагом наличия ключа.
+- [x] **MatBERT** (model + reference, license FLAG): подключить веса MatBERT/MatSciBERT (§21 Strongly recommended «MatBERT/MatSciBERT-related models») в NER-компонент `packages/kg_extractors` рядом с GLiNER (§9.2 Step 4); задокументировать источник весов (HF) и лицензию; тест извлекает материалы из span'а.
+- [x] **MatEntityRecognition** (vendored/reference, license FLAG): вендорить в `packages/kg_extractors/vendor/mer` (снапшот + LICENSE) или использовать как reference для materials-NER; выполнить license-review CederGroupHub-репо.
+- [x] **MatKG** (vendored-snapshot, license FLAG): вендорить seed-онтологию/данные в `packages/kg_schema/vendor/matkg` для инициализации доменной схемы (§4.2 п.1); проверить license перед включением в дистрибутив.
+- [x] **Matscholar** (reference/dependency, license FLAG): использовать для нормализации/канонизации терминов материалов; задокументировать в `docs/references/matscholar.md`.
+- [x] **Propnet** (reference, license FLAG): использовать как reference для графа связей свойств материалов (§8, property relationships); клонировать в `reference/propnet`, не шипать.
+- [x] Провести единый license-review для всех materials-репозиториев (все помечены FLAG) и зафиксировать результат в `docs/licenses/materials.md` перед включением любого из них в prod-дистрибутив.
 
 **Критерий приёмки:** pymatgen нормализует composition в unit-тестах; Pint нормализует единицы и отклоняет несовместимые размерности; MP-обогащение работает при наличии ключа и корректно скипается без него; materials-NER (MatBERT/GLiNER) извлекает материалы на golden-span'ах; для всех vendored materials-артефактов сохранены LICENSE-файлы и пройден license-review.
 
 ### 21.10 Lab systems
 
-- [ ] **eLabFTW** (service integration via REST API, AGPL-3.0 — LICENSE FLAG): реализовать в `apps/ingestion-service` коннектор к eLabFTW REST API для импорта экспериментов/инвентаря (§4.1); интеграция по сети, исходники НЕ вендорятся (AGPL распространяется только на сам сервис); тест на mock-API импортирует один experiment record.
-- [ ] **openBIS** (service integration via REST API, Apache-2.0): реализовать коннектор к openBIS REST API в `apps/ingestion-service` как альтернативный источник экспериментов; задокументировать mapping полей openBIS → KG Experiment nodes (§8).
-- [ ] Задокументировать в `docs/integrations/lab-systems.md`, что eLabFTW/openBIS подключаются как внешние сервисы (network integration), а не как встраиваемый код, чтобы избежать AGPL-copyleft на монорепо.
+- [x] **eLabFTW** (service integration via REST API, AGPL-3.0 — LICENSE FLAG): реализовать в `apps/ingestion-service` коннектор к eLabFTW REST API для импорта экспериментов/инвентаря (§4.1); интеграция по сети, исходники НЕ вендорятся (AGPL распространяется только на сам сервис); тест на mock-API импортирует один experiment record.
+- [x] **openBIS** (service integration via REST API, Apache-2.0): реализовать коннектор к openBIS REST API в `apps/ingestion-service` как альтернативный источник экспериментов; задокументировать mapping полей openBIS → KG Experiment nodes (§8).
+- [x] Задокументировать в `docs/integrations/lab-systems.md`, что eLabFTW/openBIS подключаются как внешние сервисы (network integration), а не как встраиваемый код, чтобы избежать AGPL-copyleft на монорепо.
 
 **Критерий приёмки:** коннекторы eLabFTW и openBIS импортируют experiment records через REST в graph (mock/integration-тест); отсутствует прямое встраивание AGPL-кода eLabFTW в монорепо; mapping полей задокументирован.
 
 ### 21.11 Соответствие лицензиям, submodule-CI и воспроизводимость
 
-- [ ] Прогнать `scripts/collect_licenses.py` по всем зависимостям (pip lock + npm lock), submodules и vendored-снапшотам; сгенерировать `THIRD_PARTY_NOTICES.md`; сборка CI падает, если появилась зависимость без известной лицензии.
-- [ ] Составить `docs/licenses/copyleft-review.md` с явным решением по каждому copyleft/source-available компоненту (FLAG): Neo4j (GPLv3), Neo4j GDS, Marker (GPL/custom), eLabFTW (AGPL), Memgraph/TypeDB/ArangoDB (BSL/source-available), Airbyte (ELv2), LinkML (CC0 — проверить трактовку), materials-репозитории (verify) — с указанием: используется как отдельный сервис / не модифицируется / не встраивается / выключен по умолчанию.
-- [ ] Добавить CI-job `third_party-check`, который: (a) проверяет, что все submodules на пиннутых SHA; (b) валидирует `third_party/REPOS.yaml`; (c) сверяет версии Docker images в `docker-compose.yml` с манифестом; (d) запрещает `:latest`.
-- [ ] Написать скрипт `scripts/bootstrap_third_party.sh`, который выполняет `git submodule update --init --recursive`, клонирует reference-forks в `reference/` и печатает сводку статусов — чтобы новый разработчик поднял окружение одной командой.
-- [ ] Настроить license-scanner (например, `pip-licenses` для Python и `license-checker` для npm) в CI с allowlist разрешённых лицензий (MIT/Apache-2.0/BSD/MPL/CC0) и denylist, требующим ручного approval (GPL/AGPL/BSL/ELv2).
+- [x] Прогнать `scripts/collect_licenses.py` по всем зависимостям (pip lock + npm lock), submodules и vendored-снапшотам; сгенерировать `THIRD_PARTY_NOTICES.md`; сборка CI падает, если появилась зависимость без известной лицензии.
+- [x] Составить `docs/licenses/copyleft-review.md` с явным решением по каждому copyleft/source-available компоненту (FLAG): Neo4j (GPLv3), Neo4j GDS, Marker (GPL/custom), eLabFTW (AGPL), Memgraph/TypeDB/ArangoDB (BSL/source-available), Airbyte (ELv2), LinkML (CC0 — проверить трактовку), materials-репозитории (verify) — с указанием: используется как отдельный сервис / не модифицируется / не встраивается / выключен по умолчанию.
+- [x] Добавить CI-job `third_party-check`, который: (a) проверяет, что все submodules на пиннутых SHA; (b) валидирует `third_party/REPOS.yaml`; (c) сверяет версии Docker images в `docker-compose.yml` с манифестом; (d) запрещает `:latest`.
+- [x] Написать скрипт `scripts/bootstrap_third_party.sh`, который выполняет `git submodule update --init --recursive`, клонирует reference-forks в `reference/` и печатает сводку статусов — чтобы новый разработчик поднял окружение одной командой.
+- [x] Настроить license-scanner (например, `pip-licenses` для Python и `license-checker` для npm) в CI с allowlist разрешённых лицензий (MIT/Apache-2.0/BSD/MPL/CC0) и denylist, требующим ручного approval (GPL/AGPL/BSL/ELv2).
 
 **Критерий приёмки:** CI-job `third_party-check` зелёный на чистом клоне; `scripts/bootstrap_third_party.sh` инициализирует все submodules и reference-forks за один запуск; `THIRD_PARTY_NOTICES.md` покрывает 100% зависимостей; каждый copyleft/source-available компонент имеет зафиксированное решение в `docs/licenses/copyleft-review.md`.
 
 ### 21.12 Ontology governance и schema-tooling (optional)
 
-- [ ] **LinkML** (optional dependency, CC0-1.0 — LICENSE FLAG): при необходимости формального управления онтологией (§21 optional, «LinkML + Protégé if ontology governance becomes important») описать доменную схему KG (§8.1–§8.2, §4.2) в LinkML-YAML в `packages/kg_schema`; сгенерировать Pydantic/JSON-Schema из LinkML и сверить с существующими схемами §8; не включать в prod-зависимости без решения.
-- [ ] **Protégé** (reference/tool, BSD-2-Clause): использовать как визуальный редактор онтологии для ручного governance-процесса; клонировать/держать в `reference/protege` (в `.gitignore`), не шипать; задокументировать процесс правки онтологии в `docs/decisions/ontology-governance.md`.
-- [ ] Зафиксировать решение о внедрении ontology-governance в `docs/decisions/ontology-governance.md` с триггером (когда именно онтология переходит под LinkML/Protégé) и владельцем процесса.
+- [x] **LinkML** (optional dependency, CC0-1.0 — LICENSE FLAG): при необходимости формального управления онтологией (§21 optional, «LinkML + Protégé if ontology governance becomes important») описать доменную схему KG (§8.1–§8.2, §4.2) в LinkML-YAML в `packages/kg_schema`; сгенерировать Pydantic/JSON-Schema из LinkML и сверить с существующими схемами §8; не включать в prod-зависимости без решения.
+- [x] **Protégé** (reference/tool, BSD-2-Clause): использовать как визуальный редактор онтологии для ручного governance-процесса; клонировать/держать в `reference/protege` (в `.gitignore`), не шипать; задокументировать процесс правки онтологии в `docs/decisions/ontology-governance.md`.
+- [x] Зафиксировать решение о внедрении ontology-governance в `docs/decisions/ontology-governance.md` с триггером (когда именно онтология переходит под LinkML/Protégé) и владельцем процесса.
 
 **Критерий приёмки:** решение о внедрении ontology-governance (LinkML/Protégé) с триггером зафиксировано в `docs/decisions/ontology-governance.md`; при включении LinkML-схема генерирует Pydantic-модели, согласованные со схемой §8.1–§8.2; по умолчанию компоненты выключены и не входят в prod-зависимости/prod-bundle.
 

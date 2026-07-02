@@ -71,3 +71,17 @@ All are OSS-licensed (permitted by §7.5).
 | LinkML / Protégé | https://github.com/linkml/linkml · protegeproject/protege | ontology §3/§8 | reference |
 | Superset | https://github.com/apache/superset | dashboards §17 | optional |
 | eLabFTW / openBIS | https://github.com/elabftw/elabftw · https://github.com/openbis | lab integ §20 | optional |
+
+## Alternatives & benchmarks (§24.21) — reference/benchmark only
+
+| Repo | URL | Plan | status |
+|---|---|---|---|
+| Amazon Neptune | managed service (aws.amazon.com/neptune) | graph portability §24.21 | reference |
+| JanusGraph | https://github.com/JanusGraph/janusgraph | graph portability §24.21 | reference |
+| Vespa | https://github.com/vespa-engine/vespa | search alt §24.21 | benchmark |
+| Elasticsearch | https://github.com/elastic/elasticsearch | keyword alt §24.21 | benchmark |
+| DeepPavlov | https://github.com/deeppavlov/DeepPavlov | RU NLP §24.21 | benchmark |
+| spaCy / spacy-ru | https://github.com/explosion/spaCy | RU sentence/abbr §24.21 | optional |
+| ruBERT / DeepPavlov ru-bert | https://huggingface.co/DeepPavlov/rubert-base-cased | RU embeddings §24.21 | optional |
+| Marquez | https://github.com/MarquezProject/marquez | OpenLineage §10 | reference |
+| Apache Superset | https://github.com/apache/superset | dashboards §17 | optional |
