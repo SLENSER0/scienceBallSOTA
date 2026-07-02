@@ -24,13 +24,61 @@ def _prov(**extra: object) -> dict:
     return base
 
 
+# Metallurgy-relevant periodic table (§3.2): symbol, RU name, EN name, atomic number.
+PERIODIC_TABLE: list[tuple[str, str, str, int]] = [
+    ("Ni", "Никель", "Nickel", 28),
+    ("Cu", "Медь", "Copper", 29),
+    ("Fe", "Железо", "Iron", 26),
+    ("Co", "Кобальт", "Cobalt", 27),
+    ("Zn", "Цинк", "Zinc", 30),
+    ("Pb", "Свинец", "Lead", 82),
+    ("Au", "Золото", "Gold", 79),
+    ("Ag", "Серебро", "Silver", 47),
+    ("Pt", "Платина", "Platinum", 78),
+    ("Pd", "Палладий", "Palladium", 46),
+    ("Rh", "Родий", "Rhodium", 45),
+    ("Ru", "Рутений", "Ruthenium", 44),
+    ("Ir", "Иридий", "Iridium", 77),
+    ("Os", "Осмий", "Osmium", 76),
+    ("S", "Сера", "Sulfur", 16),
+    ("O", "Кислород", "Oxygen", 8),
+    ("Ca", "Кальций", "Calcium", 20),
+    ("Mg", "Магний", "Magnesium", 12),
+    ("Na", "Натрий", "Sodium", 11),
+    ("Cl", "Хлор", "Chlorine", 17),
+    ("Al", "Алюминий", "Aluminium", 13),
+    ("Si", "Кремний", "Silicon", 14),
+    ("As", "Мышьяк", "Arsenic", 33),
+    ("Sb", "Сурьма", "Antimony", 51),
+    ("Se", "Селен", "Selenium", 34),
+    ("Te", "Теллур", "Tellurium", 52),
+    ("Mo", "Молибден", "Molybdenum", 42),
+    ("Mn", "Марганец", "Manganese", 25),
+    ("Cr", "Хром", "Chromium", 24),
+    ("Ti", "Титан", "Titanium", 22),
+]
+
+
+def _seed_elements(n) -> None:  # type: ignore[no-untyped-def]
+    for sym, ru, en, z in PERIODIC_TABLE:
+        n(
+            make_id("ChemicalElement", sym),
+            "ChemicalElement",
+            name=en,
+            canonical_name=en,
+            aliases_text=f"{sym}|{ru}|{en}",
+            **_prov(atomic_number=z, symbol=sym),
+        )
+
+
 def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     """Build/refresh the demo graph. Returns node/rel counts."""
     n = store.upsert_node
     e = store.upsert_edge
 
-    # provenance run
+    # provenance run + periodic table (§3.2)
     n(RUN_ID, "ExtractorRun", name="seed", **_prov())
+    _seed_elements(n)
 
     def paper(pid: str, title: str, year: int, geo: str, strength: str, country: str) -> str:
         nid = make_id("Paper", pid)
