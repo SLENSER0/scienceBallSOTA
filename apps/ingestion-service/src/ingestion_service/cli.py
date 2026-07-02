@@ -25,9 +25,15 @@ def _parse_one(path_str: str) -> ParsedDoc | None:
     return parse_document(path_str)
 
 
-def discover(data_dir: str) -> list[Path]:
+def discover(data_dir: str, max_mb: float = 0) -> list[Path]:
     root = Path(data_dir)
-    files = [p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED]
+    files = []
+    for p in root.rglob("*"):
+        if not (p.is_file() and p.suffix.lower() in SUPPORTED):
+            continue
+        if max_mb and p.stat().st_size > max_mb * 1_000_000:
+            continue  # skip enormous books that dominate parse time
+        files.append(p)
     files.sort()
     return files
 
@@ -45,7 +51,7 @@ def cmd_discover(args: argparse.Namespace) -> None:
 def cmd_ingest(args: argparse.Namespace) -> None:
     s = get_settings()
     s.ensure_runtime_dirs()
-    files = discover(args.data_dir)
+    files = discover(args.data_dir, max_mb=args.max_mb)
     if args.shuffle:
         random.Random(args.seed).shuffle(files)
     if args.limit and args.limit > 0:  # limit <= 0 means "all docs"
@@ -167,6 +173,7 @@ def main() -> None:
     ing.add_argument("--seed", type=int, default=42)
     ing.add_argument("--keep-seed", action="store_true")
     ing.add_argument("--workers", type=int, default=1)
+    ing.add_argument("--max-mb", type=float, default=0, help="skip files larger than N MB")
     ing.add_argument(
         "--resume-log", default=str(Path(get_settings().runtime_dir) / "ingest_done.txt")
     )

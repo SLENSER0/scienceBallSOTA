@@ -318,6 +318,10 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
         domain="pyrometallurgy",
         **_prov(),
     )
+    p_pgm_id = paper("pgm-2023", "Распределение Au, Ag и МПГ между штейном и шлаком",
+                     2023, "russia", "peer_reviewed", "russia")
+    ev_pgm = evidence("pgm-dc", "коэффициент распределения МПГ штейн/шлак достигает 0.98",
+                      "pgm-2023.pdf", 5, "peer_reviewed")
     for metal, dc in [("Au золото", 0.95), ("Ag серебро", 0.9), ("МПГ PGM", 0.98)]:
         m = make_id("Measurement", f"partition {metal}")
         n(
@@ -333,15 +337,8 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
         )
         e(m, cu_matte, "DISTRIBUTES_BETWEEN", confidence=0.8)
         e(m, slag, "DISTRIBUTES_BETWEEN", confidence=0.8)
+        e(m, p_pgm_id, "SUPPORTED_BY", confidence=0.8, evidence_ids=[ev_pgm])
     e(cu_matte, slag, "PARTITIONED_TO_PHASE", confidence=0.8)
-    paper(
-        "pgm-2023",
-        "Распределение Au, Ag и МПГ между штейном и шлаком",
-        2023,
-        "russia",
-        "peer_reviewed",
-        "russia",
-    )
 
     # =====================================================================
     # 4) Mine water deep injection — Russia vs foreign
@@ -394,14 +391,14 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     e(inj_ru, well, "INJECTS_INTO_HORIZON", confidence=0.8)
     e(inj_ru, capex, "HAS_TECHNOECONOMIC_INDICATOR", confidence=0.7)
     e(inj_ru, inj_ca, "COMPARES_WITH", confidence=0.6)
-    paper(
-        "injection-2020",
-        "Практика закачки шахтных вод в России и за рубежом",
-        2020,
-        "russia",
-        "internal_report",
-        "russia",
-    )
+    p_inj = paper("injection-2020", "Практика закачки шахтных вод в России и за рубежом",
+                  2020, "russia", "internal_report", "russia")
+    ev_inj = evidence("inj-capex", "CAPEX закачки шахтных вод в глубокие горизонты ~5 млн USD; "
+                      "практика применялась в России и в Канаде",
+                      "injection-2020.pdf", 3, "internal_report")
+    e(inj_ru, p_inj, "SUPPORTED_BY", confidence=0.8, evidence_ids=[ev_inj])
+    e(inj_ca, p_inj, "SUPPORTED_BY", confidence=0.7, evidence_ids=[ev_inj])
+    e(capex, ev_inj, "SUPPORTED_BY", confidence=0.8, evidence_ids=[ev_inj])
 
     # =====================================================================
     # 5) SO2 removal / gas cleaning
