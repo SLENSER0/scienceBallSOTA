@@ -1,0 +1,56 @@
+# Equipment — RU/EN synonyms (§24.3).
+- id: electrowinning_cell
+  node_type: Equipment
+  canonical_ru: ванна электроэкстракции
+  canonical_en: electrowinning cell
+  aliases: [ванна электроэкстракции, electrowinning cell, электролизная ванна]
+- id: diaphragm_cell
+  node_type: Equipment
+  canonical_ru: диафрагменная ячейка
+  canonical_en: diaphragm cell
+  aliases: [диафрагменная ячейка, diaphragm cell, диафрагменная ванна]
+- id: nickel_cathode
+  node_type: Equipment
+  canonical_ru: никелевый катод
+  canonical_en: nickel cathode
+  aliases: [никелевый катод, nickel cathode]
+- id: flash_smelting_furnace
+  node_type: Equipment
+  canonical_ru: печь взвешенной плавки
+  canonical_en: flash smelting furnace
+  aliases: [печь взвешенной плавки, ПВП, flash smelting furnace]
+- id: fluidized_bed_furnace
+  node_type: Equipment
+  canonical_ru: печь кипящего слоя
+  canonical_en: fluidized bed furnace
+  aliases: [печь кипящего слоя, fluidized bed furnace]
+- id: reverse_osmosis_unit
+  node_type: Equipment
+  canonical_ru: установка обратного осмоса
+  canonical_en: reverse osmosis unit
+  aliases: [установка обратного осмоса, reverse osmosis unit, RO unit, мембранный модуль]
+- id: ion_exchange_unit
+  node_type: Equipment
+  canonical_ru: ионообменная колонна
+  canonical_en: ion exchange unit
+  aliases: [ионообменная колонна, ion exchange unit, ионообменный фильтр]
+- id: scrubber
+  node_type: Equipment
+  canonical_ru: скруббер
+  canonical_en: scrubber
+  aliases: [скруббер, scrubber, абсорбер]
+- id: deep_injection_well
+  node_type: Equipment
+  canonical_ru: нагнетательная скважина
+  canonical_en: deep injection well
+  aliases: [нагнетательная скважина, deep injection well, поглощающая скважина]
+- id: thickener
+  node_type: Equipment
+  canonical_ru: сгуститель
+  canonical_en: thickener
+  aliases: [сгуститель, thickener]
+- id: filter_press
+  node_type: Equipment
+  canonical_ru: фильтр-пресс
+  canonical_en: filter press
+  aliases: [фильтр-пресс, filter press]

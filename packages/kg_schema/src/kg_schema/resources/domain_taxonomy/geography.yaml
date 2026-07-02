@@ -1,0 +1,60 @@
+# Geography & climate — RU/EN, with practice_type grouping (§24.3 / §24.8).
+- id: russia
+  node_type: Country
+  practice_type: russia
+  canonical_ru: Россия
+  canonical_en: Russia
+  aliases: [Россия, Russia, РФ, российская, отечественная]
+- id: kazakhstan
+  node_type: Country
+  practice_type: cis
+  canonical_ru: Казахстан
+  canonical_en: Kazakhstan
+  aliases: [Казахстан, Kazakhstan]
+- id: china
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: Китай
+  canonical_en: China
+  aliases: [Китай, China]
+- id: finland
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: Финляндия
+  canonical_en: Finland
+  aliases: [Финляндия, Finland]
+- id: canada
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: Канада
+  canonical_en: Canada
+  aliases: [Канада, Canada]
+- id: australia
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: Австралия
+  canonical_en: Australia
+  aliases: [Австралия, Australia]
+- id: chile
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: Чили
+  canonical_en: Chile
+  aliases: [Чили, Chile]
+- id: south_africa
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: ЮАР
+  canonical_en: South Africa
+  aliases: [ЮАР, South Africa]
+- id: usa
+  node_type: Country
+  practice_type: foreign
+  canonical_ru: США
+  canonical_en: USA
+  aliases: [США, USA, United States]
+- id: cold_climate
+  node_type: Geography
+  canonical_ru: холодный климат
+  canonical_en: cold climate
+  aliases: [холодный климат, cold climate, arctic, арктический, субарктический, permafrost, вечная мерзлота, континентальный]

@@ -1,0 +1,126 @@
+# Materials / substances / streams — RU/EN synonyms (§24.3).
+- id: nickel
+  node_type: Material
+  material_class: metal
+  canonical_ru: никель
+  canonical_en: nickel
+  aliases: [никель, nickel, Ni]
+- id: copper
+  node_type: Material
+  material_class: metal
+  canonical_ru: медь
+  canonical_en: copper
+  aliases: [медь, copper, Cu]
+- id: catholyte
+  node_type: Material
+  material_class: electrolyte
+  canonical_ru: католит
+  canonical_en: catholyte
+  aliases: [католит, catholyte]
+- id: anolyte
+  node_type: Material
+  material_class: electrolyte
+  canonical_ru: анолит
+  canonical_en: anolyte
+  aliases: [анолит, anolyte]
+- id: copper_matte
+  node_type: Material
+  material_class: matte
+  canonical_ru: медный штейн
+  canonical_en: copper matte
+  aliases: [медный штейн, copper matte, Cu matte, штейн]
+- id: nickel_matte
+  node_type: Material
+  material_class: matte
+  canonical_ru: никелевый штейн
+  canonical_en: nickel matte
+  aliases: [никелевый штейн, nickel matte, Ni matte]
+- id: slag
+  node_type: Material
+  material_class: slag
+  canonical_ru: шлак
+  canonical_en: slag
+  aliases: [шлак, slag]
+- id: pgm
+  node_type: Material
+  material_class: metal
+  canonical_ru: металлы платиновой группы
+  canonical_en: platinum group metals
+  aliases: [МПГ, PGM, platinum group metals, металлы платиновой группы, платиноиды]
+- id: gold
+  node_type: Material
+  material_class: metal
+  canonical_ru: золото
+  canonical_en: gold
+  aliases: [золото, gold, Au]
+- id: silver
+  node_type: Material
+  material_class: metal
+  canonical_ru: серебро
+  canonical_en: silver
+  aliases: [серебро, silver, Ag]
+- id: sulfates
+  node_type: Material
+  material_class: reagent
+  canonical_ru: сульфаты
+  canonical_en: sulfates
+  aliases: [сульфаты, sulfates, SO4, сульфат-ион]
+- id: chlorides
+  node_type: Material
+  material_class: reagent
+  canonical_ru: хлориды
+  canonical_en: chlorides
+  aliases: [хлориды, chlorides, Cl, хлорид-ион]
+- id: calcium
+  node_type: Material
+  material_class: reagent
+  canonical_ru: кальций
+  canonical_en: calcium
+  aliases: [кальций, calcium, Ca]
+- id: magnesium
+  node_type: Material
+  material_class: reagent
+  canonical_ru: магний
+  canonical_en: magnesium
+  aliases: [магний, magnesium, Mg]
+- id: sodium
+  node_type: Material
+  material_class: reagent
+  canonical_ru: натрий
+  canonical_en: sodium
+  aliases: [натрий, sodium, Na]
+- id: mine_water
+  node_type: Material
+  material_class: water
+  canonical_ru: шахтная вода
+  canonical_en: mine water
+  aliases: [шахтная вода, mine water, оборотная вода, process water, рудничная вода]
+- id: flue_gas
+  node_type: Material
+  material_class: gas
+  canonical_ru: отходящий газ
+  canonical_en: flue gas
+  aliases: [отходящий газ, flue gas, дымовой газ]
+- id: so2
+  node_type: Material
+  material_class: gas
+  canonical_ru: диоксид серы
+  canonical_en: sulfur dioxide
+  aliases: [SO2, сернистый газ, диоксид серы, sulfur dioxide, sulphur dioxide]
+- id: technogenic_gypsum
+  node_type: Material
+  material_class: waste
+  canonical_ru: техногенный гипс
+  canonical_en: technogenic gypsum
+  aliases: [техногенный гипс, technogenic gypsum, гипс]
+- id: coal_waste
+  node_type: Material
+  material_class: waste
+  canonical_ru: угольные отходы
+  canonical_en: coal waste
+  aliases: [угольные отходы, coal waste, угольный шлам]
+- id: tds
+  node_type: Property
+  canonical_ru: сухой остаток
+  canonical_en: total dissolved solids
+  aliases: [сухой остаток, TDS, total dissolved solids, солесодержание, минерализация]

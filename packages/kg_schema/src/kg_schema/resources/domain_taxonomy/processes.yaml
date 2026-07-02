@@ -1,0 +1,103 @@
+# Processes — RU/EN synonyms (§24.3). Each entry resolves to one canonical id.
+- id: electrowinning
+  node_type: TechnologySolution
+  domain: electrometallurgy
+  canonical_ru: электроэкстракция
+  canonical_en: electrowinning
+  aliases: [электроэкстракция, электролизное извлечение, electroextraction, electrowinning, EW, электровыделение]
+- id: electrorefining
+  node_type: TechnologySolution
+  domain: electrometallurgy
+  canonical_ru: электрорафинирование
+  canonical_en: electrorefining
+  aliases: [электрорафинирование, electrorefining, электролитическое рафинирование]
+- id: flash_smelting
+  node_type: TechnologySolution
+  domain: pyrometallurgy
+  canonical_ru: печь взвешенной плавки
+  canonical_en: flash smelting furnace
+  aliases: [ПВП, печь взвешенной плавки, взвешенная плавка, flash smelting, flash smelting furnace]
+- id: fluidized_bed
+  node_type: TechnologySolution
+  domain: pyrometallurgy
+  canonical_ru: печь кипящего слоя
+  canonical_en: fluidized bed furnace
+  aliases: [печь кипящего слоя, кипящий слой, fluidized bed furnace, fluidized bed]
+- id: leaching
+  node_type: TechnologySolution
+  domain: hydrometallurgy
+  canonical_ru: выщелачивание
+  canonical_en: leaching
+  aliases: [выщелачивание, leaching, автоклавное выщелачивание, pressure leaching]
+- id: heap_leaching
+  node_type: TechnologySolution
+  domain: hydrometallurgy
+  canonical_ru: кучное выщелачивание
+  canonical_en: heap leaching
+  aliases: [кучное выщелачивание, heap leaching, куча выщелачивания]
+- id: bioleaching
+  node_type: TechnologySolution
+  domain: hydrometallurgy
+  canonical_ru: биовыщелачивание
+  canonical_en: bioleaching
+  aliases: [биовыщелачивание, bioleaching, бактериальное выщелачивание]
+- id: flotation
+  node_type: TechnologySolution
+  domain: mineral_processing
+  canonical_ru: флотация
+  canonical_en: flotation
+  aliases: [флотация, flotation, флотационное обогащение]
+- id: desalination
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: обессоливание
+  canonical_en: desalination
+  aliases: [обессоливание, desalination, деминерализация, demineralization]
+- id: reverse_osmosis
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: обратный осмос
+  canonical_en: reverse osmosis
+  aliases: [обратный осмос, reverse osmosis, RO, обратноосмотическая мембрана]
+- id: ion_exchange
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: ионный обмен
+  canonical_en: ion exchange
+  aliases: [ионный обмен, ion exchange, ионообменная смола]
+- id: electrodialysis
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: электродиализ
+  canonical_en: electrodialysis
+  aliases: [электродиализ, electrodialysis, ЭД]
+- id: nanofiltration
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: нанофильтрация
+  canonical_en: nanofiltration
+  aliases: [нанофильтрация, nanofiltration, NF]
+- id: lime_softening
+  node_type: TechnologySolution
+  domain: water_treatment
+  canonical_ru: известкование
+  canonical_en: lime softening
+  aliases: [известкование, lime softening, известковое умягчение]
+- id: gas_cleaning
+  node_type: TechnologySolution
+  domain: environment
+  canonical_ru: газоочистка
+  canonical_en: gas cleaning
+  aliases: [газоочистка, gas cleaning, очистка газов]
+- id: so2_removal
+  node_type: TechnologySolution
+  domain: environment
+  canonical_ru: сероочистка
+  canonical_en: SO2 removal
+  aliases: [сероочистка, SO2 removal, десульфуризация, FGD, flue gas desulfurization, известняковая очистка, limestone scrubbing]
+- id: water_injection
+  node_type: TechnologySolution
+  domain: environment
+  canonical_ru: закачка шахтных вод
+  canonical_en: mine water injection
+  aliases: [закачка шахтных вод, mine water injection, deep well injection, закачка в глубокие горизонты]

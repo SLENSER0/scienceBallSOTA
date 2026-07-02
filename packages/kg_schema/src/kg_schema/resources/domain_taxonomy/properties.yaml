@@ -1,0 +1,99 @@
+# Properties / parameters — RU/EN synonyms (§24.3), canonical unit hints.
+- id: concentration
+  node_type: Property
+  property_class: concentration
+  default_unit: mg/L
+  canonical_ru: концентрация
+  canonical_en: concentration
+  aliases: [концентрация, concentration, содержание]
+- id: total_dissolved_solids
+  node_type: Property
+  property_class: concentration
+  default_unit: mg/L
+  canonical_ru: сухой остаток
+  canonical_en: total dissolved solids
+  aliases: [сухой остаток, TDS, total dissolved solids, солесодержание]
+- id: flow_velocity
+  node_type: Property
+  property_class: flow
+  default_unit: m/s
+  canonical_ru: скорость потока
+  canonical_en: flow velocity
+  aliases: [скорость потока, flow velocity, скорость циркуляции, circulation velocity]
+- id: flow_rate
+  node_type: Property
+  property_class: flow
+  default_unit: m^3/hour
+  canonical_ru: расход
+  canonical_en: flow rate
+  aliases: [расход, flow rate, производительность по расходу]
+- id: current_density
+  node_type: Property
+  property_class: electrochemical
+  default_unit: A/m^2
+  canonical_ru: плотность тока
+  canonical_en: current density
+  aliases: [плотность тока, current density]
+- id: voltage
+  node_type: Property
+  property_class: electrochemical
+  default_unit: V
+  canonical_ru: напряжение
+  canonical_en: voltage
+  aliases: [напряжение, voltage, cell voltage]
+- id: temperature
+  node_type: Property
+  property_class: temperature
+  default_unit: degC
+  canonical_ru: температура
+  canonical_en: temperature
+  aliases: [температура, temperature, T]
+- id: ph
+  node_type: Property
+  property_class: physicochemical
+  default_unit: ratio
+  canonical_ru: pH
+  canonical_en: pH
+  aliases: [pH, рН, водородный показатель]
+- id: recovery
+  node_type: Property
+  property_class: recovery
+  default_unit: percent
+  canonical_ru: извлечение
+  canonical_en: recovery
+  aliases: [извлечение, recovery, выход металла, metal yield]
+- id: removal_efficiency
+  node_type: Property
+  property_class: efficiency
+  default_unit: percent
+  canonical_ru: эффективность удаления
+  canonical_en: removal efficiency
+  aliases: [эффективность удаления, removal efficiency, степень очистки]
+- id: distribution_coefficient
+  node_type: Property
+  property_class: physicochemical
+  default_unit: ratio
+  canonical_ru: коэффициент распределения
+  canonical_en: distribution coefficient
+  aliases: [коэффициент распределения, distribution coefficient, partition coefficient, partition ratio]
+- id: capex
+  node_type: Property
+  property_class: economic
+  default_unit: MUSD
+  canonical_ru: капитальные затраты
+  canonical_en: CAPEX
+  aliases: [капитальные затраты, CAPEX, капзатраты]
+- id: opex
+  node_type: Property
+  property_class: economic
+  default_unit: MUSD
+  canonical_ru: эксплуатационные затраты
+  canonical_en: OPEX
+  aliases: [эксплуатационные затраты, OPEX, операционные затраты]
+- id: specific_energy_consumption
+  node_type: Property
+  property_class: energy
+  default_unit: kW*hour/t
+  canonical_ru: удельный расход энергии
+  canonical_en: specific energy consumption
+  aliases: [удельный расход энергии, specific energy consumption, энергопотребление]
