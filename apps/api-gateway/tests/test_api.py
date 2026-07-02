@@ -137,6 +137,23 @@ def test_comparison_cells_evidence_or_gap(client: TestClient) -> None:
                 assert cell.get("gap") is True or "evidence_ids" in cell
 
 
+def test_notifications_subscribe_and_fetch(client: TestClient) -> None:
+    tok = client.post(
+        "/api/v1/auth/login", json={"username": "subuser", "role": "researcher"}
+    ).json()["token"]
+    h = {"Authorization": f"Bearer {tok}"}
+    client.post(
+        "/api/v1/notifications/subscribe",
+        json={"topic": "циркуляция католита электроэкстракция никеля"},
+        headers=h,
+    )
+    subs = client.get("/api/v1/notifications/subscriptions", headers=h).json()["subscriptions"]
+    assert subs
+    notifs = client.get("/api/v1/notifications", headers=h).json()["notifications"]
+    # the seed has a catholyte-velocity contradiction → at least one notification
+    assert any("противоречие" in n["summary"] for n in notifs)
+
+
 def test_audit_log_records(client: TestClient) -> None:
     admin_tok = client.post(
         "/api/v1/auth/login", json={"username": "boss", "role": "admin"}

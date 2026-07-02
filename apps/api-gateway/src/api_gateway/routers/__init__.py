@@ -15,6 +15,7 @@ def attach_routers(app: FastAPI) -> None:
         export,
         gaps,
         graph,
+        notifications,
         query,
         search,
     )
@@ -22,6 +23,7 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(auth.router)
     app.include_router(query.router)
     app.include_router(comparison.router)
+    app.include_router(notifications.router)
     app.include_router(graph.router)
     app.include_router(graph.entities_router)
     app.include_router(search.router)
