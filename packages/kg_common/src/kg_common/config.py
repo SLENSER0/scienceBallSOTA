@@ -118,15 +118,11 @@ class Settings(BaseSettings):
 
     def ensure_runtime_dirs(self) -> None:
         """Create the embedded-store directories if missing (idempotent)."""
-        for p in (
-            self.kuzu_db_path,
-            self.qdrant_path,
-            self.bm25_path,
-            self.artifacts_dir,
-            self.uploads_dir,
-        ):
-            pathlib.Path(p).parent.mkdir(parents=True, exist_ok=True)
+        # Directory-style stores.
+        for p in (self.qdrant_path, self.bm25_path, self.artifacts_dir, self.uploads_dir):
             pathlib.Path(p).mkdir(parents=True, exist_ok=True)
+        # kuzu_db_path is a DB file Kuzu creates itself — only ensure its parent.
+        pathlib.Path(self.kuzu_db_path).parent.mkdir(parents=True, exist_ok=True)
 
 
 @functools.lru_cache(maxsize=1)

@@ -540,11 +540,11 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.4 Каталог node labels (§8.1)
 
-- [ ] Создать `packages/kg_schema/src/kg_schema/labels.py` с `StrEnum NodeLabel`, содержащим ровно все 33 label из §8.1: `Document, Paper, Section, Paragraph, Table, Figure, Chunk, Evidence, Claim, Finding, Experiment, Sample, Material, Alloy, ChemicalElement, Composition, ProcessingRegime, ProcessingStep, Parameter, Equipment, Lab, ResearchTeam, Person, Property, Measurement, Unit, Method, Dataset, Project, Decision, CurationEvent, Gap, Contradiction`.
-- [ ] Добавить служебные provenance-labels `ExtractorRun` и `GapScanRun` (появляются в §8.2) в отдельный `RunLabel` enum.
-- [ ] Ввести super-label `:Entity`, применяемый ко всем resolvable-сущностям (`Material, Alloy, Property, Equipment, Lab, Person, ResearchTeam, ProcessingRegime, Method, ChemicalElement`), так как `(:Chunk)-[:MENTIONS]->(:Entity)`, `(:Gap)-[:ABOUT]->(:Entity)` и vector index работают по `:Entity` (§8.2/§8.4). Определить множество `ENTITY_LABELS`.
-- [ ] Задать таблицу `LABEL_TO_ID_PREFIX` (например `Material→material`, `Experiment→exp`, `Evidence→ev`, `Document→doc`, `Property→property`) для deterministic ID (§3.8).
-- [ ] Написать тест-консистентность: множество классов LinkML-схемы == множество `NodeLabel` (плюс run-labels), иначе тест падает.
+- [x] Создать `packages/kg_schema/src/kg_schema/labels.py` с `StrEnum NodeLabel`, содержащим ровно все 33 label из §8.1: `Document, Paper, Section, Paragraph, Table, Figure, Chunk, Evidence, Claim, Finding, Experiment, Sample, Material, Alloy, ChemicalElement, Composition, ProcessingRegime, ProcessingStep, Parameter, Equipment, Lab, ResearchTeam, Person, Property, Measurement, Unit, Method, Dataset, Project, Decision, CurationEvent, Gap, Contradiction`.
+- [x] Добавить служебные provenance-labels `ExtractorRun` и `GapScanRun` (появляются в §8.2) в отдельный `RunLabel` enum.
+- [x] Ввести super-label `:Entity`, применяемый ко всем resolvable-сущностям (`Material, Alloy, Property, Equipment, Lab, Person, ResearchTeam, ProcessingRegime, Method, ChemicalElement`), так как `(:Chunk)-[:MENTIONS]->(:Entity)`, `(:Gap)-[:ABOUT]->(:Entity)` и vector index работают по `:Entity` (§8.2/§8.4). Определить множество `ENTITY_LABELS`.
+- [x] Задать таблицу `LABEL_TO_ID_PREFIX` (например `Material→material`, `Experiment→exp`, `Evidence→ev`, `Document→doc`, `Property→property`) для deterministic ID (§3.8).
+- [x] Написать тест-консистентность: множество классов LinkML-схемы == множество `NodeLabel` (плюс run-labels), иначе тест падает.
 
 **Критерий приёмки:** `set(NodeLabel) - linkml_classes == set()` и наоборот в тесте; каждый `NodeLabel` имеет запись в `LABEL_TO_ID_PREFIX`; для каждого label из `ENTITY_LABELS` в LinkML есть класс.
 
@@ -552,12 +552,12 @@ OSS для клонирования/вендоринга (§22):
 
 ### 3.5 Каталог relationships (§8.2)
 
-- [ ] Создать `packages/kg_schema/src/kg_schema/relationships.py` со `StrEnum RelType`, содержащим все rel-типы из §8.2: `HAS_SECTION, HAS_CHUNK, MENTIONS, FROM_CHUNK, FROM_TABLE, SUPPORTS, EXTRACTED_BY, REPORTS, USES_SAMPLE, HAS_MATERIAL, HAS_COMPOSITION, CONTAINS_ELEMENT, PROCESSED_BY, HAS_STEP, HAS_PARAMETER, USED_EQUIPMENT, PERFORMED_BY, PART_OF, MEMBER_OF, MEASURED, OF_PROPERTY, HAS_UNIT, SUPPORTED_BY, ABOUT_MATERIAL, ABOUT_PROPERTY, ABOUT_REGIME, CONTRADICTS, ABOUT, DETECTED_BY, AFFECTS, CHANGED`.
-- [ ] Для каждого rel-типа задать сигнатуру `(from_label, rel, to_label)` как декларативную таблицу `EDGE_SCHEMA` (например `(Chunk, MENTIONS, Entity)`, `(Measurement, OF_PROPERTY, Property)`, `(Claim, CONTRADICTS, Claim)`).
-- [ ] Пометить симметричность/направленность (например `CONTRADICTS` — логически симметричный, хранить как один направленный edge + правило чтения обоих направлений).
-- [ ] Разрешить расхождение источника `MEASURED`: §8.2 определяет `(:Experiment)-[:MEASURED]->(:Measurement)`, а шаблоны запросов/gap (§7.4/§11.2) обходят `(:Sample)-[:MEASURED]->(:Measurement)`. Зафиксировать в `EDGE_SCHEMA` каноническую сигнатуру (и, при необходимости, дополнительное ребро `Sample→MEASURED`), чтобы upsert (§3.8), read-шаблоны (§3.16) и gap-скан (§11) были консистентны; задокументировать выбор в `docs/graph_model.md`.
-- [ ] Определить обязательные свойства рёбер (provenance §3.7): `confidence`, `extractor_run_id`, `created_at`, `schema_version`, где применимо.
-- [ ] Написать тест: все `from_label`/`to_label` в `EDGE_SCHEMA` присутствуют в `NodeLabel`/`ENTITY_LABELS`; каждый `RelType` встречается в `EDGE_SCHEMA` минимум один раз.
+- [x] Создать `packages/kg_schema/src/kg_schema/relationships.py` со `StrEnum RelType`, содержащим все rel-типы из §8.2: `HAS_SECTION, HAS_CHUNK, MENTIONS, FROM_CHUNK, FROM_TABLE, SUPPORTS, EXTRACTED_BY, REPORTS, USES_SAMPLE, HAS_MATERIAL, HAS_COMPOSITION, CONTAINS_ELEMENT, PROCESSED_BY, HAS_STEP, HAS_PARAMETER, USED_EQUIPMENT, PERFORMED_BY, PART_OF, MEMBER_OF, MEASURED, OF_PROPERTY, HAS_UNIT, SUPPORTED_BY, ABOUT_MATERIAL, ABOUT_PROPERTY, ABOUT_REGIME, CONTRADICTS, ABOUT, DETECTED_BY, AFFECTS, CHANGED`.
+- [x] Для каждого rel-типа задать сигнатуру `(from_label, rel, to_label)` как декларативную таблицу `EDGE_SCHEMA` (например `(Chunk, MENTIONS, Entity)`, `(Measurement, OF_PROPERTY, Property)`, `(Claim, CONTRADICTS, Claim)`).
+- [x] Пометить симметричность/направленность (например `CONTRADICTS` — логически симметричный, хранить как один направленный edge + правило чтения обоих направлений).
+- [x] Разрешить расхождение источника `MEASURED`: §8.2 определяет `(:Experiment)-[:MEASURED]->(:Measurement)`, а шаблоны запросов/gap (§7.4/§11.2) обходят `(:Sample)-[:MEASURED]->(:Measurement)`. Зафиксировать в `EDGE_SCHEMA` каноническую сигнатуру (и, при необходимости, дополнительное ребро `Sample→MEASURED`), чтобы upsert (§3.8), read-шаблоны (§3.16) и gap-скан (§11) были консистентны; задокументировать выбор в `docs/graph_model.md`.
+- [x] Определить обязательные свойства рёбер (provenance §3.7): `confidence`, `extractor_run_id`, `created_at`, `schema_version`, где применимо.
+- [x] Написать тест: все `from_label`/`to_label` в `EDGE_SCHEMA` присутствуют в `NodeLabel`/`ENTITY_LABELS`; каждый `RelType` встречается в `EDGE_SCHEMA` минимум один раз.
 
 **Критерий приёмки:** тест валидности `EDGE_SCHEMA` зелёный; `set(RelType)` покрывает все рёбра из §8.2 без пропусков и лишних; utility `is_valid_edge(from_label, rel, to_label)` возвращает `True` для всех строк §8.2 и `False` для не описанных комбинаций.
 
@@ -601,17 +601,17 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует upsert rules §9.7: deterministic IDs, `MERGE` by canonical id, store extraction run id.
 
-- [ ] Реализовать `packages/kg_common/src/kg_common/ids.py` с чистыми функциями генерации deterministic ID вида `<prefix>:<slug-or-hash>` (например `material:al-cu-2024`, `property:hardness`, `exp:<hash>`, `ev:<uuid5>`), совместимо с примерами §6.2/§8.3/§9.6.
-- [ ] Задать канонические ключи для ID по типам: `Material` — нормализованный canonical_name/alloy designation; `Property` — canonical property vocab; `Equipment/Lab/Person` — normalized name; `ProcessingRegime` — (operation, temperature_c, time_h, atmosphere) хеш; `Measurement`/`Evidence` — `uuid5` от (doc_id, span, extractor_run).
-- [ ] Реализовать нормализацию строк для ключей (lowercase, unicode NFKC, схлопывание пробелов/дефисов) как единую функцию `canonical_key()`, покрыть тестами на алиасах из §9.6 (`Al-Cu 2024`, `AA2024`, `2024 aluminum alloy` → один candidate_id при merge, но каждый исходный mention сохраняется).
-- [ ] Реализовать Cypher `MERGE`-шаблоны в `apps/graph-service/cypher/upsert/` по одному на тип узла, использующие `MERGE (n:Label {id:$id}) ON CREATE SET ... ON MATCH SET ...`, с раздельными наборами `ON CREATE` / `ON MATCH` (не трогать reviewed поля на MATCH, §3.7).
-- [ ] Реализовать `MERGE`-шаблоны рёбер по `EDGE_SCHEMA` (§3.5) с `MERGE`-ключом на паре узлов + типе, установкой `extractor_run_id`, `confidence`, `created_at`.
-- [ ] Обеспечить идемпотентность upsert: повторный прогон того же extraction-батча не создаёт дубли узлов/рёбер (проверяется counts до/после).
-- [ ] Интегрировать `store extraction run id`: каждый upsert-вызов принимает `extractor_run_id`, пишет `EXTRACTED_BY`/edge-property.
-- [ ] Замапить entity-resolution выход §9.6 (`candidate_id`, `decision`) на upsert: `auto_merge` → merge под canonical id; `review_needed` → создать mention-узел + review task; `separate` → отдельный id. Задокументировать в `docs/merge_rules.md`.
-- [ ] Реализовать graph-level merge/split сущностей для endpoint-ов `POST /api/v1/entities/merge` и `POST /api/v1/entities/{entity_id}/aliases` (§6.2): перелинковка рёбер на canonical id (например `apoc.refactor.mergeNodes`), дозапись алиасов в `aliases`/`aliases_text` (§3.12), запись `CurationEvent`(action=merge/split/alias_add, §3.7) и сохранение merge/split history (§16 Phase 3 «merge history is preserved», §5.2.4). Не сливать пары, помеченные `separate`.
-- [ ] (Опц.) Использовать `apoc.merge.node`/`apoc.merge.relationship` там, где label/тип определяется динамически из `NodeLabel`/`EDGE_SCHEMA`, сохраняя раздельные `ON CREATE`/`ON MATCH` семантики и защиту reviewed-полей (§3.7).
-- [ ] Написать property-based тест детерминизма: одинаковый вход → идентичный id всегда; разный порядок mentions не влияет на id.
+- [x] Реализовать `packages/kg_common/src/kg_common/ids.py` с чистыми функциями генерации deterministic ID вида `<prefix>:<slug-or-hash>` (например `material:al-cu-2024`, `property:hardness`, `exp:<hash>`, `ev:<uuid5>`), совместимо с примерами §6.2/§8.3/§9.6.
+- [x] Задать канонические ключи для ID по типам: `Material` — нормализованный canonical_name/alloy designation; `Property` — canonical property vocab; `Equipment/Lab/Person` — normalized name; `ProcessingRegime` — (operation, temperature_c, time_h, atmosphere) хеш; `Measurement`/`Evidence` — `uuid5` от (doc_id, span, extractor_run).
+- [x] Реализовать нормализацию строк для ключей (lowercase, unicode NFKC, схлопывание пробелов/дефисов) как единую функцию `canonical_key()`, покрыть тестами на алиасах из §9.6 (`Al-Cu 2024`, `AA2024`, `2024 aluminum alloy` → один candidate_id при merge, но каждый исходный mention сохраняется).
+- [x] Реализовать Cypher `MERGE`-шаблоны в `apps/graph-service/cypher/upsert/` по одному на тип узла, использующие `MERGE (n:Label {id:$id}) ON CREATE SET ... ON MATCH SET ...`, с раздельными наборами `ON CREATE` / `ON MATCH` (не трогать reviewed поля на MATCH, §3.7).
+- [x] Реализовать `MERGE`-шаблоны рёбер по `EDGE_SCHEMA` (§3.5) с `MERGE`-ключом на паре узлов + типе, установкой `extractor_run_id`, `confidence`, `created_at`.
+- [x] Обеспечить идемпотентность upsert: повторный прогон того же extraction-батча не создаёт дубли узлов/рёбер (проверяется counts до/после).
+- [x] Интегрировать `store extraction run id`: каждый upsert-вызов принимает `extractor_run_id`, пишет `EXTRACTED_BY`/edge-property.
+- [x] Замапить entity-resolution выход §9.6 (`candidate_id`, `decision`) на upsert: `auto_merge` → merge под canonical id; `review_needed` → создать mention-узел + review task; `separate` → отдельный id. Задокументировать в `docs/merge_rules.md`.
+- [x] Реализовать graph-level merge/split сущностей для endpoint-ов `POST /api/v1/entities/merge` и `POST /api/v1/entities/{entity_id}/aliases` (§6.2): перелинковка рёбер на canonical id (например `apoc.refactor.mergeNodes`), дозапись алиасов в `aliases`/`aliases_text` (§3.12), запись `CurationEvent`(action=merge/split/alias_add, §3.7) и сохранение merge/split history (§16 Phase 3 «merge history is preserved», §5.2.4). Не сливать пары, помеченные `separate`.
+- [x] (Опц.) Использовать `apoc.merge.node`/`apoc.merge.relationship` там, где label/тип определяется динамически из `NodeLabel`/`EDGE_SCHEMA`, сохраняя раздельные `ON CREATE`/`ON MATCH` семантики и защиту reviewed-полей (§3.7).
+- [x] Написать property-based тест детерминизма: одинаковый вход → идентичный id всегда; разный порядок mentions не влияет на id.
 
 **Критерий приёмки:** двойной прогон одного extraction-батча даёт неизменные `count(nodes)`/`count(relationships)` (идемпотентность); `canonical_key("Al-Cu 2024")==canonical_key("AA2024 alloy")` в соответствии с тестовым словарём; каждый upsert-ребро имеет `extractor_run_id`; unit-тесты `ids.py` зелёные.
 
@@ -738,14 +738,14 @@ OSS для клонирования/вендоринга (§22):
 
 Реализует Phase 0 задачи «create initial graph labels/relations», «create example seed script», acceptance «Neo4j has sample graph».
 
-- [ ] Написать seed-скрипт `infra/neo4j/seed/seed_graph.py`, создающий репрезентативный мини-граф (пример из §6.2: `Material Al-Cu 2024` → `ProcessingRegime aging 180°C 2h` → `Measurement Vickers hardness 148 HV` c `Evidence`, `Experiment`, `Paper`, `Lab`, `Gap missing_baseline`).
-- [ ] Использовать в seed именно deterministic ID и `MERGE`-шаблоны (§3.8), чтобы seed был идемпотентен и служил тестом upsert-слоя.
-- [ ] Проставить в seed полный provenance (`confidence`, `extractor_run_id`, `schema_version`, `review_status`) и связать `Evidence` (evidence-first §3.6).
-- [ ] Добавить в seed примеры `Gap`, `Contradiction`, `Claim CONTRADICTS Claim` для проверки §11/§17 узлов.
-- [ ] Засеять контролируемые словари как canonical-узлы: `Property`/`Method`/`ProcessingOperation` из Propnet/Matscholar/MatKG (с mappings §3.2) и `ChemicalElement` из pymatgen periodic table — общий словарь для extraction (§9.4) и entity resolution (§9.6/Phase 3 «build property vocabulary»), с deterministic ID (§3.8).
-- [ ] Написать e2e smoke-тест: применить миграции → seed → выполнить canonical запрос `material_regime_property` (§6.2) и убедиться, что возвращается measurement с evidence_ids; убедиться, что fulltext находит материал по алиасу, а vector-index работает после записи embeddings.
-- [ ] Интегрировать применение миграций + seed + smoke в CI (GitHub Actions/pytest job), поднимающий Neo4j через docker compose.
-- [ ] Написать validation-скрипт целостности графа: 0 factual-узлов без Evidence, 0 узлов без `id`, 0 рёбер с невалидной сигнатурой, 0 узлов без `schema_version`.
+- [x] Написать seed-скрипт `infra/neo4j/seed/seed_graph.py`, создающий репрезентативный мини-граф (пример из §6.2: `Material Al-Cu 2024` → `ProcessingRegime aging 180°C 2h` → `Measurement Vickers hardness 148 HV` c `Evidence`, `Experiment`, `Paper`, `Lab`, `Gap missing_baseline`).
+- [x] Использовать в seed именно deterministic ID и `MERGE`-шаблоны (§3.8), чтобы seed был идемпотентен и служил тестом upsert-слоя.
+- [x] Проставить в seed полный provenance (`confidence`, `extractor_run_id`, `schema_version`, `review_status`) и связать `Evidence` (evidence-first §3.6).
+- [x] Добавить в seed примеры `Gap`, `Contradiction`, `Claim CONTRADICTS Claim` для проверки §11/§17 узлов.
+- [x] Засеять контролируемые словари как canonical-узлы: `Property`/`Method`/`ProcessingOperation` из Propnet/Matscholar/MatKG (с mappings §3.2) и `ChemicalElement` из pymatgen periodic table — общий словарь для extraction (§9.4) и entity resolution (§9.6/Phase 3 «build property vocabulary»), с deterministic ID (§3.8).
+- [x] Написать e2e smoke-тест: применить миграции → seed → выполнить canonical запрос `material_regime_property` (§6.2) и убедиться, что возвращается measurement с evidence_ids; убедиться, что fulltext находит материал по алиасу, а vector-index работает после записи embeddings.
+- [x] Интегрировать применение миграций + seed + smoke в CI (GitHub Actions/pytest job), поднимающий Neo4j через docker compose.
+- [x] Написать validation-скрипт целостности графа: 0 factual-узлов без Evidence, 0 узлов без `id`, 0 рёбер с невалидной сигнатурой, 0 узлов без `schema_version`.
 
 **Критерий приёмки:** `python infra/neo4j/seed/seed_graph.py` идемпотентен (повторный запуск не меняет counts); e2e smoke-тест зелёный (canonical query возвращает 148 HV с evidence_ids; fulltext по `AA2024` находит материал; vector self-nearest проходит); validation-скрипт возвращает 0 нарушений; Reagraph рендерит seed-граф (Phase 0 acceptance).
 
