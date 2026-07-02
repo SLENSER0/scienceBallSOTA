@@ -26,8 +26,7 @@ def material_spec() -> ModelSpec:
                         # empty-string literals use single quotes; "" would be a
                         # zero-length SQL identifier and fail to parse in DuckDB.
                         "sql_condition": (
-                            "\"normalized_formula_l\" = '' "
-                            "OR \"normalized_formula_r\" = ''"
+                            "\"normalized_formula_l\" = '' OR \"normalized_formula_r\" = ''"
                         ),
                         "label_for_charts": "null/empty",
                         "is_null_level": True,

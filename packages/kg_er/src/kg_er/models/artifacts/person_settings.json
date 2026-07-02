@@ -1,0 +1,18 @@
+{
+  "entity_type": "Person",
+  "link_type": "dedupe_only",
+  "random_seed": 42,
+  "backend": "deterministic",
+  "comparisons": [
+    "ExactMatch",
+    "JaroWinklerAtThresholds",
+    "ExactMatch",
+    "ExactMatch"
+  ],
+  "n_blocking_rules": 2,
+  "thresholds": {
+    "auto_merge": 0.95,
+    "review": 0.8
+  },
+  "schema_version": "0.1.0"
+}

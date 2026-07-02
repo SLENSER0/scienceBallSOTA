@@ -67,6 +67,24 @@ def mark_sections(sec_ids: list[str]) -> int:
     return changed
 
 
+def mark_secmatch(sec_id: str, needles: list[str]) -> int:
+    """Mark only tasks within one subsection whose text contains any needle."""
+    lines = _load()
+    bounds = _section_bounds(lines, sec_id)
+    if bounds is None:
+        print(f"  !! section {sec_id} not found")
+        return 0
+    start, end = bounds
+    changed = 0
+    for i in range(start, end):
+        if BOX.match(lines[i]) and any(n.lower() in lines[i].lower() for n in needles):
+            lines[i] = BOX.sub(r"\1- [x] ", lines[i], count=1)
+            changed += 1
+    _save(lines)
+    print(f"  section {sec_id}: matched+marked {changed}")
+    return changed
+
+
 def mark_match(needles: list[str]) -> int:
     lines = _load()
     changed = 0
@@ -118,6 +136,9 @@ def main() -> None:
         stats()
     elif cmd == "match":
         mark_match(sys.argv[2:])
+        stats()
+    elif cmd == "secmatch":
+        mark_secmatch(sys.argv[2], sys.argv[3:])
         stats()
     else:
         print(__doc__)

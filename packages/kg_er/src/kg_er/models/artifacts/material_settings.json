@@ -1,0 +1,17 @@
+{
+  "entity_type": "Material",
+  "link_type": "dedupe_only",
+  "random_seed": 42,
+  "backend": "deterministic",
+  "comparisons": [
+    "JaroWinklerAtThresholds",
+    "CustomComparison",
+    "ExactMatch"
+  ],
+  "n_blocking_rules": 3,
+  "thresholds": {
+    "auto_merge": 0.93,
+    "review": 0.75
+  },
+  "schema_version": "0.1.0"
+}

@@ -1,0 +1,18 @@
+{
+  "entity_type": "Lab",
+  "link_type": "dedupe_only",
+  "random_seed": 42,
+  "backend": "deterministic",
+  "comparisons": [
+    "JaroWinklerAtThresholds",
+    "JaroWinklerAtThresholds",
+    "ExactMatch",
+    "ExactMatch"
+  ],
+  "n_blocking_rules": 2,
+  "thresholds": {
+    "auto_merge": 0.9,
+    "review": 0.72
+  },
+  "schema_version": "0.1.0"
+}

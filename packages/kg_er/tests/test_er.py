@@ -140,3 +140,14 @@ def test_splink_backend_runs() -> None:
     r = resolve("Material", MATERIALS, backend="splink")
     assert r.model_card["backend"] in {"splink", "deterministic_fallback"}
     assert r.n_input == 5
+
+
+# ---- model artifacts (§8.4/§8.5 versioned settings) ----------------------
+def test_model_artifacts_roundtrip(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from kg_er.models.artifacts import build_card, load_settings, save_settings
+
+    save_settings("Material", tmp_path)
+    card = load_settings("Material", tmp_path)
+    assert card == build_card("Material")
+    assert card["thresholds"]["auto_merge"] > card["thresholds"]["review"]
+    assert card["random_seed"] == 42
