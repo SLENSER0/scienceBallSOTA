@@ -959,13 +959,19 @@ name = "kg-eval"
 version = "0.1.0"
 source = { editable = "packages/kg_eval" }
 dependencies = [
+    { name = "agent-service" },
     { name = "kg-common" },
+    { name = "kg-extractors" },
+    { name = "kg-retrievers" },
     { name = "kg-schema" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "agent-service", editable = "apps/agent-service" },
     { name = "kg-common", editable = "packages/kg_common" },
+    { name = "kg-extractors", editable = "packages/kg_extractors" },
+    { name = "kg-retrievers", editable = "packages/kg_retrievers" },
     { name = "kg-schema", editable = "packages/kg_schema" },
 ]
 

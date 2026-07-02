@@ -94,7 +94,7 @@
   domain: environment
   canonical_ru: сероочистка
   canonical_en: SO2 removal
-  aliases: [сероочистка, SO2 removal, десульфуризация, FGD, flue gas desulfurization, известняковая очистка, limestone scrubbing]
+  aliases: [сероочистка, SO2 removal, десульфуризация, FGD, flue gas desulfurization, известняковая очистка, limestone scrubbing, удаление SO2, удаление серы, sulfur removal, очистка от SO2]
 - id: water_injection
   node_type: TechnologySolution
   domain: environment

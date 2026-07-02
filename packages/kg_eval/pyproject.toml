@@ -7,6 +7,9 @@ readme = "README.md"
 dependencies = [
     "kg-common",
     "kg-schema",
+    "kg-extractors",
+    "kg-retrievers",
+    "agent-service",
 ]
 
 [build-system]
@@ -19,3 +22,6 @@ packages = ["src/kg_eval"]
 [tool.uv.sources]
 kg-common = { workspace = true }
 kg-schema = { workspace = true }
+kg-extractors = { workspace = true }
+kg-retrievers = { workspace = true }
+agent-service = { workspace = true }
