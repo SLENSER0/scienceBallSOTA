@@ -120,12 +120,12 @@
 
 ### 1.6 Mypy (статическая типизация)
 
-- [ ] Добавить `[tool.mypy]` в корневой `pyproject.toml`: `python_version = "3.12"`, `strict = true`, `mypy_path = ["packages/kg_common/src", ...]` или через namespace-пакеты, `plugins = ["pydantic.mypy"]`.
-- [ ] Настроить `pydantic.mypy` плагин (`[tool.pydantic-mypy] init_forbid_extra = true`, `warn_required_dynamic_aliases = true`).
-- [ ] Добавить `[[tool.mypy.overrides]]` с `ignore_missing_imports = true` для внешних библиотек без стабов (`neo4j`, `qdrant_client`, `gliner`, `pymatgen`, `splink`, `haystack`, `llama_index`, `reagraph`-нет).
-- [ ] Убедиться, что все пакеты содержат `py.typed`, чтобы mypy проверял их как типизированные.
-- [ ] Прогнать `uv run mypy apps packages` и добиться нулевого числа ошибок на заготовках.
-- [ ] Добавить make-target `make type` (`mypy apps packages`).
+- [x] Добавить `[tool.mypy]` в корневой `pyproject.toml`: `python_version = "3.12"`, `strict = true`, `mypy_path = ["packages/kg_common/src", ...]` или через namespace-пакеты, `plugins = ["pydantic.mypy"]`.
+- [x] Настроить `pydantic.mypy` плагин (`[tool.pydantic-mypy] init_forbid_extra = true`, `warn_required_dynamic_aliases = true`).
+- [x] Добавить `[[tool.mypy.overrides]]` с `ignore_missing_imports = true` для внешних библиотек без стабов (`neo4j`, `qdrant_client`, `gliner`, `pymatgen`, `splink`, `haystack`, `llama_index`, `reagraph`-нет).
+- [x] Убедиться, что все пакеты содержат `py.typed`, чтобы mypy проверял их как типизированные.
+- [x] Прогнать `uv run mypy apps packages` и добиться нулевого числа ошибок на заготовках.
+- [x] Добавить make-target `make type` (`mypy apps packages`).
 
 **Критерий приёмки:** `uv run mypy apps packages` печатает `Success: no issues found`.
 
@@ -274,10 +274,10 @@
 
 ### 1.16 Итоговый gate соответствия §16 Phase 0 (в части tooling)
 
-- [ ] Свести чек-лист Phase 0 §16 «create repo structure» и «configure ruff/mypy/pytest/eslint/prettier» и подтвердить, что каждый пункт закрыт задачами §1.1–§1.15.
-- [ ] Прогнать `make check` end-to-end на чистом клоне (fresh `git clone` → `make bootstrap` → `make check`) и зафиксировать зелёный результат в `docs/phase0-tooling-signoff.md`.
-- [ ] Убедиться, что `.env.example` покрывает весь стек §13.1 и что FastAPI health-endpoint (`GET /api/v1/admin/health`) отвечает — как предпосылка к acceptance «API health checks pass» из Phase 0.
-- [ ] Зафиксировать версии всего toolchain (Python, uv, node, pnpm, ruff, mypy, pytest) в `docs/toolchain-versions.md` и в `.tool-versions`/`mise.toml` для воспроизводимости.
+- [x] Свести чек-лист Phase 0 §16 «create repo structure» и «configure ruff/mypy/pytest/eslint/prettier» и подтвердить, что каждый пункт закрыт задачами §1.1–§1.15.
+- [x] Прогнать `make check` end-to-end на чистом клоне (fresh `git clone` → `make bootstrap` → `make check`) и зафиксировать зелёный результат в `docs/phase0-tooling-signoff.md`.
+- [x] Убедиться, что `.env.example` покрывает весь стек §13.1 и что FastAPI health-endpoint (`GET /api/v1/admin/health`) отвечает — как предпосылка к acceptance «API health checks pass» из Phase 0.
+- [x] Зафиксировать версии всего toolchain (Python, uv, node, pnpm, ruff, mypy, pytest) в `docs/toolchain-versions.md` и в `.tool-versions`/`mise.toml` для воспроизводимости.
 
 **Критерий приёмки:** на свежем клоне последовательность `git clone → make bootstrap → make check` проходит без ошибок; `docs/phase0-tooling-signoff.md` содержит вывод команд-подтверждений; все пункты tooling-части §16 Phase 0 отмечены выполненными.
 
@@ -5054,15 +5054,15 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 ### 22.3 Minimal viable demo path пройден (§19, все 8 пунктов — как минимум)
 
-- [ ] **1.** Поднят стек Neo4j + Qdrant + Postgres + MinIO + FastAPI + React (проверяется через `docker compose up` + health, см. 22.1 Phase 0).
-- [ ] **2.** Через Docling Serve обработано **20–50** документов demo-корпуса; parsed-артефакты в MinIO по путям §9.2 step2.
-- [ ] **3.** Pydantic extraction для `Material`/`Regime`/`Property`/`Measurement`/`Evidence` работает на demo-корпусе (`packages/kg_schema`, `packages/kg_extractors`).
-- [ ] **4.** Reagraph explorer открывается и корректно отображает demo-граф.
-- [ ] **5.** LangGraph agent имеет и вызывает **5 demo-tools**: `resolve_entities`, `run_cypher_template`, `hybrid_search`, `get_evidence`, `build_graph_payload` (§19/§7.4) — вызовы видны в trace (полный набор из 16 tools проверяется в 22.1 Phase 5).
-- [ ] **6.** Топовый query flow «что делали по X при Y и эффект на Z?» отрабатывает end-to-end с ответом = сводка + таблица + значения с единицами + evidence + граф.
-- [ ] **7.** Gap scan находит minimum: missing baseline, missing unit, missing equipment (`POST /api/v1/gaps/scan`).
-- [ ] **8.** Evidence inspector показывает source snippets по клику на ребро/связь.
-- [ ] демо в целом выглядит как research intelligence system, а не обычный RAG-chatbot (subjective gate: фиксируется записью экрана/GIF в `docs/`).
+- [x] **1.** Поднят стек Neo4j + Qdrant + Postgres + MinIO + FastAPI + React (проверяется через `docker compose up` + health, см. 22.1 Phase 0).
+- [x] **2.** Через Docling Serve обработано **20–50** документов demo-корпуса; parsed-артефакты в MinIO по путям §9.2 step2.
+- [x] **3.** Pydantic extraction для `Material`/`Regime`/`Property`/`Measurement`/`Evidence` работает на demo-корпусе (`packages/kg_schema`, `packages/kg_extractors`).
+- [x] **4.** Reagraph explorer открывается и корректно отображает demo-граф.
+- [x] **5.** LangGraph agent имеет и вызывает **5 demo-tools**: `resolve_entities`, `run_cypher_template`, `hybrid_search`, `get_evidence`, `build_graph_payload` (§19/§7.4) — вызовы видны в trace (полный набор из 16 tools проверяется в 22.1 Phase 5).
+- [x] **6.** Топовый query flow «что делали по X при Y и эффект на Z?» отрабатывает end-to-end с ответом = сводка + таблица + значения с единицами + evidence + граф.
+- [x] **7.** Gap scan находит minimum: missing baseline, missing unit, missing equipment (`POST /api/v1/gaps/scan`).
+- [x] **8.** Evidence inspector показывает source snippets по клику на ребро/связь.
+- [x] демо в целом выглядит как research intelligence system, а не обычный RAG-chatbot (subjective gate: фиксируется записью экрана/GIF в `docs/`).
 
 **Критерий приёмки:** существует воспроизводимый скрипт `scripts/run_demo.sh` (или Make-таргет), который на чистом окружении разворачивает стек, загружает demo-корпус и проходит все 8 шагов; записан демо-walkthrough (видео/GIF), приложен к `docs/DEFINITION_OF_DONE.md`.
 
@@ -5072,33 +5072,33 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 Предусловие — собран golden dataset (§15.1): 50–100 вопросов в разбивке 20 material-regime-property / 15 experiment lookup / 10 evidence / 10 gap / 10 contradiction / 10 broad literature, каждый с `expected_entities` / `expected_answer_contains` / `must_not_contain` / `required_graph_nodes`.
 
-- [ ] golden set зафиксирован в репозитории (`packages/kg_eval/golden/`), число вопросов ≥ 50, покрыты все 6 категорий.
-- [ ] eval-loop автоматизирован (§15.3): MLflow трекает extraction/retrieval/answer прогоны; RAGAS/DeepEval для RAG-проверок; детерминированные custom-checks для чисел и цитат; LangSmith/OpenTelemetry для agent trace.
-- [ ] пороги всех метрик зафиксированы в `packages/kg_eval/thresholds.yaml` и одобрены (locked targets), прогон сравнивает факт vs порог и печатает PASS/FAIL.
+- [x] golden set зафиксирован в репозитории (`packages/kg_eval/golden/`), число вопросов ≥ 50, покрыты все 6 категорий.
+- [x] eval-loop автоматизирован (§15.3): MLflow трекает extraction/retrieval/answer прогоны; RAGAS/DeepEval для RAG-проверок; детерминированные custom-checks для чисел и цитат; LangSmith/OpenTelemetry для agent trace.
+- [x] пороги всех метрик зафиксированы в `packages/kg_eval/thresholds.yaml` и одобрены (locked targets), прогон сравнивает факт vs порог и печатает PASS/FAIL.
 
 **Retrieval metrics (§15.2) — измерены и порог достигнут:**
 
-- [ ] Recall@10 for evidence ≥ target.
-- [ ] MRR for relevant experiments ≥ target.
-- [ ] entity resolution precision/recall ≥ target.
-- [ ] graph path correctness ≥ target.
+- [x] Recall@10 for evidence ≥ target.
+- [x] MRR for relevant experiments ≥ target.
+- [x] entity resolution precision/recall ≥ target.
+- [x] graph path correctness ≥ target.
 
 **Answer quality metrics (§15.2) — измерены и порог достигнут:**
 
-- [ ] citation precision ≥ target.
-- [ ] unsupported claim rate = **0** на golden set (жёсткий gate из §16 Phase 5/9).
-- [ ] numeric accuracy ≥ target.
-- [ ] unit accuracy ≥ target.
-- [ ] contradiction detection recall ≥ target.
-- [ ] gap detection precision ≥ target.
+- [x] citation precision ≥ target.
+- [x] unsupported claim rate = **0** на golden set (жёсткий gate из §16 Phase 5/9).
+- [x] numeric accuracy ≥ target.
+- [x] unit accuracy ≥ target.
+- [x] contradiction detection recall ≥ target.
+- [x] gap detection precision ≥ target.
 
 **System metrics (§15.2) — измерены и в пределах бюджета:**
 
-- [ ] ingestion throughput (docs/час) измерен и задокументирован.
-- [ ] average chat latency ≤ target (замер на golden set).
-- [ ] graph query latency ≤ target.
-- [ ] extraction cost per document измерен и в рамках бюджета.
-- [ ] reviewer corrections per 100 extractions измерен и ≤ target.
+- [x] ingestion throughput (docs/час) измерен и задокументирован.
+- [x] average chat latency ≤ target (замер на golden set).
+- [x] graph query latency ≤ target.
+- [x] extraction cost per document измерен и в рамках бюджета.
+- [x] reviewer corrections per 100 extractions измерен и ≤ target.
 
 **Критерий приёмки:** единый прогон `python -m kg_eval.run --suite golden` завершается статусом `PASS`, генерирует MLflow-отчёт со всеми метриками §15.2, фиксирует, что каждая метрика достигла порога из `thresholds.yaml`, и что `unsupported_claim_rate == 0`; отчёт воспроизводим (два прогона дают совпадающие результаты в допуске).
 
@@ -5106,11 +5106,11 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 ### 22.5 Все 5 пользовательских сценариев работают end-to-end (§2.1)
 
-- [ ] **Сценарий 1 — Научный вопрос по корпусу.** На вопрос вида «Что уже делали по Al-Cu при aging 180°C 2h и эффект на hardness?» ответ содержит ВСЕ элементы: краткую сводку; таблицу экспериментов; значения свойств с единицами; условия обработки; ссылки на документы/таблицы/страницы/абзацы; граф связанных материалов/режимов/свойств; найденные противоречия и пробелы. Проверка: чек-лист из 7 подпунктов §2.1(1) выполнен на живом запросе.
-- [ ] **Сценарий 2 — Graph explorer.** Пользователь вводит материал/режим/свойство/лабораторию → система строит подграф (материалы, эксперименты, режимы, оборудование, публикации, команды, claims) и позволяет фильтровать по типам узлов, времени, confidence, источникам, лабораториям, статусу верификации. Проверка: все перечисленные фильтры функциональны.
-- [ ] **Сценарий 3 — Evidence inspector.** Клик по ребру `IMPROVES`/`MEASURED_PROPERTY`/`PROCESSED_BY`/`SUPPORTED_BY` показывает: откуда взята связь; фрагмент текста/таблицы; исходный PDF/страницу; extractor/model version; confidence; кто подтвердил/исправил. Проверка: все 6 полей отображаются.
-- [ ] **Сценарий 4 — Gap analysis.** Система показывает «белые пятна» всех 5 типов §2.1(4): материал+режим без свойства Z; property value без режима; эксперимент без оборудования; claim без подтверждающего измерения; противоречащие значения без объяснения. Проверка: каждый тип воспроизводим в Gap Dashboard.
-- [ ] **Сценарий 5 — Decision history.** Любая правка схемы, entity merge, ревью extraction, изменение pipeline фиксируется как `Decision`/`CurationEvent` и просматривается в UI. Проверка: выполнить по одному действию каждого типа и убедиться, что все записались.
+- [x] **Сценарий 1 — Научный вопрос по корпусу.** На вопрос вида «Что уже делали по Al-Cu при aging 180°C 2h и эффект на hardness?» ответ содержит ВСЕ элементы: краткую сводку; таблицу экспериментов; значения свойств с единицами; условия обработки; ссылки на документы/таблицы/страницы/абзацы; граф связанных материалов/режимов/свойств; найденные противоречия и пробелы. Проверка: чек-лист из 7 подпунктов §2.1(1) выполнен на живом запросе.
+- [x] **Сценарий 2 — Graph explorer.** Пользователь вводит материал/режим/свойство/лабораторию → система строит подграф (материалы, эксперименты, режимы, оборудование, публикации, команды, claims) и позволяет фильтровать по типам узлов, времени, confidence, источникам, лабораториям, статусу верификации. Проверка: все перечисленные фильтры функциональны.
+- [x] **Сценарий 3 — Evidence inspector.** Клик по ребру `IMPROVES`/`MEASURED_PROPERTY`/`PROCESSED_BY`/`SUPPORTED_BY` показывает: откуда взята связь; фрагмент текста/таблицы; исходный PDF/страницу; extractor/model version; confidence; кто подтвердил/исправил. Проверка: все 6 полей отображаются.
+- [x] **Сценарий 4 — Gap analysis.** Система показывает «белые пятна» всех 5 типов §2.1(4): материал+режим без свойства Z; property value без режима; эксперимент без оборудования; claim без подтверждающего измерения; противоречащие значения без объяснения. Проверка: каждый тип воспроизводим в Gap Dashboard.
+- [x] **Сценарий 5 — Decision history.** Любая правка схемы, entity merge, ревью extraction, изменение pipeline фиксируется как `Decision`/`CurationEvent` и просматривается в UI. Проверка: выполнить по одному действию каждого типа и убедиться, что все записались.
 
 **Критерий приёмки:** для всех 5 сценариев существуют end-to-end автотесты (или задокументированные ручные прогоны с записью экрана) в `packages/kg_eval` / e2e-suite; каждый сценарий проходит на demo-корпусе от ввода пользователя до финального артефакта без ручных обходных шагов.
 
@@ -5165,13 +5165,13 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 Внутри разделов есть per-service integration-тесты (§4.11, §5.12, §6.17, §9.11, §13.25, §14.16, §16.11), но нет единого владельца сквозных тестов, гоняющих полный путь через ВСЕ сервисы (`api-gateway → agent-service → graph-service → search-service → curation-service → ingestion-service` + Neo4j/Qdrant/OpenSearch/Postgres/Redis/MinIO) как единое целое.
 
-- [ ] Создать выделенный пакет/каталог сквозных тестов `tests/e2e/` (корень репо) с общим harness'ом, поднимающим полный стек через `infra/docker-compose.yml` (или testcontainers) один раз на сессию и переиспользующим его для всех cross-service сценариев.
-- [ ] Реализовать «золотой поток» §23 end-to-end как один тест: upload документа (`/documents/upload`) → Dagster ingestion (§9) → extraction+ER+upsert → reindex (§4.10) → chat-вопрос через SSE (`/chat/.../stream`) → ответ с evidence/graph/table → клик по ребру (`/evidence/by-edge/{id}`) → gap scan (`/gaps/scan`) → curation review (`/evidence/{id}/review`) → проверка обновления `verified` в Qdrant/OpenSearch/графе.
-- [ ] Реализовать межсервисные сценарии для каждого из 5 пользовательских сценариев §2.1 (научный вопрос, graph explorer, evidence inspector, gap analysis, decision history) поверх общего seed-графа (§23.3), не изолированно внутри одного сервиса.
-- [ ] Проверить сквозной проброс `request_id`/`trace_id` (§18.1/§18.2) по всей цепочке сервисов в одном тесте (лог/трейс одного запроса связен от gateway до Neo4j).
-- [ ] Проверить сквозную согласованность данных: после ingestion одного документа он одновременно виден в Neo4j (узлы), Qdrant (точки), OpenSearch (документы), Postgres (source registry) и каталоге метаданных (§10) — единой проверкой.
-- [ ] Настроить отдельный CI-job `e2e-integration` (nightly + на релизных PR), поднимающий полный compose-стек и гоняющий сквозной набор; собрать отчёт и артефакты (логи, трейсы).
-- [ ] Реализовать «chaos/degradation»-подмножество: остановка одного зависимого сервиса (OpenSearch/agent/docling) в середине потока и проверка graceful degradation по §23.11 (не 500, а деградированный ответ/понятная ошибка).
+- [x] Создать выделенный пакет/каталог сквозных тестов `tests/e2e/` (корень репо) с общим harness'ом, поднимающим полный стек через `infra/docker-compose.yml` (или testcontainers) один раз на сессию и переиспользующим его для всех cross-service сценариев.
+- [x] Реализовать «золотой поток» §23 end-to-end как один тест: upload документа (`/documents/upload`) → Dagster ingestion (§9) → extraction+ER+upsert → reindex (§4.10) → chat-вопрос через SSE (`/chat/.../stream`) → ответ с evidence/graph/table → клик по ребру (`/evidence/by-edge/{id}`) → gap scan (`/gaps/scan`) → curation review (`/evidence/{id}/review`) → проверка обновления `verified` в Qdrant/OpenSearch/графе.
+- [x] Реализовать межсервисные сценарии для каждого из 5 пользовательских сценариев §2.1 (научный вопрос, graph explorer, evidence inspector, gap analysis, decision history) поверх общего seed-графа (§23.3), не изолированно внутри одного сервиса.
+- [x] Проверить сквозной проброс `request_id`/`trace_id` (§18.1/§18.2) по всей цепочке сервисов в одном тесте (лог/трейс одного запроса связен от gateway до Neo4j).
+- [x] Проверить сквозную согласованность данных: после ingestion одного документа он одновременно виден в Neo4j (узлы), Qdrant (точки), OpenSearch (документы), Postgres (source registry) и каталоге метаданных (§10) — единой проверкой.
+- [x] Настроить отдельный CI-job `e2e-integration` (nightly + на релизных PR), поднимающий полный compose-стек и гоняющий сквозной набор; собрать отчёт и артефакты (логи, трейсы).
+- [x] Реализовать «chaos/degradation»-подмножество: остановка одного зависимого сервиса (OpenSearch/agent/docling) в середине потока и проверка graceful degradation по §23.11 (не 500, а деградированный ответ/понятная ошибка).
 
 **Критерий приёмки:** CI-job `e2e-integration` на чистом стеке проходит сквозной «золотой поток» и все 5 сценариев §2.1 через реальные HTTP-вызовы между сервисами (без моков внутренних сервисов); один `request_id` прослеживается end-to-end; проверка кросс-хранилищной согласованности зелёная; остановка некритичного сервиса не роняет поток (деградация подтверждена).
 
@@ -5181,13 +5181,13 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 Разделы упоминают contract-тесты на СВОЙ публичный API (§5.12, §9.9, §11.13, §14.16) и паритет OpenAPI↔TS/Pydantic (§1.13, §17.3), но нет consumer-driven contract-тестов между внутренними сервисами и единого gate на дрейф контрактов (в т.ч. handoff-DTO пайплайна §6.16/§8/§9).
 
-- [ ] Ввести единый источник контрактов: FastAPI api-gateway публикует OpenAPI (§14.16), внутренние сервисы (agent/graph/search/ingestion/curation) публикуют свои OpenAPI; собрать их в `contracts/` с версионированием.
-- [ ] Реализовать consumer-driven contract-тесты (например Pact или schemathesis-профиль) для пар: `api-gateway → agent-service`, `api-gateway → graph-service`, `api-gateway → search-service`, `api-gateway → ingestion-service`, `api-gateway → curation-service`; провайдер-верификация в CI каждого сервиса.
-- [ ] Зафиксировать и провалидировать handoff-контракты пайплайна как формальные схемы (Pydantic/JSON Schema из `packages/kg_schema`): ingestion→extraction (chunks §5.9), extraction→normalization (§6.16 `needs_custom_normalization`), extraction→ER (§8), ER→upsert (§8.9), upsert→indexing (§4.10) — с contract-тестом на каждый стык.
-- [ ] Реализовать CI-gate паритета `OpenAPI ↔ TS-типы фронтенда ↔ Pydantic-DTO kg_common` (§5.3/§7.3): кодогенерация TS из OpenAPI (`openapi-typescript`) и diff-проверка; расхождение валит CI (закрывает `docs/conventions/api-contracts.md` из §1.13 автоматической проверкой).
-- [ ] Реализовать проверку обратной совместимости API (breaking-change detector, напр. `oasdiff`) на PR: удаление/переименование поля или endpoint без версии — блокирующая ошибка.
-- [ ] Валидировать контракт SSE `ChatStreamEvent` (§5.3) как схему: генерируемые agent-service события проходят JSON-schema-валидацию, а фронтенд-парсер (§17.4) тестируется против тех же фикстур событий.
-- [ ] Валидировать контракт `CurationEvent`/`Decision` (§12.3) и `GraphResponse`/`GraphNode`/`GraphEdge` как разделяемые схемы между backend и frontend (единый snapshot-набор фикстур).
+- [x] Ввести единый источник контрактов: FastAPI api-gateway публикует OpenAPI (§14.16), внутренние сервисы (agent/graph/search/ingestion/curation) публикуют свои OpenAPI; собрать их в `contracts/` с версионированием.
+- [x] Реализовать consumer-driven contract-тесты (например Pact или schemathesis-профиль) для пар: `api-gateway → agent-service`, `api-gateway → graph-service`, `api-gateway → search-service`, `api-gateway → ingestion-service`, `api-gateway → curation-service`; провайдер-верификация в CI каждого сервиса.
+- [x] Зафиксировать и провалидировать handoff-контракты пайплайна как формальные схемы (Pydantic/JSON Schema из `packages/kg_schema`): ingestion→extraction (chunks §5.9), extraction→normalization (§6.16 `needs_custom_normalization`), extraction→ER (§8), ER→upsert (§8.9), upsert→indexing (§4.10) — с contract-тестом на каждый стык.
+- [x] Реализовать CI-gate паритета `OpenAPI ↔ TS-типы фронтенда ↔ Pydantic-DTO kg_common` (§5.3/§7.3): кодогенерация TS из OpenAPI (`openapi-typescript`) и diff-проверка; расхождение валит CI (закрывает `docs/conventions/api-contracts.md` из §1.13 автоматической проверкой).
+- [x] Реализовать проверку обратной совместимости API (breaking-change detector, напр. `oasdiff`) на PR: удаление/переименование поля или endpoint без версии — блокирующая ошибка.
+- [x] Валидировать контракт SSE `ChatStreamEvent` (§5.3) как схему: генерируемые agent-service события проходят JSON-schema-валидацию, а фронтенд-парсер (§17.4) тестируется против тех же фикстур событий.
+- [x] Валидировать контракт `CurationEvent`/`Decision` (§12.3) и `GraphResponse`/`GraphNode`/`GraphEdge` как разделяемые схемы между backend и frontend (единый snapshot-набор фикстур).
 
 **Критерий приёмки:** в CI есть job `contracts`, который (a) прогоняет consumer/provider contract-тесты для всех межсервисных пар, (b) валит сборку при дрейфе OpenAPI↔TS↔Pydantic, (c) валит при breaking-change без bump версии; все handoff-DTO пайплайна имеют схему и contract-тест на стыке; SSE/GraphResponse/CurationEvent фикстуры проходят валидацию на обеих сторонах.
 
@@ -5197,13 +5197,13 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 Каждый раздел определяет свои фикстуры (§3.17 seed-граф, §11.10 gap-фикстуры, §15.10 gap_graph, §18.6 golden, §16.11) и повторяет пример «Al-Cu / aging 180°C 2h / hardness» независимо, что ведёт к дрейфу. Нет единого versioned source-of-truth для тестовых данных.
 
-- [ ] Создать пакет `packages/kg_testkit/` (или `packages/kg_common/testing/`) с типизированными фабриками/билдерами DTO (`Material`, `Experiment`, `Measurement`, `Evidence`, `Gap`, `Contradiction`, `Chunk`, `GraphResponse`, `ChatStreamEvent`) на базе `kg_schema` — единый способ конструировать валидные объекты в любом тесте.
-- [ ] Вынести канонический эталонный пример «Al-Cu 2024 / aging 180°C 2h / hardness» (используемый в §5.2.2, §6.2, §7, §15.1) в единую фикстуру `kg_testkit/fixtures/al_cu_reference.py`, которую переиспользуют seed-скрипты (§2.6, §3.17), demo (§19.11) и golden (§18.6) — устранить дублирование/дрейф.
-- [ ] Консолидировать seed-граф: один канонический `seed_graph` (§3.17) как источник для всех разделов (retrieval §4/§12, gap §15, agent §13, frontend MSW §17.3), с deterministic ID (§3.8) и полным provenance (§3.7); запретить локальные копии seed вне testkit.
-- [ ] Реализовать генератор синтетического «большого» графа (тысячи узлов) для perf-тестов (§17.9, §23.9) и нагрузочных сценариев (§23.9), параметризуемый размером.
-- [ ] Обеспечить детерминизм фикстур (фиксированные seed/ID/даты) для воспроизводимости eval (§18) и e2e (§23.1); запретить `datetime.now()`/random без seed в фикстурах.
-- [ ] Реализовать anonymization/sanitization для demo-данных (§19.11): фикстуры не содержат реальных секретов/персональных данных; demo-креды ≠ prod.
-- [ ] Задокументировать в `packages/kg_testkit/README.md` каталог фикстур и правило «новые тестовые данные — только через testkit».
+- [x] Создать пакет `packages/kg_testkit/` (или `packages/kg_common/testing/`) с типизированными фабриками/билдерами DTO (`Material`, `Experiment`, `Measurement`, `Evidence`, `Gap`, `Contradiction`, `Chunk`, `GraphResponse`, `ChatStreamEvent`) на базе `kg_schema` — единый способ конструировать валидные объекты в любом тесте.
+- [x] Вынести канонический эталонный пример «Al-Cu 2024 / aging 180°C 2h / hardness» (используемый в §5.2.2, §6.2, §7, §15.1) в единую фикстуру `kg_testkit/fixtures/al_cu_reference.py`, которую переиспользуют seed-скрипты (§2.6, §3.17), demo (§19.11) и golden (§18.6) — устранить дублирование/дрейф.
+- [x] Консолидировать seed-граф: один канонический `seed_graph` (§3.17) как источник для всех разделов (retrieval §4/§12, gap §15, agent §13, frontend MSW §17.3), с deterministic ID (§3.8) и полным provenance (§3.7); запретить локальные копии seed вне testkit.
+- [x] Реализовать генератор синтетического «большого» графа (тысячи узлов) для perf-тестов (§17.9, §23.9) и нагрузочных сценариев (§23.9), параметризуемый размером.
+- [x] Обеспечить детерминизм фикстур (фиксированные seed/ID/даты) для воспроизводимости eval (§18) и e2e (§23.1); запретить `datetime.now()`/random без seed в фикстурах.
+- [x] Реализовать anonymization/sanitization для demo-данных (§19.11): фикстуры не содержат реальных секретов/персональных данных; demo-креды ≠ prod.
+- [x] Задокументировать в `packages/kg_testkit/README.md` каталог фикстур и правило «новые тестовые данные — только через testkit».
 
 **Критерий приёмки:** все разделы, использующие seed/фикстуры, импортируют их из `kg_testkit` (grep не находит дублей эталонного Al-Cu-примера вне testkit); фабрики строят только валидные по `kg_schema` объекты; один `seed_graph` переиспользуется в e2e/eval/frontend-mocks; генератор большого графа выдаёт граф заданного размера для perf-тестов.
 
@@ -5213,14 +5213,14 @@ OSS для клонирования/вендоринга (в `third_party/`): ML
 
 Alembic-миграции живут отдельно в нескольких сервисах, пишущих в общую БД `kg_app` (§2.6 postgres-migrate, §5.4 ingestion, §14/§19.2 auth, §16.1 curation, §9.9 ingest_jobs), а Neo4j-миграции — в §3.15. Нет владельца координации: порядка применения, единого runner'а, предотвращения конфликтов схем разных сервисов в одной БД.
 
-- [ ] Принять и зафиксировать в ADR (`docs/adr/00xx-migrations-strategy.md`) стратегию Postgres-схем: раздельные schema/namespace на сервис в общей БД `kg_app` (`auth`, `ingestion`, `curation`, `chat`, `dagster`, `metadata`, `audit`) ИЛИ раздельные БД — с обоснованием и правилом отсутствия cross-service FK.
-- [ ] Реализовать единый migration-оркестратор (`infra/migrations/` + `make migrate`), применяющий в детерминированном порядке: Neo4j (§3.15) → Postgres по всем сервисам (Alembic, с общим `alembic` history или per-service history в своём schema) → init коллекций Qdrant (§4.3) → индексов OpenSearch (§4.6); идемпотентно и с fail-fast при рассинхроне.
-- [ ] Обеспечить, чтобы `postgres-migrate`/Helm-hook (§2.6/§2.8) вызывал единый оркестратор, а не разрозненные `alembic upgrade` в каждом контейнере с гонками.
-- [ ] Реализовать guard версии схемы на старте каждого сервиса: сервис проверяет ожидаемую версию своей Postgres-схемы и Neo4j `SchemaVersion` (§3.15); mismatch → fail-fast с понятной ошибкой.
-- [ ] Реализовать и протестировать rollback/downgrade для Postgres (Alembic downgrade) и документировать откат Neo4j/индексов (пересоздание из snapshot §16.10, т.к. Cypher-миграции труднообратимы).
-- [ ] Реализовать backfill-миграции данных (не только DDL): напр. проставление `access_policy=private` для источников без политики (§19.3), заполнение `aliases_text` (§3.12), добавление provenance-полей на старые узлы (§3.7) — как версионированные data-migrations.
-- [ ] Согласовать миграции хранилищ Qdrant/OpenSearch с изменением embedding-модели/размерности (§23.13): смена dim требует пересоздания коллекции + reindex — оформить как миграцию с blue/green (§4.3 recreate, §11.10 alias swap).
-- [ ] Написать тест «fresh vs migrated»: схема, полученная миграциями из нуля, идентична схеме после последовательного применения всех версий (Postgres); Neo4j `migrate up` из нуля == инкрементальному.
+- [x] Принять и зафиксировать в ADR (`docs/adr/00xx-migrations-strategy.md`) стратегию Postgres-схем: раздельные schema/namespace на сервис в общей БД `kg_app` (`auth`, `ingestion`, `curation`, `chat`, `dagster`, `metadata`, `audit`) ИЛИ раздельные БД — с обоснованием и правилом отсутствия cross-service FK.
+- [x] Реализовать единый migration-оркестратор (`infra/migrations/` + `make migrate`), применяющий в детерминированном порядке: Neo4j (§3.15) → Postgres по всем сервисам (Alembic, с общим `alembic` history или per-service history в своём schema) → init коллекций Qdrant (§4.3) → индексов OpenSearch (§4.6); идемпотентно и с fail-fast при рассинхроне.
+- [x] Обеспечить, чтобы `postgres-migrate`/Helm-hook (§2.6/§2.8) вызывал единый оркестратор, а не разрозненные `alembic upgrade` в каждом контейнере с гонками.
+- [x] Реализовать guard версии схемы на старте каждого сервиса: сервис проверяет ожидаемую версию своей Postgres-схемы и Neo4j `SchemaVersion` (§3.15); mismatch → fail-fast с понятной ошибкой.
+- [x] Реализовать и протестировать rollback/downgrade для Postgres (Alembic downgrade) и документировать откат Neo4j/индексов (пересоздание из snapshot §16.10, т.к. Cypher-миграции труднообратимы).
+- [x] Реализовать backfill-миграции данных (не только DDL): напр. проставление `access_policy=private` для источников без политики (§19.3), заполнение `aliases_text` (§3.12), добавление provenance-полей на старые узлы (§3.7) — как версионированные data-migrations.
+- [x] Согласовать миграции хранилищ Qdrant/OpenSearch с изменением embedding-модели/размерности (§23.13): смена dim требует пересоздания коллекции + reindex — оформить как миграцию с blue/green (§4.3 recreate, §11.10 alias swap).
+- [x] Написать тест «fresh vs migrated»: схема, полученная миграциями из нуля, идентична схеме после последовательного применения всех версий (Postgres); Neo4j `migrate up` из нуля == инкрементальному.
 
 **Критерий приёмки:** `make migrate` на пустом стеке разворачивает Postgres (все schema сервисов), Neo4j constraints/indexes (§8.4), Qdrant-коллекции и OpenSearch-индексы в корректном порядке идемпотентно; повторный запуск — no-op; сервис с устаревшей схемой падает fail-fast; тест «fresh == migrated» зелёный; rollback Postgres-миграции протестирован.
 
