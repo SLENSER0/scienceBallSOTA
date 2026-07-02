@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { AnswerPayload, GraphNode } from './types';
 
-export type View = 'ask' | 'coverage' | 'gaps' | 'glossary';
+export type View = 'ask' | 'compare' | 'coverage' | 'gaps' | 'glossary';
 
 interface AppState {
   view: View;
