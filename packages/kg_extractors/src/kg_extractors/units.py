@@ -119,7 +119,8 @@ CANONICAL_BY_KIND: dict[str, str] = {
     "pressure": "bar",
     "temperature": "degC",
     "energy_intensity": "kW*hour/t",
-    "fraction": "percent",
+    # NB: no 'fraction' entry — keep %, ppm, ppb, ratio as-is so ppm/ppb
+    # magnitudes are preserved (100 ppm must not become 0.01 percent).
 }
 
 _NUM = r"[-+]?\d+(?:[.,]\d+)?"
@@ -174,7 +175,8 @@ def _kind(unit_str: str) -> str | None:
         "flow_rate": "[length] ** 3 / [time]",
         "velocity": "[length] / [time]",
         "current_density": "[current] / [length] ** 2",
-        "voltage": "[current] * [length] ** 2 * [mass] / [time] ** 3",
+        # volt = M·L²·T⁻³·I⁻¹ (current in the DENOMINATOR)
+        "voltage": "[mass] * [length] ** 2 / [current] / [time] ** 3",
         "pressure": "[mass] / [length] / [time] ** 2",
         "temperature": "[temperature]",
     }
@@ -227,8 +229,11 @@ _UNIT_RE = (
     r"(мг/дм³|мг/дм3|мг/л|мг/нм³|мг/нм3|мг/м3|г/л|г/дм3|м³/ч|м3/ч|м/с|см/с|л/мин|л/с|"
     r"т/сут|т/ч|т/год|кг/т|квт·ч/т|квтч/т|а/м²|а/м2|ма/см²|ма/см2|°c|°с|мпа|бар|атм|"
     r"мв|мм|мкм|нм|%об|%|ppm|ppb|mg/l|mg/dm3|g/l|m3/h|m/s|cm/s|t/day|kg/t|kwh/t|"
-    r"a/m2|ma/cm2|degc|mpa|bar|atm|mv|v|к|м)"
+    r"a/m2|ma/cm2|degc|mpa|bar|atm|mv)"
 )
+# A unit token must not be the prefix of a longer word (e.g. "к" of "кг",
+# "м" of "минут"): require a non-word char after it. Fixes fabricated measurements.
+_UNIT_BOUNDARY = r"(?![а-яёa-zа-я0-9])"
 
 
 @dataclass
@@ -273,23 +278,38 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
     def overlaps(a: int, b: int) -> bool:
         return any(not (b <= s or a >= e) for s, e in covered)
 
-    # range: "200–300 мг/л" / "0.1-0.3 м/с" / "от 100 до 300 т/сут"
+    # range: "200–300 мг/л" / "0.1-0.3 м/с" / "от 100 до 300 т/сут".
+    # Unit is REQUIRED so hyphenated year pairs ("2015-2020") are not parsed as ranges.
     range_re = re.compile(
-        rf"(?:от\s*)?({_NUM})\s*(?:–|—|-|\.\.|до|to)\s*({_NUM})\s*{_UNIT_RE}?",
+        rf"(?:от\s*)?({_NUM})\s*(?:–|—|-|\.\.|до|to)\s*({_NUM})\s*{_UNIT_RE}{_UNIT_BOUNDARY}",
         re.IGNORECASE,
     )
     for m in range_re.finditer(t):
         lo, hi = _f(m.group(1)), _f(m.group(2))
-        add(ParsedConstraint("range", min=min(lo, hi), max=max(lo, hi),
-                             unit=m.group(3), source_span=m.group(0).strip()), m.span())
+        add(
+            ParsedConstraint(
+                "range",
+                min=min(lo, hi),
+                max=max(lo, hi),
+                unit=m.group(3),
+                source_span=m.group(0).strip(),
+            ),
+            m.span(),
+        )
 
     # inequality: "≤1000 мг/дм³", "<200 мг/л", "от 100 т/сут"
     ineq_re = re.compile(
         rf"(≤|⩽|≥|⩾|<|>|≈|~|не более|не менее|от|до|менее|более)\s*({_NUM})\s*{_UNIT_RE}?",
         re.IGNORECASE,
     )
-    ru_ops = {"не более": "<=", "менее": "<", "до": "<=", "не менее": ">=",
-              "более": ">", "от": ">="}
+    ru_ops = {
+        "не более": "<=",
+        "менее": "<",
+        "до": "<=",
+        "не менее": ">=",
+        "более": ">",
+        "от": ">=",
+    }
     for m in ineq_re.finditer(t):
         if overlaps(*m.span()):
             continue
@@ -297,16 +317,24 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
         op = _OPS.get(raw_op) or ru_ops.get(raw_op)
         if not op:
             continue
-        add(ParsedConstraint(op, value=_f(m.group(2)), unit=m.group(3),
-                             source_span=m.group(0).strip()), m.span())
+        add(
+            ParsedConstraint(
+                op, value=_f(m.group(2)), unit=m.group(3), source_span=m.group(0).strip()
+            ),
+            m.span(),
+        )
 
-    # bare "value + unit": "250 А/м²", "0.2 м/с", "95%" (unit REQUIRED)
-    bare_re = re.compile(rf"({_NUM})\s*{_UNIT_RE}", re.IGNORECASE)
+    # bare "value + unit": "250 А/м²", "0.2 м/с", "95%" (unit REQUIRED + boundary)
+    bare_re = re.compile(rf"({_NUM})\s*{_UNIT_RE}{_UNIT_BOUNDARY}", re.IGNORECASE)
     for m in bare_re.finditer(t):
         if overlaps(*m.span()):
             continue
-        add(ParsedConstraint("=", value=_f(m.group(1)), unit=m.group(2),
-                             source_span=m.group(0).strip()), m.span())
+        add(
+            ParsedConstraint(
+                "=", value=_f(m.group(1)), unit=m.group(2), source_span=m.group(0).strip()
+            ),
+            m.span(),
+        )
 
     return out
 

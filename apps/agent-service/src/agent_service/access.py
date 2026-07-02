@@ -28,17 +28,36 @@ def apply_access_policy(retrieval: RetrievalResult, role: str) -> RetrievalResul
         return retrieval
 
     redacted = 0
-    kept_ev = []
-    for ev in retrieval.evidence:
-        if _is_restricted(ev):
-            redacted += 1
-        else:
-            kept_ev.append(ev)
+    kept_ev = [ev for ev in retrieval.evidence if not _is_restricted(ev)]
+    redacted += len(retrieval.evidence) - len(kept_ev)
     retrieval.evidence = kept_ev
 
-    # drop restricted facts / solutions; redact person names
+    # drop restricted facts / solutions
     retrieval.facts = [f for f in retrieval.facts if not _is_restricted(f.node)]
     retrieval.solutions = [s for s in retrieval.solutions if not _is_restricted(s)]
+
+    # hybrid passages carry no confidentiality metadata → withhold for restricted
+    # roles rather than risk leaking restricted document text (finding agent.py:60).
+    if retrieval.passages:
+        redacted += len(retrieval.passages)
+        retrieval.passages = []
+
+    # graph payload: drop restricted nodes and any edge touching them
+    # (finding access.py:41 — graph was built before filtering).
+    if retrieval.graph is not None:
+        safe_nodes = []
+        safe_ids: set[str] = set()
+        for n in retrieval.graph.nodes:
+            props = n.properties or {}
+            if props.get("confidentiality_level") in _RESTRICTED_LEVELS:
+                redacted += 1
+                continue
+            safe_nodes.append(n)
+            safe_ids.add(n.id)
+        retrieval.graph.nodes = safe_nodes
+        retrieval.graph.edges = [
+            e for e in retrieval.graph.edges if e.source in safe_ids and e.target in safe_ids
+        ]
 
     if redacted:
         retrieval.evidence.append(

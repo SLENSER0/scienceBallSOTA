@@ -12,7 +12,7 @@ Synthesis: deterministic
   - ✓ table
   - ✓ solutions
   - ✓ ru_en_parity
-  - _ru/en entity overlap: 100%_
+  - _ru/en entity overlap: 82%_
 
 ## ✅ nickel_catholyte — Циркуляция католита при электроэкстракции никеля
 - score: 100% · entity recall: 100%
@@ -22,7 +22,7 @@ Synthesis: deterministic
   - ✓ contradiction
   - ✓ solutions
   - ✓ ru_en_parity
-  - _ru/en entity overlap: 80%_
+  - _ru/en entity overlap: 58%_
 
 ## ✅ pgm_partitioning — Распределение Au/Ag/МПГ между штейном и шлаком
 - score: 100% · entity recall: 100%
@@ -31,7 +31,7 @@ Synthesis: deterministic
   - ✓ evidence
   - ✓ facts_property
   - ✓ ru_en_parity
-  - _ru/en entity overlap: 100%_
+  - _ru/en entity overlap: 88%_
 
 ## ✅ mine_water_injection — Закачка шахтных вод в глубокие горизонты (РФ vs зарубеж)
 - score: 100% · entity recall: 100%

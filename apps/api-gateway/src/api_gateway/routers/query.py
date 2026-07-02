@@ -43,18 +43,25 @@ async def query_stream(req: QueryRequest, role: str = Depends(current_role)) -> 
     from kg_extractors.query_parser import parse_query
 
     async def gen() -> AsyncIterator[bytes]:
-        intent = parse_query(req.query)
-        yield _sse("tool_start", {"tool": "parse", "intent": intent.to_dict()})
-        ans = answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
-        if ans.graph:
-            yield _sse("graph", ans.graph.model_dump(by_alias=True))
-        if ans.table:
-            yield _sse("table", ans.table)
-        for g in ans.gaps:
-            yield _sse("gap", g)
-        yield _sse("token", {"text": ans.answer_markdown})
-        yield _sse("evidence", {"citations": [c.model_dump(by_alias=True) for c in ans.citations]})
-        yield _sse("done", {"confidence": ans.confidence, "models": ans.used_models})
+        try:
+            intent = parse_query(req.query)
+            yield _sse("tool_start", {"tool": "parse", "intent": intent.to_dict()})
+            ans = answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
+            if ans.graph:
+                yield _sse("graph", ans.graph.model_dump(by_alias=True))
+            if ans.table:
+                yield _sse("table", ans.table)
+            for g in ans.gaps:
+                yield _sse("gap", g)
+            yield _sse("token", {"text": ans.answer_markdown})
+            yield _sse(
+                "evidence", {"citations": [c.model_dump(by_alias=True) for c in ans.citations]}
+            )
+            yield _sse("done", {"confidence": ans.confidence, "models": ans.used_models})
+        except (
+            Exception
+        ) as exc:  # surface mid-stream failures as an error event (finding query.py:43)
+            yield _sse("error", {"message": str(exc)[:300]})
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 

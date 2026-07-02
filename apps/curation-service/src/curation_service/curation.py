@@ -66,6 +66,8 @@ class CurationService:
         before = self.store.get_node(node_id)
         if before is None:
             raise KeyError(f"node {node_id} not found")
+        # 'id'/'label' are managed by the store, not editable props (avoid a 500)
+        changes = {k: v for k, v in changes.items() if k not in ("id", "label")}
         self.store.upsert_node(
             node_id,
             before["label"],

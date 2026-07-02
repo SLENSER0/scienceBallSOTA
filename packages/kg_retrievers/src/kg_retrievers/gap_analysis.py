@@ -136,10 +136,10 @@ class GapScanner:
             "AND m1.value_normalized IS NOT NULL AND m2.value_normalized IS NOT NULL "
             "AND m1.normalized_unit = m2.normalized_unit "
             "RETURN m1.id, m1.value_normalized, m2.id, m2.value_normalized, "
-            "m1.property_name, subj.name LIMIT 400"
+            "m1.property_name, subj.name, subj.id LIMIT 400"
         )
         seen: set[tuple[str, str]] = set()
-        for m1, v1, m2, v2, prop, subj in rows:
+        for m1, v1, m2, v2, prop, subj_name, subj_id in rows:
             key = (m1, m2)
             if key in seen or v1 is None or v2 is None:
                 continue
@@ -153,10 +153,15 @@ class GapScanner:
             self.store.upsert_node(
                 cid,
                 "Contradiction",
-                name=f"Противоречие по «{prop}» ({v1} vs {v2}) — {subj}",
+                name=f"Противоречие по «{prop}» ({v1} vs {v2}) — {subj_name}",
                 gap_type=str(GapType.CONTRADICTORY_MEASUREMENTS),
                 **self._prov(),
             )
             self.store.upsert_edge(m1, m2, "CONTRADICTS", **self._prov())
             self.store.upsert_edge(cid, self.run_id, "DETECTED_BY", **self._prov())
+            # Link the Contradiction to its subject + measurements so the query
+            # pipeline can reach it (finding gap_analysis.py:153).
+            self.store.upsert_edge(cid, subj_id, "ABOUT", **self._prov())
+            self.store.upsert_edge(cid, m1, "ABOUT", **self._prov())
+            self.store.upsert_edge(cid, m2, "ABOUT", **self._prov())
             res.contradictions_created += 1

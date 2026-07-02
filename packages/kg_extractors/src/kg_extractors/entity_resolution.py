@@ -14,8 +14,10 @@ from kg_common.ids import canonical_key
 from kg_schema.enums import MatchDecision
 from kg_schema.taxonomy import TaxonomyEntry, load_taxonomy
 
-AUTO_MERGE_SCORE = 92.0
-REVIEW_SCORE = 80.0
+# Raised from 92 → 96: token_sort_ratio auto-merged distinct siblings
+# ("dry FGD" vs "semi-dry FGD") at 92 (finding entity_resolution.py:45).
+AUTO_MERGE_SCORE = 96.0
+REVIEW_SCORE = 82.0
 
 
 @dataclass

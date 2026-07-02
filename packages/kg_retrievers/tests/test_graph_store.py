@@ -90,3 +90,17 @@ def test_counts_by_label(store: KuzuGraphStore) -> None:
     by = store.counts_by_label()
     assert by.get("Material") == 1
     assert by.get("Evidence") == 1
+
+
+def test_upsert_ignores_id_prop(store: KuzuGraphStore) -> None:
+    # passing 'id' as a prop must not crash (Kuzu rejects PK-SET) — finding graph_store:132
+    store.upsert_node("material:x", "Material", id="OTHER", name="X")
+    nd = store.get_node("material:x")
+    assert nd is not None and nd["id"] == "material:x" and nd["name"] == "X"
+    assert store.get_node("OTHER") is None
+
+
+def test_upsert_node_guarded_protects_reviewed(store: KuzuGraphStore) -> None:
+    store.upsert_node("material:r", "Material", name="orig", review_status="accepted")
+    assert store.upsert_node_guarded("material:r", "Material", name="changed") is False
+    assert store.get_node("material:r")["name"] == "orig"

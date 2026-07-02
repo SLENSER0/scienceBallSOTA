@@ -127,8 +127,8 @@ class KuzuGraphStore:
         cols: dict[str, Any] = {"label": label}
         extra: dict[str, Any] = {}
         for k, v in props.items():
-            if v is None:
-                continue
+            if v is None or k in ("id", "label"):
+                continue  # 'id' is the PK (set by MERGE, never SET); 'label' is positional
             if k in _NODE_COL_NAMES and k != "props":
                 cols[k] = v
             else:

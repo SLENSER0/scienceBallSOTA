@@ -45,6 +45,41 @@ def test_detects_contradiction(store: KuzuGraphStore) -> None:
     assert edges[0][0] >= 1
 
 
+def test_contradiction_reachable_via_retriever(store: KuzuGraphStore) -> None:
+    # a scan-detected contradiction must be linked to its subject so retrieval
+    # surfaces it (finding gap_analysis.py:153)
+    from kg_extractors.query_parser import parse_query
+    from kg_retrievers.graph_retriever import GraphRetriever
+
+    store.upsert_node(
+        "tech:catholyte-circulation-scheme",
+        "TechnologySolution",
+        name="циркуляция католита",
+        canonical_name="catholyte circulation",
+        aliases_text="catholyte circulation|циркуляция католита",
+        domain="electrometallurgy",
+    )
+    store.upsert_node(
+        "meas:v1",
+        "Measurement",
+        property_name="flow_velocity",
+        value_normalized=0.2,
+        normalized_unit="m/s",
+    )
+    store.upsert_node(
+        "meas:v2",
+        "Measurement",
+        property_name="flow_velocity",
+        value_normalized=0.5,
+        normalized_unit="m/s",
+    )
+    store.upsert_edge("meas:v1", "tech:catholyte-circulation-scheme", "ABOUT_REGIME")
+    store.upsert_edge("meas:v2", "tech:catholyte-circulation-scheme", "ABOUT_REGIME")
+    GapScanner(store).scan()
+    res = GraphRetriever(store).retrieve(parse_query("циркуляция католита"))
+    assert res.contradictions, "scan-detected contradiction not reachable by retriever"
+
+
 def test_detects_orphan_and_missing_unit(store: KuzuGraphStore) -> None:
     store.upsert_node("material:lonely", "Material", name="Одинокий материал")
     store.upsert_node(

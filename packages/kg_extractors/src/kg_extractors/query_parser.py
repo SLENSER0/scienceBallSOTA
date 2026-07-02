@@ -101,24 +101,30 @@ def _detect_lang(text: str) -> str:
 
 
 def _loose_match(a: str, b: str) -> bool:
-    """Declension-tolerant word match: exact, or long common prefix (RU endings).
+    """Declension-tolerant word match without cross-word false positives.
 
-    ``шлак``~``шлаком``, ``никель``~``никеля``, ``циркуляция``~``циркуляции``.
+    Accepts ``шлак``~``шлаком`` (suffix declension) and ``никель``~``никеля``
+    (ending change on a long word), but rejects ``шлак``~``шлам`` (distinct
+    4-letter words). See adversarial finding kg_extractors/query_parser.py:121.
     """
     if a == b:
         return True
     la, lb = len(a), len(b)
     if min(la, lb) < 4:  # short symbols (Ni, Ca, SO4, МПГ) must match exactly
         return False
-    if abs(la - lb) > 3:
-        return False
+    # one is a strict prefix of the other → suffix declension (шлак/шлаком)
+    if (a.startswith(b) or b.startswith(a)) and abs(la - lb) <= 4:
+        return True
+    # otherwise require a substantial shared stem (≥5 chars). This accepts
+    # никель/никелевая (stem "никел") and циркуляция/циркуляции but rejects the
+    # distinct 4-letter pair шлак/шлам (cp=3). See adversarial finding :121.
     cp = 0
     for x, y in zip(a, b, strict=False):
         if x == y:
             cp += 1
         else:
             break
-    return cp >= min(la, lb) - 1
+    return cp >= 5
 
 
 def _tokens(text: str) -> list[str]:

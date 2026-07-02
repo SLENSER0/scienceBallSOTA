@@ -55,3 +55,33 @@ def test_ru_en_parity(text: str) -> None:
     cs = parse_numeric_constraints(text)
     lt = [c for c in cs if c.operator == "<"]
     assert lt and lt[0].value == 200 and lt[0].normalized_unit == "mg/L"
+
+
+# --- adversarial-review regression tests ---
+
+
+def test_single_letter_units_not_fabricated() -> None:
+    # "5 кг" and "30 минут" must NOT yield "5 к" / "30 м" measurements (finding units:230)
+    cs = parse_numeric_constraints("добавили 5 кг купороса и перемешивали 30 минут")
+    assert all(c.unit not in {"к", "м", "v"} for c in cs)
+
+
+def test_year_range_not_parsed_as_measurement() -> None:
+    # "2015-2020" (no unit) must not become a numeric range (finding units:278)
+    cs = parse_numeric_constraints("методы за 2015-2020 годы и в 2019–2021")
+    assert not [c for c in cs if c.operator == "range"]
+
+
+def test_voltage_normalizes() -> None:
+    # volt dimensionality fixed (finding units:177): 0.5 V == 500 mV
+    v = to_canonical(0.5, "в")
+    mv = to_canonical(500, "мв")
+    assert v is not None and mv is not None
+    assert v.unit == "V" and mv.unit == "V"
+    assert abs(v.value - mv.value) < 1e-6
+
+
+def test_ppm_magnitude_preserved() -> None:
+    # ppm must not collapse to a tiny percent (finding units:189)
+    n = to_canonical(100, "ppm")
+    assert n is not None and n.unit == "ppm" and abs(n.value - 100) < 1e-6

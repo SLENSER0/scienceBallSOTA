@@ -58,6 +58,16 @@ def test_injection_query() -> None:
     assert q.is_comparison
 
 
+def test_loose_match_no_false_positive() -> None:
+    # шлак (slag) must not match шлам (sludge); никель must still match никелевая
+    from kg_extractors.query_parser import _loose_match
+
+    assert not _loose_match("шлак", "шлам")
+    assert _loose_match("никель", "никелевая")
+    assert _loose_match("шлак", "шлаком")
+    assert not _loose_match("вода", "беда")
+
+
 def test_resolver_fuzzy() -> None:
     r = get_resolver()
     # slight misspelling / variant still resolves

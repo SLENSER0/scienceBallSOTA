@@ -107,8 +107,12 @@ class GraphRetriever:
             return True
         for c in intent.numeric_constraints:
             unit = c.normalized_unit
-            if unit and node.get("normalized_unit") and node["normalized_unit"] != unit:
-                continue  # different dimension — not this constraint's target
+            # A unit-bearing constraint only applies to a measurement of the SAME
+            # unit. If the measurement has a different unit OR no unit at all, the
+            # constraint is not its target — skip (never compare bare numbers across
+            # dimensions). See adversarial finding graph_retriever.py:110.
+            if unit and node.get("normalized_unit") != unit:
+                continue
             if c.operator == "<=" and c.normalized_value is not None and val > c.normalized_value:
                 return False
             if c.operator == "<" and c.normalized_value is not None and val >= c.normalized_value:

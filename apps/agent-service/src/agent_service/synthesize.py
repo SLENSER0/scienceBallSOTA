@@ -31,7 +31,9 @@ SYSTEM = (
 
 def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
     citations: list[Citation] = []
-    for i, ev in enumerate(retrieval.evidence, start=1):
+    # the RBAC 'restricted:notice' marker is not a real source — never cite it
+    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    for i, ev in enumerate(real_ev, start=1):
         citations.append(
             Citation(
                 marker=f"[{i}]",
@@ -53,7 +55,8 @@ def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
 
 
 def _cite_index(retrieval: RetrievalResult) -> dict[str, str]:
-    return {ev["id"]: f"[{i}]" for i, ev in enumerate(retrieval.evidence, start=1)}
+    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    return {ev["id"]: f"[{i}]" for i, ev in enumerate(real_ev, start=1)}
 
 
 def build_context(retrieval: RetrievalResult, cite: dict[str, str]) -> str:
@@ -123,8 +126,9 @@ def _table(retrieval: RetrievalResult) -> dict[str, Any] | None:
         )
         rows.append(
             {
-                "Решение": s.get("name"),
-                "Практика": s.get("practice_type", "unknown"),
+                # never emit null cells — the frontend TS type declares strings
+                "Решение": s.get("name") or s.get("id") or "—",
+                "Практика": s.get("practice_type") or "unknown",
                 "Ключевой показатель": metric,
                 "Применимость": "; ".join(a for a in s.get("applicability", []) if a) or "—",
             }
@@ -187,12 +191,15 @@ def build_answer(
     if not markdown:
         markdown = _fallback_markdown(intent, retrieval, cite)
 
-    # confidence: mean evidence confidence, penalized by gaps/contradictions
-    confs = [ev.get("confidence", 0.6) for ev in retrieval.evidence]
+    # confidence: mean evidence confidence, penalized by gaps/contradictions.
+    # Exclude the synthetic 'restricted:notice' marker (conf 0.0) so RBAC redaction
+    # doesn't deflate confidence (finding synthesize.py:191).
+    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    confs = [ev.get("confidence", 0.6) for ev in real_ev]
     base = sum(confs) / len(confs) if confs else 0.3
     if retrieval.contradictions:
         base *= 0.8
-    if not retrieval.evidence:
+    if not real_ev:
         base = min(base, 0.3)
 
     return AnswerPayload(
