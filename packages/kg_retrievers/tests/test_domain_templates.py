@@ -78,6 +78,20 @@ def test_water_desalination_ion_filter(store: KuzuGraphStore) -> None:
     assert strict["target_tds_met"] is False
 
 
+def test_water_ion_filter_no_substring_overmatch(store: KuzuGraphStore) -> None:
+    # regression: "Co"/"Ti" are substrings of the property name "concentration";
+    # matching against property_name over-selected every ion. An absent ion must
+    # return only the TDS-target measurement, not all ion rows.
+    full = water_desalination_suitability(
+        store, ions=["SO4", "Cl", "Ca", "Mg", "Na"], target_tds=1000.0
+    )
+    cobalt = water_desalination_suitability(store, ions=["Co"], target_tds=1000.0)
+    assert len(cobalt["measurements"]) < len(full["measurements"])
+    # only the TDS-target Measurement remains (no cobalt ion measurement is seeded)
+    assert "concentration" not in _props(store, cobalt["measurements"])
+    assert "total_dissolved_solids" in _props(store, cobalt["measurements"])
+
+
 # ---------------------------------------------------------------------
 # 2) nickel catholyte — flow_velocity + contradiction
 # ---------------------------------------------------------------------

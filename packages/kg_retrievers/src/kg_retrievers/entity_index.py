@@ -148,6 +148,10 @@ class EntityVectorIndex:
         is used and the entity itself is excluded from the results; otherwise the
         string is embedded as a query.
         """
+        # Guard the input: the embedding layer maps "" → " " and returns a full
+        # vector, so a blank mention would otherwise fetch arbitrary neighbours.
+        if not query_or_id or not query_or_id.strip():
+            return []
         vec, exclude = self._resolve_vector(query_or_id)
         if not vec:
             return []

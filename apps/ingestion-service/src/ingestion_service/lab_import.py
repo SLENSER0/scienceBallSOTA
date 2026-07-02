@@ -20,6 +20,8 @@ linked, honouring the evidence-first invariant (§3.6/§8.3). IDs are determinis
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import UTC, datetime
 from typing import Any
 
@@ -53,16 +55,33 @@ def _clean(value: Any) -> str | None:
 
 
 def _to_float(value: Any) -> float | None:
-    """Best-effort numeric coercion of a measurement value (handles ``0,2`` / ``0.2``)."""
+    """Best-effort numeric coercion of a measurement value.
+
+    Handles RU conventions: decimal comma (``0,2``), space/NBSP thousands
+    separators (``1 250`` — the default Russian Excel format), and an ``a-b``
+    range -> midpoint. Ambiguous period-as-thousands (``12.500``) is left as a
+    decimal to avoid corrupting genuine decimals.
+    """
     if value is None:
         return None
     if isinstance(value, (int, float)):
         return float(value)
-    text = str(value).strip().replace(",", ".")
+    # Fold every Unicode space separator (NBSP U+00A0, narrow NBSP, thin space)
+    # to ASCII space so RU thousands grouping is handled regardless of glyph.
+    text = "".join(
+        " " if unicodedata.category(ch) == "Zs" else ch for ch in str(value)
+    ).strip()
+    # drop whitespace grouping between digits: "1 250" -> "1250"
+    text = re.sub(r"(?<=\d)\s(?=\d)", "", text).replace(",", ".")
     try:
         return float(text)
     except ValueError:
-        return None
+        pass
+    m = re.match(r"^\s*(-?\d+(?:\.\d+)?)\s*[-\u2013\u2014]\s*(-?\d+(?:\.\d+)?)\s*$", text)
+    if m:
+        lo, hi = float(m.group(1)), float(m.group(2))
+        return (lo + hi) / 2.0
+    return None
 
 
 def _normalize(value: float | None, unit: str | None) -> tuple[float | None, str | None]:
@@ -129,8 +148,11 @@ def import_experiment_catalog(
         value_raw = _clean(raw_value)
 
         # -- deterministic ids ------------------------------------------------
+        # Include lab/expert: two labs reporting the same value on the same doc
+        # are distinct experiments and must not collapse into one node.
         exp_key = "|".join(
-            str(x) for x in (material, regime, equipment, prop, value_raw, unit, date, doc)
+            str(x)
+            for x in (material, regime, equipment, prop, value_raw, unit, date, doc, lab, expert)
         )
         exp_id = uuid5_id("Experiment", exp_key)
         sample_id = uuid5_id("Sample", exp_id, material)

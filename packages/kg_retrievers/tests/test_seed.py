@@ -43,3 +43,28 @@ def test_seed_idempotent_and_covers_scenarios() -> None:
         assert missing[0][0] == 0
     finally:
         store.close()
+
+
+def test_seed_measurement_units_are_canonical() -> None:
+    # regression: numeric filtering (agent tools) compares constraint units to
+    # seed measurement units by exact string, so seed units must equal the
+    # canonical spelling emitted by to_canonical (was "A/m2"/"%", now "A/m^2"/
+    # "percent"). Otherwise §24 numeric acceptance queries silently return 0.
+    from kg_extractors.units import to_canonical
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        rows = store.rows(
+            "MATCH (m:Node) WHERE m.label='Measurement' "
+            "AND m.normalized_unit IS NOT NULL AND m.normalized_unit <> '' "
+            "RETURN DISTINCT m.normalized_unit",
+            {},
+        )
+        assert rows
+        for (unit,) in rows:
+            canon = to_canonical(1.0, unit).unit
+            assert canon == unit, f"seed unit {unit!r} is not canonical (→ {canon!r})"
+    finally:
+        store.close()

@@ -181,11 +181,14 @@ class AbsenceAnalyzer:
         for mid, mname, mlabel in self._candidate_materials(domain):
             for prop in props:
                 cell = self._cell(mid, mname, mlabel, prop)
-                if cell.status != CONFIDENT_ABSENCE:
+                # Gate on the caller's numeric threshold, not the hardcoded
+                # CONFIDENT_THRESHOLD: a lower min_confidence must surface
+                # POSSIBLE_ABSENCE cells too (§25.9). COVERED (evidence exists,
+                # conf 0.0) and UNKNOWN (non-float) are never gaps.
+                if cell.status in (COVERED, UNKNOWN):
                     continue
-                if not isinstance(cell.confidence_of_absence, float):
-                    continue
-                if cell.confidence_of_absence < min_confidence:
+                conf = cell.confidence_of_absence
+                if not isinstance(conf, float) or conf < min_confidence:
                     continue
                 if materialize:
                     self._materialize_gap(cell)

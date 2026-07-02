@@ -141,3 +141,42 @@ def test_materials_reference_sets_class_and_formula() -> None:
         assert store.counts() == before
     finally:
         store.close()
+
+
+def test_to_float_ru_number_formats() -> None:
+    from ingestion_service.lab_import import _to_float
+
+    assert _to_float("0,2") == 0.2  # decimal comma
+    assert _to_float("1 250") == 1250.0  # ASCII-space thousands
+    assert _to_float("1 250") == 1250.0  # NBSP thousands (RU Excel default)
+    assert _to_float("1 250,5") == 1250.5  # narrow NBSP + decimal comma
+    assert _to_float("10-20") == 15.0  # range → midpoint
+    assert _to_float("250") == 250.0
+    assert _to_float("12.5") == 12.5  # genuine decimal kept
+    assert _to_float("") is None and _to_float(None) is None and _to_float("abc") is None
+
+
+def test_distinct_labs_are_not_merged() -> None:
+    # regression: exp_key omitted lab/expert, collapsing two labs' reports of the
+    # same value/doc into one Experiment. They must stay distinct.
+    base = {
+        "material": "никель катодный",
+        "regime": "электроэкстракция",
+        "equipment": "диафрагменная ванна",
+        "property": "current_density",
+        "value": 250,
+        "unit": "А/м2",
+        "date": "2024-03-11",
+        "doc": "shared-protocol",
+    }
+    rows = [
+        {**base, "lab": "Лаборатория А", "expert": "Иванов И.И."},
+        {**base, "lab": "Лаборатория Б", "expert": "Петров П.П."},
+    ]
+    store = _store()
+    try:
+        res = import_experiment_catalog(store, rows)
+        assert res["experiments"] == 2  # not merged into 1
+        assert res["labs"] == 2
+    finally:
+        store.close()

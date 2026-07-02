@@ -289,7 +289,7 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
         name="Плотность тока",
         property_name="current_density",
         value_normalized=250.0,
-        normalized_unit="A/m2",
+        normalized_unit="A/m^2",  # canonical spelling from units.to_canonical (§7)
         domain="electrometallurgy",
         confidence=0.85,
         **_prov(),
@@ -503,7 +503,7 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
         name="Эффективность улавливания SO2",
         property_name="removal_efficiency",
         value_normalized=95.0,
-        normalized_unit="%",
+        normalized_unit="percent",  # canonical spelling from units.to_canonical (§7)
         domain="environment",
         confidence=0.85,
         **_prov(),

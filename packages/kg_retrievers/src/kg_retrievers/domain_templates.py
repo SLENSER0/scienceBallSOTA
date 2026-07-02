@@ -196,7 +196,11 @@ def water_desalination_suitability(
                 if val is not None and float(val) <= float(target_tds):
                     tds_met = True
                 continue
-            if not ion_terms or any(t in name_l or t in prop_l for t in ion_terms):
+            # Match ion symbols against the measurement name only. The generic
+            # property_name is "concentration" for every ion, and short symbols
+            # like "Co"/"Ti" are substrings of it — matching prop_l over-selects
+            # every ion regardless of which was requested.
+            if not ion_terms or any(t in name_l for t in ion_terms):
                 measurements.append(mid)
 
     return _build_result(

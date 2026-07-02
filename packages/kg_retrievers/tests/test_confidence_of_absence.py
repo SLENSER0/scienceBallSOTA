@@ -97,6 +97,24 @@ def test_scan_absence_materializes_qualified_gaps(store: KuzuGraphStore) -> None
     assert any(row[0] == recovery_cells[0].material_id for row in about)
 
 
+def test_scan_absence_honors_low_min_confidence(store: KuzuGraphStore) -> None:
+    # regression: min_confidence below CONFIDENT_THRESHOLD (0.66) was ignored —
+    # a hardcoded status gate clamped it up to 0.66. With recall 0.45 the posterior
+    # is ≈0.645 (POSSIBLE_ABSENCE), so a low threshold must surface those cells.
+    analyzer = AbsenceAnalyzer(store, recall=ExtractorRecall(default=0.45))
+    at_default = analyzer.scan_absence(
+        domain="electrometallurgy", min_confidence=0.66, materialize=False
+    )
+    at_low = analyzer.scan_absence(
+        domain="electrometallurgy", min_confidence=0.5, materialize=False
+    )
+    assert len(at_low) > len(at_default)  # lower bar reveals possible-absence cells
+    assert all(isinstance(c.confidence_of_absence, float) for c in at_low)
+    assert all(c.confidence_of_absence >= 0.5 for c in at_low)
+    # and none of the newly-surfaced cells reached the confident band
+    assert any(0.5 <= c.confidence_of_absence < 0.66 for c in at_low)
+
+
 def test_scan_absence_is_idempotent(store: KuzuGraphStore) -> None:
     AbsenceAnalyzer(store).scan_absence(domain="electrometallurgy")
     n1 = store.counts()["nodes"]
