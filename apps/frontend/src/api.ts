@@ -1,8 +1,11 @@
 import type {
   AnswerPayload,
+  AuditEntry,
   CoverageDomain,
   GlossaryTerm,
   GraphResponse,
+  LineageRun,
+  NodeRow,
 } from './types';
 
 function authHeaders(): Record<string, string> {
@@ -103,6 +106,36 @@ export const api = {
     items: { id: string; label: string; name: string; review_status: string; confidence: number }[];
   }> {
     return req('/api/v1/curation/queue');
+  },
+
+  // -- Curation actions (§17.15) --------------------------------------------
+  entityHistory(id: string): Promise<{ history: Record<string, unknown>[] }> {
+    return req(`/api/v1/entities/${encodeURIComponent(id)}/history`);
+  },
+  setEntityStatus(id: string, status: string, reason = ''): Promise<Record<string, unknown>> {
+    return req(`/api/v1/entities/${encodeURIComponent(id)}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status, reason }),
+    });
+  },
+
+  // -- Entity Detail (§17.11) -----------------------------------------------
+  graphNodes(label: string, limit = 40): Promise<{ count: number; nodes: NodeRow[] }> {
+    return req(`/api/v1/graph/nodes?label=${encodeURIComponent(label)}&limit=${limit}`);
+  },
+
+  // -- Admin / Governance (§17.20) ------------------------------------------
+  adminLineage(): Promise<{ runs: LineageRun[] }> {
+    return req('/api/v1/admin/lineage');
+  },
+  adminTechnoeconomic(): Promise<{ solutions: string[] }> {
+    return req('/api/v1/admin/technoeconomic');
+  },
+  adminCoverageMatrix(): Promise<{ matrix: { materials: string[]; properties?: string[] } }> {
+    return req('/api/v1/admin/coverage-matrix');
+  },
+  auditTail(limit = 100): Promise<{ entries: AuditEntry[] }> {
+    return req(`/api/v1/admin/audit?limit=${limit}`);
   },
   comparison(query: string): Promise<{
     columns: string[];

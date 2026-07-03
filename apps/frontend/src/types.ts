@@ -85,3 +85,27 @@ export interface GlossaryTerm {
   aliases: string[];
   domain?: string | null;
 }
+
+export interface NodeRow {
+  id: string;
+  type: string;
+  name: string;
+  domain?: string | null;
+}
+
+export interface LineageRun {
+  run_id: string;
+  type: string;
+  name: string;
+  created_at: string;
+  produced_edges: number;
+  by_label: Record<string, number>;
+}
+
+export interface AuditEntry {
+  ts: number;
+  user: string;
+  role: string;
+  action: string;
+  detail?: Record<string, unknown> | null;
+}

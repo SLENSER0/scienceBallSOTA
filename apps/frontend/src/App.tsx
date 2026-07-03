@@ -9,6 +9,9 @@ import {
   MessagesSquare,
   LogOut,
   Library,
+  Boxes,
+  ClipboardList,
+  ShieldCheck,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -20,6 +23,9 @@ import { CompareView } from './components/CompareView';
 import { CoverageView } from './components/CoverageView';
 import { GapsView } from './components/GapsView';
 import { GlossaryView } from './components/GlossaryView';
+import { EntityDetailView } from './components/EntityDetailView';
+import { CurationView } from './components/CurationView';
+import { AdminView } from './components/AdminView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
 
 const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
@@ -31,7 +37,11 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
   // External partners get a restricted view — no internal gap/risk analytics.
   { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'entities', label: 'Сущности', icon: Boxes },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
+  // Curation + governance are internal-team surfaces.
+  { id: 'curation', label: 'Курирование', icon: ClipboardList, roles: ['curator', 'project_manager', 'admin'] },
+  { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: ['curator', 'project_manager', 'admin'] },
 ];
 
 export function App() {
@@ -120,7 +130,10 @@ export function App() {
           {view === 'compare' && <CompareView />}
           {view === 'coverage' && <CoverageView />}
           {view === 'gaps' && <GapsView />}
+          {view === 'entities' && <EntityDetailView />}
           {view === 'glossary' && <GlossaryView />}
+          {view === 'curation' && <CurationView />}
+          {view === 'admin' && <AdminView />}
         </main>
       </div>
 
