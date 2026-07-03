@@ -139,6 +139,10 @@ services:
     depends_on:
       authentik-postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
+    healthcheck:
+      <<: *hc
+      start_period: 90s
+      test: ["CMD", "ak", "healthcheck"]
 
   docling-serve:
     image: quay.io/docling-project/docling-serve:latest   # MIT

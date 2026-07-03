@@ -27,6 +27,9 @@ EXPECTED_SERVICES = {
     "agent-service",
     "ingestion-service",
     "frontend",
+    "authentik-postgres",
+    "authentik-server",
+    "authentik-worker",
 }
 
 
