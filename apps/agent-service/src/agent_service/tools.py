@@ -44,6 +44,7 @@ NUMERIC_FILTER = "numeric_filter"
 EVIDENCE_LOOKUP = "evidence_lookup"
 GAP_CHECK = "gap_check"
 COMPARE_PRACTICE = "compare_practice"
+GLOBAL_SEARCH = "global_search"
 
 _MIN_TERM_LEN = 4  # shorter surface forms (Ni, TDS, RO) are too noisy for CONTAINS
 
@@ -384,6 +385,29 @@ tool_compare_practice = Tool(
     run=_compare_practice,
 )
 
+
+def _global_search(store: KuzuGraphStore, args: dict[str, Any]) -> dict[str, Any]:
+    """GraphRAG Mode-C: map-reduce over community summaries (§13.13/§11.7)."""
+    from kg_retrievers.community_search import global_search
+
+    ans = global_search(store, str(args.get("query", "")), limit=int(args.get("limit", 3)))
+    return {
+        "answer": ans.answer,
+        "community_ids": [c.community_id for c in ans.communities],
+        "count": len(ans.communities),
+        "member_ids": ans.evidence_ids[:20],
+    }
+
+
+tool_global_search = Tool(
+    name=GLOBAL_SEARCH,
+    description=(
+        "Answer thematic/aggregate questions ('what are the main technology "
+        "clusters for X?') by map-reducing GraphRAG community summaries (Mode C)."
+    ),
+    run=_global_search,
+)
+
 TOOLS: dict[str, Tool] = {
     t.name: t
     for t in (
@@ -392,6 +416,7 @@ TOOLS: dict[str, Tool] = {
         tool_evidence_lookup,
         tool_gap_check,
         tool_compare_practice,
+        tool_global_search,
     )
 }
 

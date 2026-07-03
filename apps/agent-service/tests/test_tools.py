@@ -161,3 +161,15 @@ def test_args_from_intent_shape() -> None:
     assert "environment" in args["domains"]
     assert args["countries"] == ["russia"]
     assert isinstance(args["terms"], list)
+
+
+def test_global_search_tool(store: KuzuGraphStore) -> None:
+    from agent_service.tools import GLOBAL_SEARCH, TOOLS, tool_global_search
+
+    from kg_retrievers.community import detect_communities
+
+    detect_communities(store)  # build community summaries
+    assert GLOBAL_SEARCH in TOOLS
+    out = tool_global_search.run(store, {"query": "осмос ионный обмен вода", "limit": 3})
+    assert "answer" in out and "community_ids" in out
+    assert out["count"] >= 1
