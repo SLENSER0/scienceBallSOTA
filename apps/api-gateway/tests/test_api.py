@@ -432,3 +432,9 @@ def test_admin_community_hierarchy(client: TestClient) -> None:
     client.post("/api/v1/admin/communities")
     h = client.get("/api/v1/admin/community-hierarchy").json()
     assert "nodes" in h or "levels" in h or isinstance(h, dict)
+
+
+def test_admin_graph_algos(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/graph-algos", params={"top": 5}).json()
+    assert "degree_centrality" in r and "betweenness_centrality" in r
+    assert isinstance(r["degree_centrality"], list)

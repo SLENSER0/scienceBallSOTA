@@ -100,6 +100,22 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/graph-algos")
+def graph_algos(top: int = 10) -> dict:
+    """GDS-lite: degree + betweenness centrality over the entity graph (§12.8)."""
+    from kg_retrievers.graph_algos import betweenness_centrality, degree_centrality
+
+    store = get_store()
+
+    def _fmt(items: list) -> list:  # type: ignore[type-arg]
+        return [i.as_dict() if hasattr(i, "as_dict") else i for i in items]
+
+    return {
+        "degree_centrality": _fmt(degree_centrality(store, top=top)),
+        "betweenness_centrality": _fmt(betweenness_centrality(store, top=top)),
+    }
+
+
 @router.get("/community-hierarchy")
 def community_hierarchy() -> dict:
     """2-level hierarchical community structure (§11.6)."""
