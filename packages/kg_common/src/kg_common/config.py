@@ -90,18 +90,46 @@ class Settings(BaseSettings):
     # (Apache-2.0 / MIT). See docs/adr/0006-oss-llm-and-licensing.md.
     llm_api_base: str = Field(default="https://openrouter.ai/api/v1", alias="LLM_API_BASE")
     llm_api_key: SecretStr = Field(default=SecretStr(""), alias="OPENROUTER_API_KEY")
-    llm_model_extract: str = Field(default="qwen/qwen-2.5-7b-instruct", alias="LLM_MODEL_EXTRACT")
-    llm_model_synth: str = Field(default="deepseek/deepseek-chat-v3-0324", alias="LLM_MODEL_SYNTH")
-    llm_model_fast: str = Field(default="qwen/qwen-2.5-7b-instruct", alias="LLM_MODEL_FAST")
+    # Extraction / NER / JSON structuring.
+    llm_model_extract: str = Field(default="qwen/qwen3.6-35b-a3b", alias="LLM_MODEL_EXTRACT")
+    # Fast tasks: preprocess / decomposition.
+    llm_model_fast: str = Field(default="qwen/qwen3.6-35b-a3b", alias="LLM_MODEL_FAST")
+    # Answer synthesis (/query, chat) — fast default + a quality mode.
+    llm_model_synth: str = Field(default="deepseek/deepseek-v4-flash", alias="LLM_MODEL_SYNTH")
+    llm_model_synth_quality: str = Field(default="z-ai/glm-5.2", alias="LLM_MODEL_SYNTH_QUALITY")
     llm_temperature: float = Field(default=0.0, alias="LLM_TEMPERATURE")
     llm_max_retries: int = Field(default=3, alias="LLM_MAX_RETRIES")
     llm_timeout_s: float = Field(default=90.0, alias="LLM_TIMEOUT_S")
 
+    # -- Deep research (open_deep_research) roles -------------------------
+    deep_research_supervisor_model: str = Field(
+        default="z-ai/glm-5.2", alias="DEEP_RESEARCH_SUPERVISOR_MODEL"
+    )
+    deep_research_worker_model: str = Field(
+        default="deepseek/deepseek-v4-flash", alias="DEEP_RESEARCH_WORKER_MODEL"
+    )
+    deep_research_report_model: str = Field(
+        default="deepseek/deepseek-v4-flash", alias="DEEP_RESEARCH_REPORT_MODEL"
+    )
+    # Multimodal deep research (images / video / UI / screenshots).
+    deep_research_multimodal_model: str = Field(
+        default="minimax/minimax-m3", alias="DEEP_RESEARCH_MULTIMODAL_MODEL"
+    )
+
+    # -- Embeddings + reranker -------------------------------------------
+    # Default (Qdrant, dim from model) + a higher-quality upgrade option.
     embedding_model: str = Field(
-        default="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        default="ibm-granite/granite-embedding-97m-multilingual-r2",
         alias="EMBEDDING_MODEL",
     )
+    embedding_model_quality: str = Field(
+        default="ibm-granite/granite-embedding-311m-multilingual-r2",
+        alias="EMBEDDING_MODEL_QUALITY",
+    )
     embedding_dim: int = Field(default=384, alias="EMBEDDING_DIM")
+    reranker_model: str = Field(
+        default="cross-encoder/ettin-reranker-1b-v1", alias="RERANKER_MODEL"
+    )
 
     # -- Observability ----------------------------------------------------
     otel_endpoint: str = Field(default="", alias="OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -123,13 +151,6 @@ class Settings(BaseSettings):
     oidc_issuer: str = Field(default="", alias="OIDC_ISSUER")
     oidc_client_id: str = Field(default="science-ball", alias="OIDC_CLIENT_ID")
     oidc_audience: str = Field(default="science-ball", alias="OIDC_AUDIENCE")
-
-    # -- Deep research (open_deep_research) — needs a strong OSS tool-caller ---
-    # The supervisor/researcher roles must reliably emit tool calls; a large
-    # instruct model handles this best. Override if it gets rate-limited upstream.
-    deep_research_model: str = Field(
-        default="meta-llama/llama-3.3-70b-instruct", alias="DEEP_RESEARCH_MODEL"
-    )
 
     # -- Query hardening (§19.6) ------------------------------------------
     # Free-form Cypher is OFF by default; the agent uses parameterized templates.

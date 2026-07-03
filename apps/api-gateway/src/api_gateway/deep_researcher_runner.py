@@ -72,17 +72,19 @@ def _install_free_search() -> None:
 def _configurable() -> dict[str, Any]:
     """Point open_deep_research at our OSS models + real (free) web search.
 
-    The supervisor/researcher roles need strong tool-calling to reliably delegate
-    ConductResearch and invoke web_search, so ``deep_research_model`` defaults to a
-    large OSS tool-caller (Llama-3.3-70B); the synth model writes the final report.
+    Model roles (§7.5 OSS-only): the supervisor + researcher share ODR's single
+    ``research_model`` → the supervisor model (GLM-5.2, the strategic delegator);
+    the worker-style summarization/compression + the final report use the worker /
+    report models (DeepSeek-V4-Flash). All configurable via ``DEEP_RESEARCH_*``.
     """
     s = get_settings()
-    research = f"openai:{s.deep_research_model}"
-    report_model = f"openai:{s.llm_model_synth}"
+    supervisor = f"openai:{s.deep_research_supervisor_model}"
+    worker = f"openai:{s.deep_research_worker_model}"
+    report_model = f"openai:{s.deep_research_report_model}"
     return {
-        "research_model": research,
-        "summarization_model": research,
-        "compression_model": research,
+        "research_model": supervisor,
+        "summarization_model": worker,
+        "compression_model": worker,
         "final_report_model": report_model,
         # 'tavily' selects the tool-using code path; our monkeypatch swaps the tool
         # for the free DuckDuckGo backend so citations carry real URLs (§7.5).

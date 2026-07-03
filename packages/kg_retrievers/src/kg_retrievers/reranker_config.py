@@ -23,7 +23,7 @@ from typing import Any
 
 # --- Defaults (§10.2: cross-encoder, rerank_top_n=50) ------------------------
 # Дефолтная модель — пермиссивный OSS cross-encoder (Apache-2.0), см. ADR-0006.
-DEFAULT_RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+DEFAULT_RERANKER_MODEL = "cross-encoder/ettin-reranker-1b-v1"
 DEFAULT_TOP_N: int = 50  # rerank_top_n — top-N кандидатов после fusion (§10.2)
 DEFAULT_ENABLED: bool = True  # reranker_enabled — реранк включён по умолчанию
 DEFAULT_BATCH_SIZE: int = 32  # размер батча инференса cross-encoder (§12.9)
