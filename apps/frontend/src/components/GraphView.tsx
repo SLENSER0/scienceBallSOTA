@@ -7,7 +7,7 @@ import {
   forceSimulation,
   type Simulation,
 } from 'd3-force';
-import { Maximize2, Minimize2, RotateCcw, Scan } from 'lucide-react';
+import { Camera, Maximize2, Minimize2, RotateCcw, Scan } from 'lucide-react';
 import type { GraphNode, GraphResponse } from '../types';
 
 // «Клубок» — canvas force-graph (§5.2.3). Canvas (not SVG) so thousands of
@@ -305,6 +305,21 @@ export function GraphView({
     simRef.current?.alpha(0.9).restart();
   }, []);
 
+  // Export the current canvas as a PNG figure (§17.16).
+  const savePng = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `klubok-graph-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }, []);
+
   // ---- pointer interaction (drag node / pan / hover / wheel-zoom / dbl-unpin) ----
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -427,6 +442,9 @@ export function GraphView({
         </IconBtn>
         <IconBtn title="Сбросить раскладку" onClick={resetLayout}>
           <RotateCcw size={15} />
+        </IconBtn>
+        <IconBtn title="Сохранить как PNG" onClick={savePng}>
+          <Camera size={15} />
         </IconBtn>
         <IconBtn title={full ? 'Выйти из полноэкранного' : 'Во весь экран'} onClick={toggleFull}>
           {full ? <Minimize2 size={15} /> : <Maximize2 size={15} />}

@@ -109,3 +109,10 @@ export interface AuditEntry {
   action: string;
   detail?: Record<string, unknown> | null;
 }
+
+export interface SavedView {
+  view_id: string;
+  name: string;
+  kind: string;
+  payload: Record<string, unknown>;
+}

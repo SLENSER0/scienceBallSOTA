@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, Bookmark, Loader2 } from 'lucide-react';
 import { api } from '../api';
 import { useStore } from '../store';
 import { AnswerView } from './AnswerView';
@@ -21,8 +21,16 @@ const GEO_OPTIONS = [
 
 export function AskView() {
   const { role, useLlm, answer, setAnswer, setSelectedNode } = useStore();
+  const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [geo, setGeo] = useState('all');
+
+  const views = useQuery({ queryKey: ['saved-views'], queryFn: api.listViews });
+  const saveView = useMutation({
+    mutationFn: (payload: { query: string; geography: string }) =>
+      api.saveView(payload.query.slice(0, 60), payload),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['saved-views'] }),
+  });
 
   const ask = useMutation({
     mutationFn: (query: string) => api.query(query, { role, useLlm, geography: geo }),
@@ -65,7 +73,7 @@ export function AskView() {
           </div>
 
           {/* Geographic filter — отечественная / зарубежная практика */}
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="font-mono text-[10px] uppercase tracking-wide text-faint">практика:</span>
             <div className="flex overflow-hidden rounded-md border border-line">
               {GEO_OPTIONS.map((o) => (
@@ -83,6 +91,16 @@ export function AskView() {
                 </button>
               ))}
             </div>
+            {q.trim() && (
+              <button
+                onClick={() => saveView.mutate({ query: q.trim(), geography: geo })}
+                disabled={saveView.isPending}
+                className="chip ml-auto text-faint hover:border-copper/40 hover:text-copper disabled:opacity-40"
+                title="Сохранить запрос как вид"
+              >
+                <Bookmark size={12} /> Сохранить вид
+              </button>
+            )}
           </div>
 
           {!answer && !ask.isPending && (
@@ -106,6 +124,33 @@ export function AskView() {
                   </button>
                 ))}
               </div>
+
+              {(views.data?.views.length ?? 0) > 0 && (
+                <div className="mt-6">
+                  <div className="eyebrow mb-2 flex items-center gap-1.5">
+                    <Bookmark size={12} /> Сохранённые виды
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {views.data!.views.map((v) => {
+                      const query = String(v.payload.query ?? v.name);
+                      return (
+                        <button
+                          key={v.view_id}
+                          onClick={() => {
+                            setQ(query);
+                            if (typeof v.payload.geography === 'string') setGeo(v.payload.geography);
+                            submit(query);
+                          }}
+                          className="chip max-w-xs truncate text-muted hover:border-copper/40 hover:text-copper"
+                          title={query}
+                        >
+                          {v.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

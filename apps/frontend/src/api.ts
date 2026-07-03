@@ -6,6 +6,7 @@ import type {
   GraphResponse,
   LineageRun,
   NodeRow,
+  SavedView,
 } from './types';
 
 function authHeaders(): Record<string, string> {
@@ -136,6 +137,14 @@ export const api = {
   },
   auditTail(limit = 100): Promise<{ entries: AuditEntry[] }> {
     return req(`/api/v1/admin/audit?limit=${limit}`);
+  },
+
+  // -- Saved views (§17.16) -------------------------------------------------
+  listViews(): Promise<{ views: SavedView[] }> {
+    return req('/api/v1/views');
+  },
+  saveView(name: string, payload: Record<string, unknown>, kind = 'query'): Promise<SavedView> {
+    return req('/api/v1/views', { method: 'POST', body: JSON.stringify({ name, kind, payload }) });
   },
   comparison(query: string): Promise<{
     columns: string[];
