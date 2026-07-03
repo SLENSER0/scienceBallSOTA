@@ -211,3 +211,17 @@ def test_community_global_and_local_search(client: TestClient) -> None:
         params={"seed": "reverse osmosis desalination"},
     ).json()
     assert "neighbors" in l
+
+
+def test_graph_nodes_and_path(client: TestClient) -> None:
+    r = client.get("/api/v1/graph/nodes", params={"label": "TechnologySolution", "limit": 5}).json()
+    assert r["count"] >= 1 and all(n["type"] == "TechnologySolution" for n in r["nodes"])
+    # path between two connected seed nodes
+    ns = client.get("/api/v1/graph/nodes", params={"domain": "water_treatment", "limit": 20}).json()
+    ids = [n["id"] for n in ns["nodes"]]
+    if len(ids) >= 2:
+        p = client.get("/api/v1/graph/path", params={"source": ids[0], "target": ids[0]}).json()
+        assert p["found"] and p["hops"] == 0
+    # missing node → not found
+    miss = client.get("/api/v1/graph/path", params={"source": "nope", "target": "nada"}).json()
+    assert miss["found"] is False
