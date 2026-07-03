@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     settings = get_settings()
     settings.ensure_runtime_dirs()
     settings.require_prod_secret()  # fail-fast on placeholder JWT secret outside local
+    settings.validate_required()  # fail-fast on a misconfigured server profile (§2.2)
     _log.info("api-gateway.startup")
     yield
     _log.info("api-gateway.shutdown")

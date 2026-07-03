@@ -131,6 +131,29 @@ class Settings(BaseSettings):
                 "JWT_SECRET must be set to a real ≥32-byte secret outside local env"
             )
 
+    def validate_required(self) -> None:
+        """Fail-fast on a misconfigured server profile (§2.2 required-var check).
+
+        The ``server`` profile talks to Neo4j/Qdrant/OpenSearch by config, so an
+        empty connection URL — or the placeholder Neo4j password outside local —
+        is rejected at startup rather than surfacing as a mid-request error.
+        """
+        if self.runtime_profile != "server":
+            return
+        missing = [
+            name
+            for name, val in (
+                ("NEO4J_URI", self.neo4j_uri),
+                ("QDRANT_URL", self.qdrant_url),
+                ("OPENSEARCH_URL", self.opensearch_url),
+            )
+            if not val
+        ]
+        if missing:
+            raise RuntimeError(f"server profile requires: {', '.join(missing)}")
+        if self.app_env != "local" and self.neo4j_password.get_secret_value() == "password":
+            raise RuntimeError("NEO4J_PASSWORD must be a real secret outside local env")
+
     def path(self, *parts: str) -> pathlib.Path:
         """Resolve a path relative to the repo root."""
         return _REPO_ROOT.joinpath(*parts)
