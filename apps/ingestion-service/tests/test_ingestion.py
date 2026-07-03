@@ -122,3 +122,21 @@ def test_pipeline_materializes_composition_and_processing() -> None:
         assert n[0][0] >= 2
     finally:
         store.close()
+
+
+def test_section_aware_chunking() -> None:
+    from ingestion_service.chunker import chunk_pages
+
+    text = (
+        "## Введение\n"
+        "Работа посвящена электроэкстракции никеля. Метод широко применяется.\n"
+        "## Методы\n"
+        "Электролиз вели при 60 C. Плотность тока составляла 250 единиц.\n"
+    )
+    chunks = chunk_pages([(1, text)], size=200, overlap=20)
+    assert chunks
+    paths = {tuple(c.section_path) for c in chunks}
+    assert ("Введение",) in paths and ("Методы",) in paths
+    # no chunk mixes the two sections' bodies
+    intro = next(c for c in chunks if c.section_path == ["Введение"])
+    assert "Электролиз" not in intro.text

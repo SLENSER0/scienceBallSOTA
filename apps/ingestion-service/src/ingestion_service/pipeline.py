@@ -197,6 +197,8 @@ class IngestionPipeline:
                     text=ch.text[:2000],
                     page=ch.page,
                     doc_id=doc_id,
+                    section_path=" / ".join(ch.section_path),
+                    chunk_type=ch.chunk_type,
                     **self._prov(),
                 )
                 self.store.upsert_edge(doc_id, chunk_id, "HAS_CHUNK", **self._prov())
