@@ -1,0 +1,55 @@
+# Property physical-range catalog (§7.13).
+#
+# Canonical ``property_id`` -> {hard_min, hard_max, typical_min, typical_max, unit}.
+# Hard min/max are absolute physical bounds — a value outside them is
+# non-physical (extraction/unit error). The typical band (typical_min ..
+# typical_max) is the ordinary engineering range for the property across the
+# mining & metallurgy domain; values inside hard-range but outside the typical
+# band are plausible but worth flagging as outliers. All ranges are expressed
+# in the single canonical ``unit`` — normalize measurements to that unit before
+# range-checking. ``property_id`` values mirror
+# ``kg_extractors.property_vocab`` / ``resources/property_vocab.yaml``.
+#
+# Каталог физических диапазонов свойств (§7.13): жёсткие границы + типичная полоса.
+
+"prop:hardness":
+  hard_min: 0.0
+  hard_max: 10000.0
+  typical_min: 50.0
+  typical_max: 900.0
+  unit: HV
+
+"prop:tensile_strength":
+  hard_min: 0.0
+  hard_max: 10000.0
+  typical_min: 100.0
+  typical_max: 2500.0
+  unit: MPa
+
+"prop:yield_strength":
+  hard_min: 0.0
+  hard_max: 8000.0
+  typical_min: 50.0
+  typical_max: 2000.0
+  unit: MPa
+
+"prop:elongation":
+  hard_min: 0.0
+  hard_max: 100.0
+  typical_min: 1.0
+  typical_max: 60.0
+  unit: "%"
+
+"prop:conductivity":
+  hard_min: 0.0
+  hard_max: 110.0
+  typical_min: 1.0
+  typical_max: 105.0
+  unit: "%IACS"
+
+"prop:density":
+  hard_min: 0.1
+  hard_max: 25.0
+  typical_min: 0.5
+  typical_max: 22.0
+  unit: g/cm3
