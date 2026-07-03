@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel, Field
 
 from api_gateway.deps import get_store
 
@@ -81,6 +83,88 @@ def _fmt(node: dict, score: float | None = None) -> dict:
     if score is not None:
         out["score"] = round(score, 4)
     return out
+
+
+class SearchFilters(BaseModel):
+    min_confidence: float | None = None
+    verified_only: bool = False
+    material: str | None = None
+    property: str | None = None
+    domain: str | None = None
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=10, ge=1, le=100)  # invalid → 422
+    filters: SearchFilters = Field(default_factory=SearchFilters)
+    weights: dict[str, float] | None = None
+
+
+def _passes_filters(node: dict, f: SearchFilters) -> bool:
+    if f.verified_only and node.get("verified") is not True:
+        return False
+    if f.min_confidence is not None:
+        conf = node.get("confidence")
+        if not isinstance(conf, (int, float)) or conf < f.min_confidence:
+            return False
+    if f.domain and node.get("domain") != f.domain:
+        return False
+    if f.material and f.material.lower() not in str(node.get("name", "")).lower():
+        return False
+    return True
+
+
+def _hit(node: dict, score: float) -> dict[str, Any]:
+    """Unified hit shape across all three search modes (§14.7)."""
+    return {
+        "id": node["id"],
+        "text": node.get("text") or node.get("name"),
+        "score": round(score, 4),
+        "doc_id": node.get("doc_id"),
+        "page": node.get("page"),
+        "type": node.get("label"),
+        "name": node.get("name"),
+        "metadata": {"domain": node.get("domain"), "review_status": node.get("review_status")},
+    }
+
+
+def _run_search(req: SearchRequest, mode: str) -> dict:
+    from kg_retrievers.scoring import evidence_quality_score, weighted_fuse
+
+    store = get_store()
+    tokens = {t.lower() for t in _TOKEN.findall(req.query)}
+    nodes = {
+        n["id"]: n
+        for n in _entity_rows(store, req.query, req.top_k)
+        if _passes_filters(n, req.filters)
+    }
+    kw = {i: _keyword_score(n, tokens) for i, n in nodes.items()}
+    if mode == "keyword":
+        ranked = sorted(kw.items(), key=lambda x: x[1], reverse=True)[: req.top_k]
+        hits = [_hit(nodes[i], s) for i, s in ranked]
+    else:  # hybrid / vector both fuse keyword + evidence_quality in the embedded profile
+        comps = {
+            "keyword": kw,
+            "evidence_quality": {i: evidence_quality_score(n) for i, n in nodes.items()},
+        }
+        fused = weighted_fuse(comps, req.weights or {"keyword": 0.7, "evidence_quality": 0.3})
+        hits = [_hit(nodes[f.id], f.score) for f in fused[: req.top_k]]
+    return {"query": req.query, "mode": mode, "count": len(hits), "hits": hits}
+
+
+@router.post("/search/hybrid")
+def post_search_hybrid(req: SearchRequest) -> dict:
+    return _run_search(req, "hybrid")
+
+
+@router.post("/search/vector")
+def post_search_vector(req: SearchRequest) -> dict:
+    return _run_search(req, "vector")
+
+
+@router.post("/search/keyword")
+def post_search_keyword(req: SearchRequest) -> dict:
+    return _run_search(req, "keyword")
 
 
 @router.get("/search/keyword")

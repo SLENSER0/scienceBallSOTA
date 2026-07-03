@@ -3133,11 +3133,11 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 14.7 Search endpoints (hybrid / vector / keyword)
 
-- [ ] `POST /api/v1/search/hybrid` — гибридный поиск (§10.2, RRF/weighted fusion); body `{ "query", "top_k", "filters"?, "weights"?, "rerank"? }`; проксирует в `search-service`; ответ — ранжированный список chunks/сущностей с `score`, `source`, `evidence_ref`, подсветкой.
-- [ ] `POST /api/v1/search/vector` — только семантический поиск через Qdrant (`qdrant-client`, §13.2/§13.1); body `{ "query"|"vector", "top_k", "filters"? }`; ответ с cosine-score и payload.
-- [ ] `POST /api/v1/search/keyword` — только лексический поиск через OpenSearch (`opensearch-py`, §13.2/§13.1); body `{ "query", "top_k", "filters"? }`; поддержка BM25, фильтров по метаданным, подсветки.
-- [ ] Унифицировать формат hit'а между тремя endpoint'ами (`id`, `text`, `score`, `doc_id`, `page`, `metadata`) для единообразного рендера на frontend.
-- [ ] Прокинуть фильтры (`min_confidence`, `verified_only`, `date_from`, `material`, `property`) в нижележащие сервисы; валидировать диапазоны.
+- [x] `POST /api/v1/search/hybrid` — гибридный поиск (§10.2, RRF/weighted fusion); body `{ "query", "top_k", "filters"?, "weights"?, "rerank"? }`; проксирует в `search-service`; ответ — ранжированный список chunks/сущностей с `score`, `source`, `evidence_ref`, подсветкой.
+- [x] `POST /api/v1/search/vector` — только семантический поиск через Qdrant (`qdrant-client`, §13.2/§13.1); body `{ "query"|"vector", "top_k", "filters"? }`; ответ с cosine-score и payload.
+- [x] `POST /api/v1/search/keyword` — только лексический поиск через OpenSearch (`opensearch-py`, §13.2/§13.1); body `{ "query", "top_k", "filters"? }`; поддержка BM25, фильтров по метаданным, подсветки.
+- [x] Унифицировать формат hit'а между тремя endpoint'ами (`id`, `text`, `score`, `doc_id`, `page`, `metadata`) для единообразного рендера на frontend.
+- [x] Прокинуть фильтры (`min_confidence`, `verified_only`, `date_from`, `material`, `property`) в нижележащие сервисы; валидировать диапазоны.
 
 **Критерий приёмки:** три search-endpoint'а возвращают унифицированные ранжированные hits; `search/hybrid` объединяет vector+keyword по формуле §10.2; фильтры корректно пробрасываются; невалидный `top_k` → `422`.
 

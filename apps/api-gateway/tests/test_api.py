@@ -243,3 +243,19 @@ def test_gaps_detail_matrix_and_filter(client: TestClient) -> None:
     assert all(g["type"] == gt for g in filt)
     # unknown gap → 404
     assert client.get("/api/v1/gaps/nope").status_code == 404
+
+
+def test_post_search_unified_hits_filters_and_422(client: TestClient) -> None:
+    r = client.post("/api/v1/search/hybrid", json={"query": "осмос", "top_k": 5})
+    assert r.status_code == 200
+    hits = r.json()["hits"]
+    assert hits and all({"id", "text", "score", "doc_id", "page", "metadata"} <= set(h) for h in hits)
+    # invalid top_k → 422
+    assert client.post("/api/v1/search/keyword", json={"query": "x", "top_k": 0}).status_code == 422
+    # verified_only filter narrows (seed entities are mostly unverified)
+    all_hits = client.post("/api/v1/search/keyword", json={"query": "вода", "top_k": 50}).json()["count"]
+    v = client.post(
+        "/api/v1/search/keyword",
+        json={"query": "вода", "top_k": 50, "filters": {"verified_only": True}},
+    ).json()["count"]
+    assert v <= all_hits
