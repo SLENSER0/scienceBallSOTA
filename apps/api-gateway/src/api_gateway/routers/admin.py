@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 from api_gateway.deps import get_store
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+
+@router.get("/ready")
+def ready() -> JSONResponse:
+    """Readiness probe: 200 only if the graph store answers a query, else 503 (§14.11)."""
+    checks: dict[str, str] = {}
+    ok = True
+    try:
+        get_store().rows("MATCH (n:Node) RETURN count(n) LIMIT 1")
+        checks["graph"] = "ok"
+    except Exception as e:  # noqa: BLE001 — surface as not-ready, don't crash the probe
+        checks["graph"] = f"error: {type(e).__name__}"
+        ok = False
+    status = 200 if ok else 503
+    return JSONResponse({"ready": ok, "checks": checks}, status_code=status)
 
 _DOMAINS = [
     "hydrometallurgy",

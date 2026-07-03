@@ -324,3 +324,10 @@ def test_graphrag_global_search_and_status(client: TestClient) -> None:
     g = client.post("/api/v1/search/global", json={"query": "осмос ионный обмен вода"}).json()
     assert "answer" in g and "used_community_ids" in g and "sources" in g
     assert g["used_community_ids"]  # ≥1 relevant community on seed
+
+
+def test_readiness_probe(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/ready")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ready"] is True and body["checks"]["graph"] == "ok"
