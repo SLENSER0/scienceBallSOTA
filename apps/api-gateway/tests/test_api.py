@@ -524,3 +524,16 @@ def test_ingest_jobs_lifecycle(client: TestClient) -> None:
     cancelled = client.post(f"/api/v1/ingest/jobs/{jid}/cancel").json()
     assert cancelled["status"] == "cancelled"
     assert client.get("/api/v1/ingest/jobs/nope").status_code == 404
+
+
+def test_views_and_settings(client: TestClient) -> None:
+    hdr = _auth(client, "researcher")
+    v = client.post(
+        "/api/v1/views", json={"name": "my graph", "payload": {"ids": ["a"]}}, headers=hdr
+    )
+    assert v.status_code == 200 and v.json()["name"] == "my graph"
+    lst = client.get("/api/v1/views", headers=hdr).json()["views"]
+    assert any(x["name"] == "my graph" for x in lst)
+    client.put("/api/v1/me/settings", json={"settings": {"theme": "dark"}}, headers=hdr)
+    s = client.get("/api/v1/me/settings", headers=hdr).json()["settings"]
+    assert s.get("theme") == "dark"

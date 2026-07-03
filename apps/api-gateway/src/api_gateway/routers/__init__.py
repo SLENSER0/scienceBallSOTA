@@ -19,6 +19,7 @@ def attach_routers(app: FastAPI) -> None:
         notifications,
         query,
         search,
+        views,
     )
 
     app.include_router(auth.router)
@@ -34,3 +35,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(gaps.router)
     app.include_router(curation.router)
     app.include_router(ingest.router)
+    app.include_router(views.router)
