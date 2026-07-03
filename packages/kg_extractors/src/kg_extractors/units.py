@@ -106,6 +106,29 @@ UNIT_ALIASES: dict[str, str] = {
     "мм": "mm",
     "мкм": "um",
     "нм": "nm",
+    # economic indicators (currency + rates) — §24: экономические показатели.
+    # Currencies are distinct pint dimensions (no fixed FX rate) so costs are only
+    # ever compared like-for-like (RUB with RUB, USD with USD).
+    "руб/т": "RUB/t",
+    "₽/т": "RUB/t",
+    "руб/тонна": "RUB/t",
+    "долл/т": "USD/t",
+    "$/т": "USD/t",
+    "usd/t": "USD/t",
+    "€/т": "EUR/t",
+    "eur/t": "EUR/t",
+    "руб/год": "RUB/year",
+    "$/год": "USD/year",
+    "usd/year": "USD/year",
+    "млнруб": "megaRUB",
+    "млн$": "megaUSD",
+    "млнusd": "megaUSD",
+    "руб": "RUB",
+    "₽": "RUB",
+    "$": "USD",
+    "usd": "USD",
+    "€": "EUR",
+    "eur": "EUR",
 }
 
 # canonical unit for each pint dimensionality signature -> target
@@ -144,6 +167,13 @@ def _registry() -> pint.UnitRegistry:
     ureg.define("ppb = 1e-9")
     ureg.define("ratio = []")
     ureg.define("ton = 1000 * kilogram = t")
+    # Economic indicators — each currency is its own dimension (no fixed FX rate),
+    # so costs are only ever compared like-for-like (§24: экономические показатели).
+    ureg.define("RUB = [currency_rub]")
+    ureg.define("USD = [currency_usd]")
+    ureg.define("EUR = [currency_eur]")
+    ureg.define("megaRUB = 1e6 * RUB")
+    ureg.define("megaUSD = 1e6 * USD")
     return ureg
 
 
@@ -228,6 +258,9 @@ def to_canonical(value: float, raw_unit: str | None) -> Normalized | None:
 _UNIT_RE = (
     r"(мг/дм³|мг/дм3|мг/л|мг/нм³|мг/нм3|мг/м3|г/л|г/дм3|м³/ч|м3/ч|м/с|см/с|л/мин|л/с|"
     r"т/сут|т/ч|т/год|кг/т|квт·ч/т|квтч/т|а/м²|а/м2|ма/см²|ма/см2|°c|°с|мпа|бар|атм|"
+    # economic: compound rates before bare currency so «руб/т» wins over «руб».
+    r"руб/тонна|руб/т|₽/т|долл/т|\$/т|usd/t|€/т|eur/t|руб/год|\$/год|usd/year|"
+    r"млн\sруб|млн\$|млн\susd|руб|₽|\$|usd|€|eur|"
     r"мв|мм|мкм|нм|%об|%|ppm|ppb|mg/l|mg/dm3|g/l|m3/h|m/s|cm/s|t/day|kg/t|kwh/t|"
     r"a/m2|ma/cm2|degc|mpa|bar|atm|mv)"
 )
@@ -299,15 +332,19 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
 
     # inequality: "≤1000 мг/дм³", "<200 мг/л", "от 100 т/сут"
     ineq_re = re.compile(
-        rf"(≤|⩽|≥|⩾|<|>|≈|~|не более|не менее|от|до|менее|более)\s*({_NUM})\s*{_UNIT_RE}?",
+        rf"(≤|⩽|≥|⩾|<|>|≈|~|не более|не менее|от|до|менее|более|выше|ниже|свыше)\s*"
+        rf"({_NUM})\s*{_UNIT_RE}?",
         re.IGNORECASE,
     )
     ru_ops = {
         "не более": "<=",
         "менее": "<",
+        "ниже": "<",
         "до": "<=",
         "не менее": ">=",
         "более": ">",
+        "выше": ">",
+        "свыше": ">",
         "от": ">=",
     }
     for m in ineq_re.finditer(t):
