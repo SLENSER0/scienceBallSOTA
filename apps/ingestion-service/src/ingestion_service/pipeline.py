@@ -292,18 +292,27 @@ class IngestionPipeline:
             self.stats.evidence += 1
 
             meas_id = make_id("Measurement", f"{doc_id}:{chunk_id}:m{i}")
-            norm = None
-            if m.value is not None and m.unit:
-                from kg_extractors.units import to_canonical
+            # §7.5: normalize units + validate physical range against the property
+            # policy, flagging out-of-range values for curator review (§7.7).
+            nm = None
+            if m.value is not None:
+                from kg_extractors.measurement_normalizer import normalize_measurement
+                from kg_extractors.property_vocab import default_property_vocab
 
-                norm = to_canonical(m.value, m.unit)
+                vocab = default_property_vocab()
+                cand = f"prop:{m.property}" if m.property else ""
+                pid = cand if cand in vocab.all_ids() else vocab.canonical_for(m.property or "")
+                nm = normalize_measurement(m.value, m.unit, property_id=pid)
             self.store.upsert_node(
                 meas_id,
                 "Measurement",
                 name=m.property,
                 property_name=m.property,
-                value_normalized=(norm.value if norm else m.value),
-                normalized_unit=(norm.unit if norm else m.unit),
+                value_normalized=(nm.value_normalized if nm else m.value),
+                normalized_unit=(nm.normalized_unit if nm else m.unit),
+                in_range=(nm.in_range if nm else None),
+                review_needed=(nm.review_needed if nm else False),
+                quality_flags=("|".join(nm.flags) if nm and nm.flags else ""),
                 value_raw=m.value_raw,
                 unit=m.unit,
                 **self._prov(confidence=m.confidence),

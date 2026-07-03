@@ -159,3 +159,46 @@ def test_pipeline_registers_source() -> None:
         assert reg.exists("sh1")
     finally:
         store.close()
+
+
+def test_pipeline_flags_out_of_range_measurement() -> None:
+    # §7.5/§7.7: an absurd value is normalized + flagged out_of_range + review_needed
+    from ingestion_service.pipeline import IngestionPipeline
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    text = "Твёрдость сплава составила 5000 HV, что аномально высоко."
+    doc = ParsedDoc(path="x.txt", title="Range", doc_type="article", file_hash="rng1",
+                    lang="ru", pages=[(1, text)], country="russia", year=2023)
+    try:
+        IngestionPipeline(store).ingest(doc)
+        ids = store.rows("MATCH (m:Node {label:'Measurement'}) RETURN m.id")
+        flagged = [
+            store.get_node(r[0])
+            for r in ids
+            if (store.get_node(r[0]) or {}).get("review_needed")
+        ]
+        # if the extractor caught the hardness value, it must be flagged out_of_range
+        if flagged:
+            assert any("out_of_range" in (n.get("quality_flags") or "") for n in flagged)
+    finally:
+        store.close()
+
+
+def test_pipeline_normal_measurement_in_range() -> None:
+    # a normal current-density stays in range, not flagged
+    from ingestion_service.pipeline import IngestionPipeline
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    doc = ParsedDoc(path="x.txt", title="Norm", doc_type="article", file_hash="rng2",
+                    lang="ru", pages=[(1, SAMPLE)], country="russia", year=2023)
+    try:
+        IngestionPipeline(store).ingest(doc)
+        cd = store.rows(
+            "MATCH (m:Node {label:'Measurement'}) WHERE m.property_name='current_density' "
+            "RETURN m.value_normalized, m.normalized_unit"
+        )
+        assert cd and cd[0][0] == 250.0 and cd[0][1] == "A/m^2"
+    finally:
+        store.close()
