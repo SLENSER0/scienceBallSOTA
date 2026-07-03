@@ -1280,12 +1280,12 @@ OSS для клонирования/вендоринга (§22):
 
 ### 6.6 Rule extractor: property vocabulary
 
-- [ ] Создать YAML-словарь `kg_extractors/resources/property_vocab.yaml` со свойствами (`Property`, §8.1): `hardness` (Vickers/Rockwell), `tensile strength`, `yield strength`, `elongation`, `Young's modulus`, `fatigue life`, `grain size`, `electrical conductivity`, `thermal conductivity`, с синонимами и допустимыми единицами.
-- [ ] Реализовать `kg_extractors/rules/property_vocab.py`, извлекающий упоминания свойств и связывающий их со значением+единицей (§6.3) в `MeasurementExtract` (см. §6.9), а также с каноническим property-ключом (для последующего property vocabulary mapping в §9.2 Step 6).
-- [ ] Распознавать `baseline_value` и `effect_direction` (increase/decrease/no change) по маркерам («increased from … to …», «improved by», «reduced»), заполняя соответствующие поля `MeasurementExtract`.
-- [ ] Извлекать метод измерения/характеризации свойства (`Method`, §8.1): напр. Vickers/Rockwell для hardness, tensile test для strength, XRD/SEM/TEM; сохранять как `method_mention` при `MeasurementExtract` для последующего создания узла `Method`.
-- [ ] Валидировать соответствие единицы свойству (например, HV/HRC → hardness; MPa/GPa → strength) и помечать несоответствия для review (флаг `unit_property_mismatch`, используется в §6.15).
-- [ ] Написать тесты `tests/rules/test_property_vocab.py` (≥ 15 кейсов, включая baseline+effect_direction и распознавание метода измерения).
+- [x] Создать YAML-словарь `kg_extractors/resources/property_vocab.yaml` со свойствами (`Property`, §8.1): `hardness` (Vickers/Rockwell), `tensile strength`, `yield strength`, `elongation`, `Young's modulus`, `fatigue life`, `grain size`, `electrical conductivity`, `thermal conductivity`, с синонимами и допустимыми единицами.
+- [x] Реализовать `kg_extractors/rules/property_vocab.py`, извлекающий упоминания свойств и связывающий их со значением+единицей (§6.3) в `MeasurementExtract` (см. §6.9), а также с каноническим property-ключом (для последующего property vocabulary mapping в §9.2 Step 6).
+- [x] Распознавать `baseline_value` и `effect_direction` (increase/decrease/no change) по маркерам («increased from … to …», «improved by», «reduced»), заполняя соответствующие поля `MeasurementExtract`.
+- [x] Извлекать метод измерения/характеризации свойства (`Method`, §8.1): напр. Vickers/Rockwell для hardness, tensile test для strength, XRD/SEM/TEM; сохранять как `method_mention` при `MeasurementExtract` для последующего создания узла `Method`.
+- [x] Валидировать соответствие единицы свойству (например, HV/HRC → hardness; MPa/GPa → strength) и помечать несоответствия для review (флаг `unit_property_mismatch`, используется в §6.15).
+- [x] Написать тесты `tests/rules/test_property_vocab.py` (≥ 15 кейсов, включая baseline+effect_direction и распознавание метода измерения).
 
 **Критерий приёмки:** на тест-наборе extractor извлекает property-mentions с recall ≥ 0.9; связка property↔unit валидна в ≥ 95% кейсов; `baseline_value`/`effect_direction` заполняются корректно в ≥ 80% релевантных предложений; метод измерения распознаётся, когда присутствует в тексте.
 
@@ -2531,10 +2531,10 @@ Python-пакеты (из §13.2), затрагиваемые разделом: 
 
 Компонент `evidence_quality_score` формулы §10.2, основанный на evidence-first модели §8.3 и warning-правилах §7.5 Node 9.
 
-- [ ] Реализовать `evidence_quality.compute(hit) -> float` из полей evidence/extraction: наличие source span (`char_start/char_end` или `table row/col`, §8.3), `review_status` (accepted > pending > rejected), `confidence` экстракции, `source_type` (table_cell/paragraph выше, чем metadata).
-- [ ] Определить и вынести в конфиг веса/коэффициенты компонентов evidence quality; нормализовать результат в [0,1].
-- [ ] Учесть буст verified evidence и штрафы «missing span»/«low confidence» на уровне score (согласованно с reranker §12.9, чтобы не дублировать эффект — задать разделение ответственности: fusion-компонент = мягкий приор, rerank = финальная корректировка).
-- [ ] Написать тесты: verified+span+high-conf → близко к 1.0; missing-span+low-conf+pending → близко к 0; rejected → 0.
+- [x] Реализовать `evidence_quality.compute(hit) -> float` из полей evidence/extraction: наличие source span (`char_start/char_end` или `table row/col`, §8.3), `review_status` (accepted > pending > rejected), `confidence` экстракции, `source_type` (table_cell/paragraph выше, чем metadata).
+- [x] Определить и вынести в конфиг веса/коэффициенты компонентов evidence quality; нормализовать результат в [0,1].
+- [x] Учесть буст verified evidence и штрафы «missing span»/«low confidence» на уровне score (согласованно с reranker §12.9, чтобы не дублировать эффект — задать разделение ответственности: fusion-компонент = мягкий приор, rerank = финальная корректировка).
+- [x] Написать тесты: verified+span+high-conf → близко к 1.0; missing-span+low-conf+pending → близко к 0; rejected → 0.
 
 **Критерий приёмки:** `evidence_quality.compute` монотонно растёт при добавлении span/verified/повышении confidence; граничные кейсы (rejected, no-span) дают минимальный score (тест проходит).
 
@@ -2572,15 +2572,15 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 Финальный reranking top-50 кандидатов (§10.2 Rerank, §7.5 Node 6): cross-encoder + буст verified evidence + штрафы за missing span / low confidence.
 
-- [ ] Реализовать `rerank.rerank(query, hits, top_n=50) -> RetrievalHit[]` в `packages/kg_retrievers/rerank.py`: подача (query, chunk_text) пар в cross-encoder; брать не более `rerank_top_n=50` кандидатов после fusion (§10.2).
-- [ ] Интегрировать cross-encoder через `sentence-transformers` `CrossEncoder` или `fastembed` reranker (§13.2); выбрать модель (кандидаты: `BAAI/bge-reranker-*`, `cross-encoder/ms-marco-MiniLM-*`), сделать модель конфигурируемой; загрузка модели — lazy singleton.
-- [ ] Реализовать буст verified evidence: узлы/хиты с `review_status=accepted`/`verified=true` получают положительную поправку к rerank-score (§10.2 «boost verified evidence»).
-- [ ] Реализовать штраф за missing source span: хиты без `char_start/char_end` (или table row/col, §8.3) — отрицательная поправка (§10.2 «penalize missing source spans»).
-- [ ] Реализовать штраф за low-confidence extraction: линейный/пороговый штраф при `confidence < min_confidence` (§6.2 filters `min_confidence`, §10.2 «penalize low-confidence extraction»).
-- [ ] Вынести коэффициенты буста/штрафов в конфиг; итоговый rerank-score = f(cross_encoder_score, boosts, penalties); сохранить исходный fusion-score в `component_scores` для трассировки.
-- [ ] Сделать reranker опциональным (config-флаг, §Phase 4 «implement reranking optional», «reranking cross-encoder if available» §7.5 Node 6): при выключении/недоступности модели пайплайн отдаёт fusion-порядок.
-- [ ] Добавить batching и timeout на инференс cross-encoder; логировать латентность в `timings`.
-- [ ] Написать тесты: (a) verified-хит поднимается выше эквивалентного unverified; (b) хит без span опускается; (c) при выключенном reranker порядок == fusion-порядок.
+- [x] Реализовать `rerank.rerank(query, hits, top_n=50) -> RetrievalHit[]` в `packages/kg_retrievers/rerank.py`: подача (query, chunk_text) пар в cross-encoder; брать не более `rerank_top_n=50` кандидатов после fusion (§10.2).
+- [x] Интегрировать cross-encoder через `sentence-transformers` `CrossEncoder` или `fastembed` reranker (§13.2); выбрать модель (кандидаты: `BAAI/bge-reranker-*`, `cross-encoder/ms-marco-MiniLM-*`), сделать модель конфигурируемой; загрузка модели — lazy singleton.
+- [x] Реализовать буст verified evidence: узлы/хиты с `review_status=accepted`/`verified=true` получают положительную поправку к rerank-score (§10.2 «boost verified evidence»).
+- [x] Реализовать штраф за missing source span: хиты без `char_start/char_end` (или table row/col, §8.3) — отрицательная поправка (§10.2 «penalize missing source spans»).
+- [x] Реализовать штраф за low-confidence extraction: линейный/пороговый штраф при `confidence < min_confidence` (§6.2 filters `min_confidence`, §10.2 «penalize low-confidence extraction»).
+- [x] Вынести коэффициенты буста/штрафов в конфиг; итоговый rerank-score = f(cross_encoder_score, boosts, penalties); сохранить исходный fusion-score в `component_scores` для трассировки.
+- [x] Сделать reranker опциональным (config-флаг, §Phase 4 «implement reranking optional», «reranking cross-encoder if available» §7.5 Node 6): при выключении/недоступности модели пайплайн отдаёт fusion-порядок.
+- [x] Добавить batching и timeout на инференс cross-encoder; логировать латентность в `timings`.
+- [x] Написать тесты: (a) verified-хит поднимается выше эквивалентного unverified; (b) хит без span опускается; (c) при выключенном reranker порядок == fusion-порядок.
 
 **Критерий приёмки:** на подготовленном наборе из 50 кандидатов reranker меняет порядок так, что verified+span-хиты систематически выше missing-span/low-confidence при равном semantic score; выключение reranker детерминированно возвращает fusion-порядок (тесты проходят).
 
