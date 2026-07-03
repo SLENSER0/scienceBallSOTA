@@ -21,6 +21,7 @@ def attach_routers(app: FastAPI) -> None:
         ingest,
         notifications,
         query,
+        research,
         search,
         views,
     )
@@ -42,3 +43,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(chat.router)
     app.include_router(experiments.router)
     app.include_router(graph_ext.router)
+    app.include_router(research.router)

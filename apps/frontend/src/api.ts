@@ -126,4 +126,54 @@ export const api = {
   chatExportUrl(sid: string, mid: string, format = 'md'): string {
     return `/api/v1/chat/sessions/${encodeURIComponent(sid)}/messages/${encodeURIComponent(mid)}/export?format=${format}`;
   },
+
+  // -- Library / article discovery (§5) -------------------------------------
+  researchSources(): Promise<{
+    sources: { id: string; name: string; homepage: string; access: string; note: string }[];
+  }> {
+    return req('/api/v1/research/sources');
+  },
+  researchPlan(question: string, sourceIds?: string[]): Promise<{
+    question: string;
+    keywords: string[];
+    sub_questions: {
+      text: string;
+      links: { source_id: string; source_name: string; access: string; url: string }[];
+    }[];
+  }> {
+    return req('/api/v1/research/plan', {
+      method: 'POST',
+      body: JSON.stringify({ question, source_ids: sourceIds ?? null }),
+    });
+  },
+  addArticle(body: {
+    title: string;
+    authors?: string[];
+    year?: number | null;
+    doi?: string;
+    url?: string;
+    source?: string;
+    abstract?: string;
+    domain?: string;
+  }): Promise<{ paper_id: string; nodes: number; edges: number }> {
+    return req('/api/v1/research/articles', { method: 'POST', body: JSON.stringify(body) });
+  },
+  recentArticles(): Promise<{
+    articles: { id: string; title: string; year: number | null; doi: string; url: string }[];
+  }> {
+    return req('/api/v1/research/articles');
+  },
+  deepStatus(): Promise<{ available: boolean; engine: string }> {
+    return req('/api/v1/research/deep/status');
+  },
+  deepResearch(question: string): Promise<{
+    question: string;
+    engine: string;
+    model?: string;
+    report: string;
+    notes?: string[];
+    plan?: unknown;
+  }> {
+    return req('/api/v1/research/deep', { method: 'POST', body: JSON.stringify({ question }) });
+  },
 };

@@ -8,12 +8,14 @@ import {
   Columns3,
   MessagesSquare,
   LogOut,
+  Library,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
 import { LoginView, useOidcCallback } from './components/LoginView';
 import { ChatView } from './components/ChatView';
 import { AskView } from './components/AskView';
+import { LibraryView } from './components/LibraryView';
 import { CompareView } from './components/CompareView';
 import { CoverageView } from './components/CoverageView';
 import { GapsView } from './components/GapsView';
@@ -23,6 +25,8 @@ import { EvidenceDrawer } from './components/EvidenceDrawer';
 const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
   { id: 'chat', label: 'Диалог', icon: MessagesSquare },
   { id: 'ask', label: 'Запрос', icon: Network },
+  // Adding articles is a curator/researcher capability, not for external partners.
+  { id: 'library', label: 'Библиотека', icon: Library, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'compare', label: 'Сравнение', icon: Columns3 },
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
   // External partners get a restricted view — no internal gap/risk analytics.
@@ -112,6 +116,7 @@ export function App() {
         <main className="min-h-0 flex-1 overflow-hidden">
           {view === 'chat' && <ChatView />}
           {view === 'ask' && <AskView />}
+          {view === 'library' && <LibraryView />}
           {view === 'compare' && <CompareView />}
           {view === 'coverage' && <CoverageView />}
           {view === 'gaps' && <GapsView />}

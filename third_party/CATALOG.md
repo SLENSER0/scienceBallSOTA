@@ -85,3 +85,4 @@ All are OSS-licensed (permitted by §7.5).
 | ruBERT / DeepPavlov ru-bert | https://huggingface.co/DeepPavlov/rubert-base-cased | RU embeddings §24.21 | optional |
 | Marquez | https://github.com/MarquezProject/marquez | OpenLineage §10 | reference |
 | Apache Superset | https://github.com/apache/superset | dashboards §17 | optional |
+- open_deep_research — https://github.com/langchain-ai/open_deep_research (MIT) — deep-research agent; VENDORED + integrated (real graph runs on OSS LLM via /research/deep)
