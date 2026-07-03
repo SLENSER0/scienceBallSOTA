@@ -438,3 +438,12 @@ def test_admin_graph_algos(client: TestClient) -> None:
     r = client.get("/api/v1/admin/graph-algos", params={"top": 5}).json()
     assert "degree_centrality" in r and "betweenness_centrality" in r
     assert isinstance(r["degree_centrality"], list)
+
+
+def test_gaps_ranked(client: TestClient) -> None:
+    client.post("/api/v1/gaps/scan")
+    r = client.get("/api/v1/gaps/ranked").json()
+    assert r["gaps"] and all("score" in g and "id" in g for g in r["gaps"])
+    scores = [g["score"] for g in r["gaps"]]
+    assert scores == sorted(scores, reverse=True)  # ranked desc
+    assert all("next_experiment" in g for g in r["gaps"])
