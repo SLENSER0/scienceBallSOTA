@@ -77,3 +77,28 @@ def test_mark_inferred_and_annotate() -> None:
         assert {"mark_inferred", "annotate"} <= actions
     finally:
         store.close()
+
+
+def test_resolve_contradiction_and_practice_type() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from curation_service.curation import CurationService
+
+    from kg_retrievers.graph_store import KuzuGraphStore
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        store.upsert_node("contra:1", "Contradiction", name="конфликт скоростей")
+        store.upsert_node("tech:ro", "TechnologySolution", name="обратный осмос")
+        svc = CurationService(store)
+        svc.resolve_contradiction("contra:1", resolution="принято значение 0.2 м/с", actor="cur")
+        c = store.get_node("contra:1")
+        assert c["review_status"] == "resolved" and c["verified"] is True
+        svc.set_practice_type("tech:ro", "russia", actor="cur")
+        assert store.get_node("tech:ro")["practice_type"] == "russia"
+        actions = {h["action"] for h in svc.history("tech:ro")}
+        assert "mark_as_domestic_practice" in actions
+    finally:
+        store.close()

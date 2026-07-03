@@ -126,6 +126,40 @@ class CurationService:
             CurationAction.ANNOTATE, node_id, before, self.store.get_node(node_id), actor, note
         )
 
+    def resolve_contradiction(
+        self, contradiction_id: str, *, resolution: str, actor: str, reason: str = ""
+    ) -> dict[str, Any]:
+        """Curator resolves a contradiction, recording the chosen resolution (§16/§24.20)."""
+        before = self.store.get_node(contradiction_id)
+        if before is None or before.get("label") != "Contradiction":
+            raise KeyError(f"contradiction {contradiction_id} not found")
+        self.store.upsert_node(
+            contradiction_id, "Contradiction", review_status="resolved",
+            resolution=resolution, verified=True, updated_at=self._now(),
+        )
+        return self._record(
+            CurationAction.RESOLVE_CONTRADICTION, contradiction_id, before,
+            self.store.get_node(contradiction_id), actor, reason or resolution,
+        )
+
+    def set_practice_type(self, node_id: str, practice_type: str, *, actor: str) -> dict[str, Any]:
+        """Mark a solution as domestic/foreign practice (§24.20)."""
+        before = self.store.get_node(node_id)
+        if before is None:
+            raise KeyError(node_id)
+        self.store.upsert_node(
+            node_id, before["label"], practice_type=practice_type, updated_at=self._now()
+        )
+        domestic = practice_type.lower() in {"russia", "domestic", "отечественная", "россия"}
+        action = (
+            CurationAction.MARK_AS_DOMESTIC_PRACTICE
+            if domestic
+            else CurationAction.MARK_AS_FOREIGN_PRACTICE
+        )
+        return self._record(
+            action, node_id, before, self.store.get_node(node_id), actor, practice_type
+        )
+
     def add_alias(self, node_id: str, alias: str, *, actor: str) -> dict[str, Any]:
         before = self.store.get_node(node_id)
         if before is None:

@@ -107,3 +107,34 @@ def annotate(entity_id: str, body: AnnotateBody, x_user: str = Header(default="c
         return _svc().annotate(entity_id, body.note, actor=x_user)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+class ResolveBody(BaseModel):
+    resolution: str
+    reason: str = ""
+
+
+class PracticeBody(BaseModel):
+    practice_type: str
+
+
+@router.post("/contradictions/{contradiction_id}/resolve")
+def resolve_contradiction(
+    contradiction_id: str, body: ResolveBody, x_user: str = Header(default="curator")
+) -> dict:
+    try:
+        return _svc().resolve_contradiction(
+            contradiction_id, resolution=body.resolution, actor=x_user, reason=body.reason
+        )
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post("/entities/{entity_id}/practice-type")
+def set_practice_type(
+    entity_id: str, body: PracticeBody, x_user: str = Header(default="curator")
+) -> dict:
+    try:
+        return _svc().set_practice_type(entity_id, body.practice_type, actor=x_user)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
