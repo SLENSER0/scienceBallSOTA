@@ -118,7 +118,7 @@ def annotate_gaps(
     gaps: Iterable[Any],
     *,
     recall_prior: float = DEFAULT_RECALL_PRIOR,
-    value_gate: bool = False,
+    value_gate: bool | None = None,
 ) -> list[AnnotatedGap]:
     """Annotate each gap with a §25.13 absence verdict via :func:`classify_cell`.
 
@@ -128,11 +128,19 @@ def annotate_gaps(
     node id or a bare property name (whatever :func:`classify_cell` accepts).
     ``recall_prior`` is forwarded to the classifier and governs how empty,
     unmentioned cells split between ``genuine_gap`` and ``possible_miss``.
-    ``value_gate`` (opt-in, default off — §33/N2) is forwarded too: with it on, a
-    mentioned cell whose prose only *names* the property (states no value) is
-    downgraded ``possible_miss`` → ``genuine_gap``. The classifier's
-    ``p_truly_absent`` is carried through unchanged. Read-only.
+
+    ``value_gate`` (opt-in — §33/N2): with it on, a mentioned cell whose prose only
+    *names* the property (states no value) is downgraded ``possible_miss`` →
+    ``genuine_gap``. Passing ``None`` (the default) resolves it from configuration
+    (``Settings.absence_value_gate``, env ``MKG_ABSENCE_VALUE_GATE``, default off),
+    so the flag flows from config to the production absence surface; an explicit
+    ``True`` / ``False`` overrides config. The classifier's ``p_truly_absent`` is
+    carried through unchanged. Read-only.
     """
+    if value_gate is None:
+        from kg_common.config import get_settings
+
+        value_gate = get_settings().absence_value_gate
     out: list[AnnotatedGap] = []
     for gap in gaps:
         material_id = _read(gap, "material_id")

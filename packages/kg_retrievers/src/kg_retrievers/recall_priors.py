@@ -47,21 +47,30 @@ def smoothed_recall(
     *,
     prior_strength: float = DEFAULT_PRIOR_STRENGTH,
     prior_mean: float = NEUTRAL_RECALL,
+    committed_recall_cap: float | None = None,
 ) -> float:
     """Beta-smoothed recall ``(n_found + a) / (n_attempts + a + b)`` (§25.10).
 
     ``a = prior_mean * prior_strength`` and ``b = (1 - prior_mean) * prior_strength``.
     Zero attempts (and zero found) collapse to ``prior_mean``; with ``prior_strength``
     and ``0 <= n_found <= n_attempts`` the result is strictly inside ``(0, 1)``.
+
+    ``committed_recall_cap`` (opt-in — §33/N1 honest committed floor): the coverage
+    telemetry counts *candidates proposed*, not *Observations committed* — when the
+    prose→Observation path is off, candidates never become facts, so the empirical
+    recall **overstates** what actually lands in the graph. Passing a cap (e.g. the
+    committed-recall floor) clamps the estimate from above so the absence layer /
+    guardrail is not misled. ``None`` (default) = legacy, no cap.
     """
     s = max(0.0, float(prior_strength))
     m = _clamp_open(prior_mean)
     a = m * s
     b = (1.0 - m) * s
     denom = float(n_attempts) + a + b
-    if denom <= 0.0:  # prior_strength == 0 and no attempts → nothing to go on
-        return m
-    return (float(n_found) + a) / denom
+    recall = m if denom <= 0.0 else (float(n_found) + a) / denom
+    if committed_recall_cap is not None:
+        recall = min(recall, _clamp_open(committed_recall_cap))
+    return recall
 
 
 @dataclass(frozen=True)
@@ -95,8 +104,15 @@ class DerivedPrior:
         }
 
 
-def _derive_one(stat: CoverageStats, prior_strength: float) -> DerivedPrior:
-    recall = smoothed_recall(stat.n_found, stat.n_attempts, prior_strength=prior_strength)
+def _derive_one(
+    stat: CoverageStats, prior_strength: float, committed_recall_cap: float | None = None
+) -> DerivedPrior:
+    recall = smoothed_recall(
+        stat.n_found,
+        stat.n_attempts,
+        prior_strength=prior_strength,
+        committed_recall_cap=committed_recall_cap,
+    )
     return DerivedPrior(
         target_type=stat.target_type,
         recall=recall,
@@ -108,34 +124,57 @@ def _derive_one(stat: CoverageStats, prior_strength: float) -> DerivedPrior:
 
 
 def derive_prior_details(
-    metastore: MetaStore, *, prior_strength: float = DEFAULT_PRIOR_STRENGTH
+    metastore: MetaStore,
+    *,
+    prior_strength: float = DEFAULT_PRIOR_STRENGTH,
+    committed_recall_cap: float | None = None,
 ) -> list[DerivedPrior]:
-    """Full derivation (recall + provenance) per ``target_type`` from telemetry (§25.10)."""
-    return [_derive_one(stat, prior_strength) for stat in metastore.coverage_stats()]
+    """Full derivation (recall + provenance) per ``target_type`` from telemetry (§25.10).
+
+    ``committed_recall_cap`` (§33/N1) caps the empirical recall from above when the
+    prose→Observation path is off (opt-in via ``Settings.honest_recall_priors``).
+    """
+    return [
+        _derive_one(stat, prior_strength, committed_recall_cap)
+        for stat in metastore.coverage_stats()
+    ]
 
 
 def derive_recall_priors(
-    metastore: MetaStore, *, prior_strength: float = DEFAULT_PRIOR_STRENGTH
+    metastore: MetaStore,
+    *,
+    prior_strength: float = DEFAULT_PRIOR_STRENGTH,
+    committed_recall_cap: float | None = None,
 ) -> list[RecallPrior]:
     """Smoothed recall prior per ``target_type`` from coverage telemetry (§25.10).
 
     Reads :meth:`MetaStore.coverage_stats` and Beta-smooths each hit-rate toward the
     neutral prior; returns one :class:`RecallPrior` per target type (does not persist).
+    ``committed_recall_cap`` (§33/N1) is forwarded to the honest committed floor.
     """
     return [
-        d.to_recall_prior() for d in derive_prior_details(metastore, prior_strength=prior_strength)
+        d.to_recall_prior()
+        for d in derive_prior_details(
+            metastore, prior_strength=prior_strength, committed_recall_cap=committed_recall_cap
+        )
     ]
 
 
 def persist_recall_priors(
-    metastore: MetaStore, *, prior_strength: float = DEFAULT_PRIOR_STRENGTH
+    metastore: MetaStore,
+    *,
+    prior_strength: float = DEFAULT_PRIOR_STRENGTH,
+    committed_recall_cap: float | None = None,
 ) -> list[RecallPrior]:
     """Derive and persist the recall priors via ``save_recall_prior`` (§25.10).
 
     Idempotent per ``(extractor, target_type)`` (the store UPSERTs). Returns the
     priors that were written so callers can inspect them without a re-read.
+    ``committed_recall_cap`` (§33/N1) is forwarded to the honest committed floor.
     """
-    priors = derive_recall_priors(metastore, prior_strength=prior_strength)
+    priors = derive_recall_priors(
+        metastore, prior_strength=prior_strength, committed_recall_cap=committed_recall_cap
+    )
     for prior in priors:
         metastore.save_recall_prior(prior)
     return priors
