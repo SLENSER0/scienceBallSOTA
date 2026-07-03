@@ -35,12 +35,18 @@ class HybridRetriever:
     def search(self, query: str, limit: int = 8) -> list[FusedHit]:
         ranks: dict[str, float] = {}
         payloads: dict[str, dict[str, Any]] = {}
-        if self.vector:
-            for rank, hit in enumerate(self.vector.search(query, limit * 2)):
-                ranks[hit.id] = ranks.get(hit.id, 0.0) + 1.0 / (RRF_K + rank)
-                payloads.setdefault(hit.id, hit.payload)
-        if self.keyword:
-            for rank, hit in enumerate(self.keyword.search(query, limit * 2)):
+        # Each channel is fused independently and defensively: a single dead backend
+        # (e.g. an OpenSearch index that vanished after a container restart) must
+        # DEGRADE the result, never 500 the whole query. See kg_chunks 404 incident.
+        for channel, name in ((self.vector, "vector"), (self.keyword, "keyword")):
+            if not channel:
+                continue
+            try:
+                hits = channel.search(query, limit * 2)
+            except Exception as exc:  # degrade past any backend fault (missing index, timeout)
+                _log.warning("hybrid.channel_failed", channel=name, error=str(exc)[:150])
+                continue
+            for rank, hit in enumerate(hits):
                 ranks[hit.id] = ranks.get(hit.id, 0.0) + 1.0 / (RRF_K + rank)
                 payloads.setdefault(hit.id, hit.payload)
         ordered = sorted(ranks.items(), key=lambda kv: kv[1], reverse=True)[:limit]
