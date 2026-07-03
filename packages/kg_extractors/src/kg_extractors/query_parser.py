@@ -17,6 +17,16 @@ from kg_schema.taxonomy import TaxonomyEntry, load_taxonomy
 
 _LAST_N_YEARS = re.compile(r"(?:за\s+)?(?:последни[ей]|last)\s+(\d+)\s+(?:лет|years?|год)", re.I)
 _YEAR = re.compile(r"\b(19|20)\d{2}\b")
+# Direction-aware time parsing: «после 2015» = lower bound only, «до 2015» = upper
+# bound only, «2010–2020»/«с 2010 по 2020» = closed range (adversarial finding: the
+# old parser collapsed all three to year_from==year_to).
+_YEAR_RANGE = re.compile(r"((?:19|20)\d{2})\s*(?:-|–|—|\.\.|по|до)\s*((?:19|20)\d{2})", re.I)
+_YEAR_AFTER = re.compile(
+    r"(?:после|начиная\s+с|позже|newer\s+than|since|from)\s+((?:19|20)\d{2})", re.I
+)
+_YEAR_BEFORE = re.compile(
+    r"(?:до|ранее|раньше|прежде|before|older\s+than)\s+((?:19|20)\d{2})", re.I
+)
 
 _FOREIGN_MARKERS = [
     "за рубежом",
@@ -173,9 +183,23 @@ def parse_query(text: str) -> QueryIntent:
     m = _LAST_N_YEARS.search(text)
     if m:
         intent.last_n_years = int(m.group(1))
-    years = [int(y.group(0)) for y in _YEAR.finditer(text)]
-    if years:
-        intent.year_from, intent.year_to = min(years), max(years)
+    rng = _YEAR_RANGE.search(text)
+    if rng:  # «2010–2020» / «с 2010 по 2020» → closed range
+        a, b = int(rng.group(1)), int(rng.group(2))
+        intent.year_from, intent.year_to = min(a, b), max(a, b)
+    else:
+        after = _YEAR_AFTER.search(text)
+        before = _YEAR_BEFORE.search(text)
+        if after:  # «после 2015» → open-ended lower bound
+            intent.year_from = int(after.group(1))
+        if before:  # «до 2015» → open-ended upper bound
+            intent.year_to = int(before.group(1))
+        if not after and not before:
+            years = [int(y.group(0)) for y in _YEAR.finditer(text)]
+            if len(years) >= 2:
+                intent.year_from, intent.year_to = min(years), max(years)
+            elif years:  # a single bare year → exact match
+                intent.year_from = intent.year_to = years[0]
 
     # flags / type
     intent.is_comparison = (

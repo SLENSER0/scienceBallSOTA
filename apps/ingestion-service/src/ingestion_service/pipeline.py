@@ -88,6 +88,10 @@ class IngestionPipeline:
         self._now = datetime.now(UTC).isoformat()
         self.stats = IngestStats()
         self._entity_cache: set[str] = set()
+        # Source provenance (geography + dates) of the doc currently being ingested,
+        # propagated onto every Evidence/Measurement so geographic + temporal filtering
+        # has something to filter on (adversarial finding: facts were 0% classified).
+        self._doc_geo: dict[str, object] = {}
         self.store.upsert_node(
             self.run_id,
             "ExtractorRun",
@@ -178,6 +182,18 @@ class IngestionPipeline:
             domain=top_domain,
             **self._prov(source_type="metadata"),
         )
+        # Provenance to stamp onto this doc's facts (geography + vintage + ingest date).
+        # Drop None values so embedded Kuzu (typed columns) doesn't choke on nulls.
+        self._doc_geo = {
+            k: v
+            for k, v in {
+                "country": doc.country,
+                "practice_type": _practice_type(doc.country),
+                "source_year": doc.year,
+                "source_date": self._now,
+            }.items()
+            if v is not None
+        }
         self.store.upsert_node(  # also a Paper-like source node for citations
             make_id("Paper", doc.file_hash),
             "Paper",
@@ -286,6 +302,7 @@ class IngestionPipeline:
                 page=page,
                 source_type="paragraph",
                 confidence=m.confidence,
+                **self._doc_geo,
                 **self._prov(),
             )
             self.store.upsert_edge(ev_id, chunk_id, "FROM_CHUNK", **self._prov())
@@ -315,6 +332,7 @@ class IngestionPipeline:
                 quality_flags=("|".join(nm.flags) if nm and nm.flags else ""),
                 value_raw=m.value_raw,
                 unit=m.unit,
+                **self._doc_geo,
                 **self._prov(confidence=m.confidence),
             )
             self.store.upsert_edge(

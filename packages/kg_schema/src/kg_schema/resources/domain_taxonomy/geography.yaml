@@ -4,7 +4,7 @@
   practice_type: russia
   canonical_ru: Россия
   canonical_en: Russia
-  aliases: [Россия, Russia, РФ, российская, отечественная]
+  aliases: [Россия, Russia, РФ, российская, отечественная, росси, russian]
 - id: kazakhstan
   node_type: Country
   practice_type: cis

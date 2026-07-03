@@ -137,6 +137,52 @@ class GraphRetriever:
                 return False
         return True
 
+    # -- geographic filtering -------------------------------------------
+    @staticmethod
+    def _passes_geo(node: dict[str, Any], intent: QueryIntent) -> bool:
+        """Keep a fact only if its source geography matches the query (§ гео-фильтр).
+
+        Facts carry ``practice_type`` (russia/cis/foreign/global) and ``country``
+        propagated from their source Document. When the query asks for отечественную
+        or зарубежную практику (``intent.practice_types``) or a specific country
+        (``intent.countries``), drop facts that don't match. A fact with no
+        classification at all is kept (can't prove it violates the filter) unless a
+        specific country was requested.
+        """
+        if not intent.practice_types and not intent.countries:
+            return True
+        pt = node.get("practice_type")
+        country = node.get("country")
+        if intent.practice_types:
+            # "russia" in the query also accepts CIS practice; "foreign" is strict.
+            wanted = set(intent.practice_types)
+            if "russia" in wanted:
+                wanted.add("cis")
+            if pt is not None and pt not in wanted:
+                return False
+        if intent.countries:
+            if country is None:
+                return False
+            if country not in intent.countries:
+                return False
+        return True
+
+    @staticmethod
+    def _passes_year(node: dict[str, Any], intent: QueryIntent) -> bool:
+        """Keep a fact only if its source publication year is in the query's range."""
+        if intent.year_from is None and intent.year_to is None:
+            return True
+        yr = node.get("source_year")
+        if yr is None:
+            return True  # undated fact — can't prove it's out of range
+        if intent.year_from is not None and yr < intent.year_from:
+            return False
+        return not (intent.year_to is not None and yr > intent.year_to)
+
+    def _passes_provenance(self, node: dict[str, Any], intent: QueryIntent) -> bool:
+        """Combined geo + temporal gate applied to every candidate fact."""
+        return self._passes_geo(node, intent) and self._passes_year(node, intent)
+
     # -- neighborhood assembly ------------------------------------------
     def _neighbors(self, node_id: str) -> list[tuple[dict[str, Any], str]]:
         out = []
@@ -171,13 +217,17 @@ class GraphRetriever:
                 sol["limitations"] = []
                 for nb, _rt in neigh:
                     nl = nb.get("label")
-                    if nl == "Measurement" and self._passes_numeric(nb, intent):
+                    if (
+                        nl == "Measurement"
+                        and self._passes_numeric(nb, intent)
+                        and self._passes_provenance(nb, intent)
+                    ):
                         sol["measurements"].append(nb)
                     elif nl == "ApplicabilityCondition":
                         sol["applicability"].append(nb.get("name"))
                     elif nl == "Limitation":
                         sol["limitations"].append(nb.get("name"))
-                    elif nl in ("Evidence", "Paper"):
+                    elif nl in ("Evidence", "Paper") and self._passes_provenance(nb, intent):
                         ev_ids.add(nb["id"])
                     elif nl == "Gap":
                         gap_ids.add(nb["id"])
@@ -188,7 +238,11 @@ class GraphRetriever:
 
             # facts: measurements attached to this candidate
             for nb, _rt in neigh:
-                if nb.get("label") == "Measurement" and self._passes_numeric(nb, intent):
+                if (
+                    nb.get("label") == "Measurement"
+                    and self._passes_numeric(nb, intent)
+                    and self._passes_provenance(nb, intent)
+                ):
                     fev = self._evidence_for(nb["id"])
                     ev_ids.update(e["id"] for e in fev)
                     res.facts.append(Fact(node=nb, subjects=[cand], evidence=fev))
@@ -196,7 +250,7 @@ class GraphRetriever:
                     gap_ids.add(nb["id"])
                 elif nb.get("label") == "Contradiction":
                     contra_ids.add(nb["id"])
-                elif nb.get("label") == "Evidence":
+                elif nb.get("label") == "Evidence" and self._passes_provenance(nb, intent):
                     ev_ids.add(nb["id"])
 
         # time filter on solutions (by connected paper year if present)
