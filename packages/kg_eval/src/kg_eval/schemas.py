@@ -136,7 +136,7 @@ class DatasetManifest:
 
     def label_histogram(self) -> dict[str, int]:
         """Count cells per REALITY (all four keys always present, even at zero)."""
-        h = {r: 0 for r in REALITIES}
+        h = dict.fromkeys(REALITIES, 0)
         for c in self.cells:
             h[c.true_label] = h.get(c.true_label, 0) + 1
         return h

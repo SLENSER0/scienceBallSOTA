@@ -14,10 +14,9 @@ import collections
 import tempfile
 from pathlib import Path
 
+from kg_eval.datasets.synthetic import build_synthetic
 from kg_retrievers.absence_signals import classify_cell
 from kg_retrievers.graph_store import KuzuGraphStore
-
-from kg_eval.datasets.synthetic import build_synthetic
 
 
 def _store() -> KuzuGraphStore:
@@ -117,8 +116,6 @@ def test_zero_materials_is_empty() -> None:
     try:
         m = build_synthetic(s, n_materials=0)
         assert m.cells == [] and m.materials == []
-        assert m.label_histogram() == {
-            r: 0 for r in ("present", "genuine_gap", "possible_miss", "retracted")
-        }
+        assert m.label_histogram() == dict.fromkeys(("present", "genuine_gap", "possible_miss", "retracted"), 0)
     finally:
         s.close()
