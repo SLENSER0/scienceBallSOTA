@@ -1,0 +1,217 @@
+# Controlled processing-operation vocabulary (§6.5).
+#
+# Canonical ``operation_id`` -> {canonical_ru, canonical_en, synonyms, parameters,
+# domain}. Externalizes the surfaces hardcoded in
+# ``kg_extractors.processing_extractor._METHODS`` (RU stems + EN words) and the
+# process-parameter names in ``_PARAM_PATTERNS`` (temperature_c, duration,
+# current_density, pressure, ph), and mirrors the ``kg_schema.enums`` enum
+# ``ProcessingOperation`` (every enum value except ``other`` appears here; the
+# heat-treatment op ``quenching`` is additionally covered).
+#
+# ``synonyms`` are RU/EN surface forms, folded case-insensitively at lookup.
+# ``parameters`` are the typical process parameters stated near the operation.
+# ``domain`` groups operations by metallurgical domain (§24.3).
+
+electrowinning:
+  canonical_ru: электроэкстракция
+  canonical_en: electrowinning
+  synonyms:
+    - электроэкстракция
+    - электролизное извлечение
+    - электровыделение
+    - electrowinning
+    - electroextraction
+    - EW
+  parameters: [current_density, temperature_c, voltage, duration]
+  domain: electrometallurgy
+
+electrorefining:
+  canonical_ru: электрорафинирование
+  canonical_en: electrorefining
+  synonyms:
+    - электрорафинирование
+    - электролитическое рафинирование
+    - electrorefining
+    - electrolytic refining
+  parameters: [current_density, temperature_c, voltage, duration]
+  domain: electrometallurgy
+
+leaching:
+  canonical_ru: выщелачивание
+  canonical_en: leaching
+  synonyms: [выщелачивание, выщелачивать, leaching]
+  parameters: [temperature_c, duration, ph, pressure]
+  domain: hydrometallurgy
+
+heap_leaching:
+  canonical_ru: кучное выщелачивание
+  canonical_en: heap leaching
+  synonyms: [кучное выщелачивание, куча выщелачивания, heap leaching]
+  parameters: [ph, duration, temperature_c, irrigation_rate]
+  domain: hydrometallurgy
+
+bioleaching:
+  canonical_ru: биовыщелачивание
+  canonical_en: bioleaching
+  synonyms:
+    - биовыщелачивание
+    - бактериальное выщелачивание
+    - bioleaching
+    - bacterial leaching
+  parameters: [ph, temperature_c, duration]
+  domain: hydrometallurgy
+
+flotation:
+  canonical_ru: флотация
+  canonical_en: flotation
+  synonyms: [флотация, флотационное обогащение, flotation, froth flotation]
+  parameters: [ph, duration, reagent_dosage]
+  domain: mineral_processing
+
+flash_smelting:
+  canonical_ru: взвешенная плавка
+  canonical_en: flash smelting
+  synonyms:
+    - взвешенная плавка
+    - печь взвешенной плавки
+    - ПВП
+    - flash smelting
+    - flash smelting furnace
+  parameters: [temperature_c, oxygen_enrichment, duration]
+  domain: pyrometallurgy
+
+fluidized_bed:
+  canonical_ru: кипящий слой
+  canonical_en: fluidized bed
+  synonyms:
+    - кипящий слой
+    - печь кипящего слоя
+    - обжиг в кипящем слое
+    - fluidized bed
+    - fluidized bed furnace
+  parameters: [temperature_c, pressure, gas_velocity]
+  domain: pyrometallurgy
+
+smelting:
+  canonical_ru: плавка
+  canonical_en: smelting
+  synonyms: [плавка, плавление, smelting]
+  parameters: [temperature_c, duration]
+  domain: pyrometallurgy
+
+converting:
+  canonical_ru: конвертирование
+  canonical_en: converting
+  synonyms:
+    - конвертирование
+    - конвертирование штейна
+    - продувка штейна
+    - converting
+    - matte converting
+  parameters: [temperature_c, duration, oxygen_enrichment]
+  domain: pyrometallurgy
+
+roasting:
+  canonical_ru: обжиг
+  canonical_en: roasting
+  synonyms: [обжиг, окислительный обжиг, roasting]
+  parameters: [temperature_c, duration]
+  domain: pyrometallurgy
+
+desalination:
+  canonical_ru: обессоливание
+  canonical_en: desalination
+  synonyms: [обессоливание, деминерализация, desalination, demineralization]
+  parameters: [pressure, recovery, temperature_c]
+  domain: water_treatment
+
+reverse_osmosis:
+  canonical_ru: обратный осмос
+  canonical_en: reverse osmosis
+  synonyms:
+    - обратный осмос
+    - обратноосмотическая мембрана
+    - reverse osmosis
+    - RO
+  parameters: [pressure, recovery, flux]
+  domain: water_treatment
+
+ion_exchange:
+  canonical_ru: ионный обмен
+  canonical_en: ion exchange
+  synonyms: [ионный обмен, ионообменная смола, ion exchange]
+  parameters: [flow_rate, ph, capacity]
+  domain: water_treatment
+
+electrodialysis:
+  canonical_ru: электродиализ
+  canonical_en: electrodialysis
+  synonyms: [электродиализ, ЭД, electrodialysis]
+  parameters: [current_density, voltage, flow_rate]
+  domain: water_treatment
+
+nanofiltration:
+  canonical_ru: нанофильтрация
+  canonical_en: nanofiltration
+  synonyms: [нанофильтрация, nanofiltration, NF]
+  parameters: [pressure, recovery, flux]
+  domain: water_treatment
+
+lime_softening:
+  canonical_ru: известкование
+  canonical_en: lime softening
+  synonyms: [известкование, известковое умягчение, lime softening]
+  parameters: [ph, dosage, temperature_c]
+  domain: water_treatment
+
+gas_cleaning:
+  canonical_ru: газоочистка
+  canonical_en: gas cleaning
+  synonyms: [газоочистка, очистка газов, gas cleaning]
+  parameters: [temperature_c, gas_velocity, removal_efficiency]
+  domain: environment
+
+so2_removal:
+  canonical_ru: сероочистка
+  canonical_en: SO2 removal
+  synonyms:
+    - сероочистка
+    - десульфуризация
+    - удаление SO2
+    - SO2 removal
+    - flue gas desulfurization
+    - FGD
+  parameters: [temperature_c, removal_efficiency, dosage]
+  domain: environment
+
+water_injection:
+  canonical_ru: закачка шахтных вод
+  canonical_en: mine water injection
+  synonyms:
+    - закачка шахтных вод
+    - закачка в глубокие горизонты
+    - mine water injection
+    - deep well injection
+  parameters: [pressure, flow_rate]
+  domain: environment
+
+aging:
+  canonical_ru: старение
+  canonical_en: aging
+  synonyms: [старение, искусственное старение, aging, ageing]
+  parameters: [temperature_c, duration]
+  domain: pyrometallurgy
+
+annealing:
+  canonical_ru: отжиг
+  canonical_en: annealing
+  synonyms: [отжиг, annealing]
+  parameters: [temperature_c, duration]
+  domain: pyrometallurgy
+
+quenching:
+  canonical_ru: закалка
+  canonical_en: quenching
+  synonyms: [закалка, quenching, quench]
+  parameters: [temperature_c, duration]
+  domain: pyrometallurgy
