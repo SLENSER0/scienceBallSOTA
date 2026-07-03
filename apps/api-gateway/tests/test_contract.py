@@ -37,6 +37,14 @@ CRITICAL_PATHS = {
     ("post", "/api/v1/export/subgraph"),
     ("get", "/api/v1/admin/audit"),
     ("get", "/api/v1/admin/health"),
+    ("get", "/api/v1/admin/ready"),
+    ("get", "/api/v1/admin/absence-map"),
+    ("get", "/api/v1/admin/coverage-matrix"),
+    ("get", "/api/v1/admin/validate-shapes"),
+    ("get", "/api/v1/admin/retrieval-eval"),
+    ("post", "/api/v1/entities/{entity_id}/manual-evidence"),
+    ("post", "/api/v1/entities/{entity_id}/split"),
+    ("post", "/api/v1/contradictions/{contradiction_id}/resolve"),
 }
 
 CRITICAL_SCHEMAS = {"GraphResponse", "GraphNode", "GraphEdge"}
