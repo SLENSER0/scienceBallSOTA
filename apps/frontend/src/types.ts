@@ -46,6 +46,7 @@ export interface Citation {
   sourceTitle?: string | null;
   year?: number | null;
   geography?: string | null;
+  asOf?: string | null; // date of actualization (source ingest date)
 }
 
 export interface AnswerTable {

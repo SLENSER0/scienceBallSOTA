@@ -47,8 +47,9 @@ def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
                     evidence_strength=ev.get("evidence_strength"),
                 ),
                 source_title=ev.get("name") or ev.get("text", "")[:80],
-                year=ev.get("year"),
+                year=ev.get("year") or ev.get("source_year"),
                 geography=ev.get("practice_type") or ev.get("country"),
+                as_of=(ev.get("source_date") or "")[:10] or None,  # ISO date → YYYY-MM-DD
             )
         )
     return citations

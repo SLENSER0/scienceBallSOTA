@@ -151,6 +151,7 @@ class Citation(CamelModel):
     source_title: str | None = None
     year: int | None = None
     geography: str | None = None
+    as_of: str | None = None  # date of actualization — when the source was ingested (§ верификация)
 
 
 class AnswerPayload(CamelModel):

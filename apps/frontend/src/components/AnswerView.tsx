@@ -5,6 +5,17 @@ import { AlertTriangle, Brain, ChevronDown, ChevronRight, Download, FileText, Se
 import type { AnswerPayload } from '../types';
 import { useStore } from '../store';
 
+// Practice-type → short RU label for the отечественная/зарубежная distinction.
+const PRACTICE_LABEL: Record<string, string> = {
+  russia: 'отеч.',
+  cis: 'СНГ',
+  foreign: 'заруб.',
+  global: 'межд.',
+};
+function practiceLabel(g: string): string {
+  return PRACTICE_LABEL[g] ?? g;
+}
+
 export function AnswerView({ answer }: { answer: AnswerPayload }) {
   const setSelectedNode = useStore((s) => s.setSelectedNode);
   const conf = answer.confidence ?? 0;
@@ -111,8 +122,10 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
                     {c.sourceTitle || c.evidence.text?.slice(0, 90) || 'источник'}
                     <span className="ml-2 font-mono text-[10px] text-faint">
                       {c.evidence.evidenceStrength}
-                      {c.geography ? ` · ${c.geography}` : ''}
+                      {c.geography ? ` · ${practiceLabel(c.geography)}` : ''}
+                      {c.year ? ` · ${c.year}` : ''}
                       {c.evidence.page ? ` · стр.${c.evidence.page}` : ''}
+                      {c.asOf ? ` · актуал. ${c.asOf}` : ''}
                     </span>
                   </span>
                   <FileText size={13} className="mt-0.5 text-faint group-hover:text-copper" />
