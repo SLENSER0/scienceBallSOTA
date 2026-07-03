@@ -507,3 +507,8 @@ def test_graph_validate(client: TestClient) -> None:
         },
     ).json()
     assert bad["valid"] is False and bad["errors"]
+
+
+def test_admin_technoeconomic(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/technoeconomic").json()
+    assert "indicators" in r or "by_indicator" in r or "solutions" in r

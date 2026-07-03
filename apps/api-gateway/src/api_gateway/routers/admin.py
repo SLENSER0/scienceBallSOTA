@@ -100,6 +100,14 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/technoeconomic")
+def technoeconomic(domain: str | None = None) -> dict:
+    """Techno-economic comparison (CAPEX/OPEX/NPV) across solutions (§24.11)."""
+    from kg_retrievers.technoeconomic import compare_technoeconomics
+
+    return compare_technoeconomics(get_store(), domain=domain).as_dict()
+
+
 @router.get("/distribution-analysis")
 def distribution_analysis(domain: str | None = None) -> dict:
     """Metal distribution-coefficient analysis across phases (matte/slag/gas) (§24.7)."""
