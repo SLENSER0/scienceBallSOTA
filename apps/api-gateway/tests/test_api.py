@@ -354,3 +354,11 @@ def test_export_subgraph_jsonld(client: TestClient) -> None:
     assert body["dcterms:license"] == "CC-BY-4.0"  # FAIR reusable
     assert body["@graph"], "subgraph must contain nodes/edges"
     assert all(item["@id"].startswith("kg:") for item in body["@graph"])  # stable ids
+
+
+def test_health_aggregated_and_prometheus_metrics(client: TestClient) -> None:
+    h = client.get("/api/v1/admin/health").json()
+    assert h["status"] == "ok" and h["checks"]["graph"] == "ok"  # aggregated readiness
+    prom = client.get("/api/v1/admin/metrics", params={"format": "prometheus"})
+    assert prom.status_code == 200 and "text/plain" in prom.headers["content-type"]
+    assert "http_requests_total{" in prom.text and "quantile=\"0.95\"" in prom.text

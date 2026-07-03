@@ -19,6 +19,26 @@ _log = get_logger("api-gateway")
 _STARTED = time.time()
 
 
+def _prometheus(snapshot: dict) -> str:
+    """Render the route metrics snapshot as Prometheus text exposition (§14.11)."""
+
+    def esc(v: str) -> str:
+        return v.replace("\\", "\\\\").replace('"', '\\"')
+
+    lines = [
+        "# TYPE http_requests_total counter",
+        "# TYPE http_request_errors_total counter",
+        "# TYPE http_request_latency_ms gauge",
+    ]
+    for route, m in snapshot.items():
+        lbl = f'route="{esc(route)}"'
+        lines.append(f"http_requests_total{{{lbl}}} {m['count']}")
+        lines.append(f"http_request_errors_total{{{lbl}}} {m['errors']}")
+        lines.append(f'http_request_latency_ms{{{lbl},quantile="0.5"}} {m.get("p50_ms", 0.0)}')
+        lines.append(f'http_request_latency_ms{{{lbl},quantile="0.95"}} {m.get("p95_ms", 0.0)}')
+    return "\n".join(lines) + "\n"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
     configure("api-gateway")
@@ -50,24 +70,44 @@ def create_app() -> FastAPI:
     app.add_middleware(ObservabilityMiddleware)
 
     @app.get("/api/v1/admin/health")
-    def health() -> dict[str, Any]:
-        return {
-            "status": "ok",
+    def health() -> Any:
+        # Aggregated readiness: 503 if a critical dependency (the graph) is down,
+        # 'degraded' if a non-critical one is, else 'ok' (§14.11).
+        from fastapi.responses import JSONResponse
+
+        from api_gateway.deps import get_store
+
+        checks: dict[str, str] = {}
+        try:
+            get_store().rows("MATCH (n:Node) RETURN count(n) LIMIT 1")
+            checks["graph"] = "ok"
+        except Exception as e:
+            checks["graph"] = f"error: {type(e).__name__}"
+        status = "ok" if checks["graph"] == "ok" else "down"
+        body = {
+            "status": status,
             "service": "api-gateway",
             "uptime_s": round(time.time() - _STARTED, 1),
+            "checks": checks,
         }
+        return JSONResponse(body, status_code=200 if status == "ok" else 503)
 
     @app.get("/api/v1/admin/metrics")
-    def metrics() -> dict[str, Any]:
+    def metrics(format: str = "json") -> Any:  # query param name intentionally 'format'
+        from fastapi.responses import PlainTextResponse
+
         from api_gateway.observability import METRICS
 
         s = get_settings()
+        snap = METRICS.snapshot()
+        if format == "prometheus":
+            return PlainTextResponse(_prometheus(snap), media_type="text/plain; version=0.0.4")
         return {
             "service": "api-gateway",
             "runtime_profile": s.runtime_profile,
             "uptime_s": round(time.time() - _STARTED, 1),
             "models": {"extract": s.llm_model_extract, "synth": s.llm_model_synth},
-            "routes": METRICS.snapshot(),
+            "routes": snap,
         }
 
     # Feature routers are attached here as subsystems come online.
