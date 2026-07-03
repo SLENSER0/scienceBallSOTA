@@ -139,7 +139,8 @@ def local_search(store: KuzuGraphStore, seed: str, *, limit: int = 15) -> dict:
     cid = (node or {}).get("community_id")
     members = _members(store, int(cid))[:limit] if cid is not None else []
     neigh = store.rows(
-        "MATCH (n:Node {id:$id})-[:Rel]-(m:Node) WHERE m.label<>'Chunk' RETURN DISTINCT m.id LIMIT $k",
+        "MATCH (n:Node {id:$id})-[:Rel]-(m:Node) WHERE m.label<>'Chunk' "
+        "RETURN DISTINCT m.id LIMIT $k",
         {"id": seed, "k": limit},
     )
     return {

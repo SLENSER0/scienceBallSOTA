@@ -206,11 +206,11 @@ def test_community_global_and_local_search(client: TestClient) -> None:
     client.post("/api/v1/admin/communities")  # detect first
     g = client.get("/api/v1/admin/communities/global-search", params={"q": "осмос вода"}).json()
     assert "answer" in g and "communities" in g
-    l = client.get(
+    loc = client.get(
         "/api/v1/admin/communities/local-search",
         params={"seed": "reverse osmosis desalination"},
     ).json()
-    assert "neighbors" in l
+    assert "neighbors" in loc
 
 
 def test_graph_nodes_and_path(client: TestClient) -> None:
@@ -249,11 +249,15 @@ def test_post_search_unified_hits_filters_and_422(client: TestClient) -> None:
     r = client.post("/api/v1/search/hybrid", json={"query": "осмос", "top_k": 5})
     assert r.status_code == 200
     hits = r.json()["hits"]
-    assert hits and all({"id", "text", "score", "doc_id", "page", "metadata"} <= set(h) for h in hits)
+    assert hits and all(
+        {"id", "text", "score", "doc_id", "page", "metadata"} <= set(h) for h in hits
+    )
     # invalid top_k → 422
     assert client.post("/api/v1/search/keyword", json={"query": "x", "top_k": 0}).status_code == 422
     # verified_only filter narrows (seed entities are mostly unverified)
-    all_hits = client.post("/api/v1/search/keyword", json={"query": "вода", "top_k": 50}).json()["count"]
+    all_hits = client.post("/api/v1/search/keyword", json={"query": "вода", "top_k": 50}).json()[
+        "count"
+    ]
     v = client.post(
         "/api/v1/search/keyword",
         json={"query": "вода", "top_k": 50, "filters": {"verified_only": True}},

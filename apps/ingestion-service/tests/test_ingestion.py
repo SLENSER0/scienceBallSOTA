@@ -144,7 +144,6 @@ def test_section_aware_chunking() -> None:
 
 def test_pipeline_registers_source() -> None:
     # §5.4: with a SourceRegistry, ingesting a doc records its provenance.
-    from kg_common import make_id
     from kg_common.storage.source_registry import SourceRegistry
 
     d = tempfile.mkdtemp()

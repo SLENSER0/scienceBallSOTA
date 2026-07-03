@@ -109,9 +109,7 @@ def _passes_filters(node: dict, f: SearchFilters) -> bool:
             return False
     if f.domain and node.get("domain") != f.domain:
         return False
-    if f.material and f.material.lower() not in str(node.get("name", "")).lower():
-        return False
-    return True
+    return not (f.material and f.material.lower() not in str(node.get("name", "")).lower())
 
 
 def _hit(node: dict, score: float) -> dict[str, Any]:
