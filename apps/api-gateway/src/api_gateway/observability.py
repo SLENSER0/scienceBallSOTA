@@ -61,9 +61,14 @@ METRICS = Metrics()
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
-        # honor an inbound request id so a trace is continuous across services (§18.2)
+        # honor an inbound request id + W3C traceparent so the trace is continuous
+        # across services (§18.2); create a child span for this gateway hop.
         rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
-        structlog.contextvars.bind_contextvars(request_id=rid)
+        from kg_common.tracing import child_context, new_span_id, parse_traceparent, root_context
+
+        parent = parse_traceparent(request.headers.get("traceparent", ""))
+        ctx = child_context(parent, new_span_id()) if parent else root_context()
+        structlog.contextvars.bind_contextvars(request_id=rid, trace_id=ctx.trace_id)
         route = f"{request.method} {request.url.path}"
         t0 = time.perf_counter()
         error = False
@@ -71,6 +76,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             error = response.status_code >= 500
             response.headers["X-Request-ID"] = rid  # propagate downstream + to client
+            response.headers["traceparent"] = ctx.to_header()
             return response
         except Exception:
             error = True

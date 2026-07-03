@@ -537,3 +537,14 @@ def test_views_and_settings(client: TestClient) -> None:
     client.put("/api/v1/me/settings", json={"settings": {"theme": "dark"}}, headers=hdr)
     s = client.get("/api/v1/me/settings", headers=hdr).json()["settings"]
     assert s.get("theme") == "dark"
+
+
+def test_traceparent_propagation(client: TestClient) -> None:
+    # §18.2: inbound traceparent -> child span sharing the trace id, echoed back
+    tp = "00-" + ("a" * 32) + "-" + ("b" * 16) + "-01"
+    r = client.get("/api/v1/admin/health", headers={"traceparent": tp})
+    out = r.headers.get("traceparent")
+    assert out and out.startswith("00-" + "a" * 32)  # same trace id, new span
+    # a request with no traceparent still gets one
+    r2 = client.get("/api/v1/admin/health")
+    assert r2.headers.get("traceparent", "").startswith("00-")
