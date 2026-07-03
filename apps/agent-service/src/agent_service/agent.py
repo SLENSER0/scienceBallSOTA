@@ -117,9 +117,9 @@ def _get_hybrid():  # type: ignore[no-untyped-def]
     """Lazily open the on-disk hybrid stores; None if unavailable (graceful)."""
     if not _hybrid_cache:
         try:
-            from kg_retrievers.hybrid import HybridRetriever
+            from kg_retrievers.retrieval_factory import make_hybrid_retriever
 
-            _hybrid_cache.append(HybridRetriever.open_default())
+            _hybrid_cache.append(make_hybrid_retriever())
         except Exception:
             _hybrid_cache.append(None)
     return _hybrid_cache[0]
