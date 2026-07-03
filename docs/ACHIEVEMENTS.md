@@ -100,6 +100,40 @@
 - **Session-лимиты** пару раз убивали часть агентов на полпути — интегрировал то, что успело
   собраться зелёным, огрызки отбрасывал по индивидуальной проверке.
 
+## Killer-фичи (4 из 4 — по запросу пользователя)
+
+Все проверены вживую на server-профиле (Neo4j/Qdrant/OpenSearch), фронт на :3000.
+
+1. **Ризонинг в чате.** Reasoning-модели (deepseek-v4-flash, glm-5.2) отдают
+   `message.reasoning` — `LLMClient.complete_with_reasoning()` его ловит, `AnswerPayload`
+   получил поле `reasoning`, чат-SSE шлёт событие `reasoning` до токенов, а фронт
+   показывает сворачиваемую панель «Рассуждение» (open-webui-стиль). Проверено:
+   `/query` вернул answer(1454)+reasoning(743) от deepseek-v4-flash.
+2. **Upload документа → граф + viewer (§17.19).** `POST /documents/upload` (multipart,
+   RBAC curator+, guard'ы 64 МБ/типа) гоняет НАСТОЯЩИЙ ingestion-пайплайн
+   (`parse_document` + `IngestionPipeline.ingest`) в граф и возвращает 2-hop подграф;
+   плюс `/parsed`, `/pages/{n}`, `/graph`, `/reindex` (dedup по хешу). Фронт:
+   dropzone + прогресс + подграф (2D/3D) + постраничный parsed-viewer, инвалидация
+   кэшей графа/coverage. Проверено: .txt по флотации → 23 узла в Neo4j.
+3. **3D-граф wow-режим (§17.18).** `ForceGraph3DView` на react-force-graph-3d (three.js),
+   те же §5.2.3-кодировки; `GraphPanel` — переключатель 2D/3D, тяжёлый three.js в
+   lazy-чанке (1.37 МБ грузится только при выборе 3D, главный бандл не растёт). Вшит
+   в AskView и ChatView.
+4. **Мультимодальный deep-research (minimax-m3).** `LLMClient.complete_multimodal()`
+   (vision-формат OpenRouter), `POST /research/multimodal` (картинка+вопрос, RBAC,
+   guard'ы 12 МБ/типа) → base64 data-URI → minimax/minimax-m3 → структурный разбор.
+   Фронт: `MultimodalPanel` (dropzone+preview+анализ). Проверено вживую: график
+   «Cu-извлечение vs pH» → модель распознала форму кривой, оси, единицы, подписи.
+
+**Побочный фикс (важный):** fastembed тянул `tokenizers 0.23.1`, а `transformers` за
+granite-эмбеддингами требует `<=0.23.0` во время импорта — ломало retrieval `/query`
+и 6 тестов. Запинил через `[tool.uv] constraint-dependencies` на 0.22.2 (устраивает и
+fastembed `<1.0`, и transformers). Все 52 ранее-красных теста зелёные. Заодно OSS-allowlist
+(ADR-0006) расширен провайдерами, которые пользователь выбрал и которые ошибочно
+блокировались: `z-ai`/`zhipu` (GLM, MIT), `minimax` (Apache-2.0), `ibm-granite`
+(Apache-2.0), `moonshotai` (Apache-2.0). Закрытые (GPT/Claude/Gemini/Grok/Llama) по-прежнему
+блокируются — проверено.
+
 ## Как поднять всё заново
 
 ```bash
