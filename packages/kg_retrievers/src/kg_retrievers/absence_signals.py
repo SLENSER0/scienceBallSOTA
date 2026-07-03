@@ -50,7 +50,10 @@ from typing import Any
 from kg_common import get_logger
 from kg_retrievers.confidence_of_absence import DEFAULT_RECALL
 from kg_retrievers.graph_store import KuzuGraphStore
-from kg_retrievers.mentions_lineage import is_mentioned_without_observation
+from kg_retrievers.mentions_lineage import (
+    is_mentioned_without_observation,
+    mention_value_status,
+)
 from kg_retrievers.retractions import active_measurements, is_retracted
 
 _log = get_logger("absence_signals")
@@ -75,6 +78,11 @@ EXTRACTOR_RECALL = DEFAULT_RECALL
 # A MENTIONS link makes the datum's existence near-certain (§25.7): if the topic
 # is упомянут yet unmeasured, an extraction miss is the likely explanation.
 MENTION_EXISTS_PRIOR = 0.9
+# §33/N2 value gate: when prose names the property but states NO measurable value,
+# the mention is not evidence the datum exists, so the existence prior collapses to
+# this floor — well below GENUINE_GAP_AT, so the cell reads as a genuine gap
+# (property discussed, never measured) rather than an extractor miss.
+VALUE_GATE_EXISTS_PRIOR = 0.1
 
 _EPS = 1e-9
 
@@ -82,6 +90,15 @@ _EPS = 1e-9
 def _clamp_open(x: float) -> float:
     """Clamp ``x`` into the open interval ``(0, 1)`` so the posterior is defined."""
     return max(_EPS, min(float(x), 1.0 - _EPS))
+
+
+def _verdict_from_p_missed(p_missed: float) -> str:
+    """Threshold P(extractor missed) into a verdict (§25.11)."""
+    if p_missed >= POSSIBLE_MISS_AT:
+        return POSSIBLE_MISS
+    if p_missed <= GENUINE_GAP_AT:
+        return GENUINE_GAP
+    return ABSTAIN
 
 
 @dataclass(frozen=True)
@@ -152,6 +169,7 @@ def classify_cell(
     property_id: str,
     *,
     recall_prior: float = DEFAULT_RECALL_PRIOR,
+    value_gate: bool = False,
 ) -> AbsenceSignal:
     """Fuse the three absence signals into one verdict for a cell (§25.11).
 
@@ -159,6 +177,13 @@ def classify_cell(
     ``recall_prior`` is the prior P(the datum exists) used only when the cell is
     empty *and* unmentioned: a high value makes an empty cell read as a
     ``possible_miss``, a low value as a ``genuine_gap``. Never writes to the graph.
+
+    ``value_gate`` (opt-in, default off — §33/N2) refines the mentioned-but-
+    unmeasured case: when every prose mention names the property yet states **no**
+    measurable value (:func:`~kg_retrievers.mentions_lineage.mention_value_status`
+    returns ``False``), the cell is downgraded ``possible_miss`` → ``genuine_gap``
+    (property discussed, never measured), instead of blaming the extractor. With
+    the gate off, or on missing/positive value evidence, verdicts are unchanged.
     """
     prop_name = _resolve_property_name(store, property_id)
     # Both active and retracted observations of *this* property (§25.12 opt-in).
@@ -186,19 +211,26 @@ def classify_cell(
         # §25.12 this is its own class — never ``covered`` and not scored as absence.
         return _emit(RETRACTED, 0.0, 0.0, signals, material_id, prop_name)
     if mentioned_miss:
+        if value_gate:
+            # §33/N2: does the mentioning prose actually STATE a value, or only name
+            # the property? Only a definitive "no value" (False) downgrades; missing
+            # / positive evidence (None / True) leaves the miss verdict untouched.
+            vp = mention_value_status(store, material_id, property_id)
+            signals["mention_value_present"] = vp
+            if vp is False:
+                # Property named but never measured -> a genuine gap, not a miss.
+                # Collapse the existence prior to the value-gate floor and threshold.
+                p_ta, p_em = _bayes_absence(VALUE_GATE_EXISTS_PRIOR, EXTRACTOR_RECALL)
+                return _emit(
+                    _verdict_from_p_missed(p_em), p_ta, p_em, signals, material_id, prop_name
+                )
         # Mentioned but never measured -> the extractor most plausibly missed it.
         p_ta, p_em = _bayes_absence(MENTION_EXISTS_PRIOR, EXTRACTOR_RECALL)
         return _emit(POSSIBLE_MISS, p_ta, p_em, signals, material_id, prop_name)
 
     # Empty and unmentioned: let the recall prior decide via Bayes.
     p_ta, p_em = _bayes_absence(recall_prior, EXTRACTOR_RECALL)
-    if p_em >= POSSIBLE_MISS_AT:
-        verdict = POSSIBLE_MISS
-    elif p_em <= GENUINE_GAP_AT:
-        verdict = GENUINE_GAP
-    else:
-        verdict = ABSTAIN
-    return _emit(verdict, p_ta, p_em, signals, material_id, prop_name)
+    return _emit(_verdict_from_p_missed(p_em), p_ta, p_em, signals, material_id, prop_name)
 
 
 def _emit(
