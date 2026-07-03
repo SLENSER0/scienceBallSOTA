@@ -1129,17 +1129,17 @@ OSS для клонирования/вендоринга (§22):
 
 ### 5.9 Structure-aware chunking (§9.2 Step 3)
 
-- [ ] Реализовать модуль `apps/ingestion-service/src/chunking/structure_chunker.py`, который принимает `ParsedDocument` и производит structure-aware чанки (НЕ naive fixed-size), по типам §9.2 Step 3: title/abstract, methods, results, figure captions, table rows, experimental procedure paragraphs, measurement rows.
-- [ ] Определить Pydantic-модель `Chunk` в `packages/kg_schema/` строго по §9.2 Step 3: `chunk_id` (`chunk:{uuid}`), `doc_id`, `section_path`, `page_start`, `page_end`, `text`, `chunk_type` ∈ {`paragraph`,`table_row`,`caption`}, `tokens`.
-- [ ] Реализовать сегментацию по document hierarchy: каждый параграф/логический блок → чанк `paragraph` с корректным `section_path` из §5.7.
-- [ ] Реализовать построчный разбор таблиц: каждая значимая строка таблицы → чанк `table_row` (с сохранением заголовков колонок в тексте для контекста) и ссылкой на `table_id`.
-- [ ] Реализовать чанки для подписей рисунков → `chunk_type=caption` с page reference.
-- [ ] Подсчитывать `tokens` для каждого чанка реальным токенайзером (совместимым с эмбеддинг/LLM-моделью); задать max-token порог с мягким разбиением слишком длинных параграфов по предложениям без потери `section_path`/page refs.
-- [ ] Прокинуть в каждый чанк дополнительные метаданные для downstream (§9.2 Step 8 payload): `source_type` (`paragraph|table_row|caption`), ссылки на `table_id`/`figure_id`, `char_start`/`char_end` внутри исходного текста (для Evidence-модели §8.3).
-- [ ] Гарантировать, что эмитируемый payload чанка содержит доступные на этапе ingestion поля §9.2 Step 8 (`doc_id`, `chunk_id`, `source_type`, `page_start`/`page_end`, `section_path`); поля `entity_ids`/`material_ids`/`property_ids`/`confidence`/`review_status` дозаполняет extraction/indexing-раздел.
-- [ ] Сериализовать все чанки документа в `kg-parsed/documents/{doc_id}/chunks.jsonl` и вернуть их как результат этапа chunking.
-- [ ] Эмитировать чанки в хендофф для downstream-разделов (extraction §9.2 Step 4 и indexing §9.2 Step 8) — публикация в очередь/шину (Redis/Dagster asset), НЕ индексируя их в этом разделе.
-- [ ] Написать unit-тесты чанкера на фикстурах: проверить, что для абзаца создаётся `paragraph`-чанк с непустым `section_path`, для строки таблицы — `table_row`, для подписи — `caption`; проверить корректность `page_start/page_end` и `tokens`.
+- [x] Реализовать модуль `apps/ingestion-service/src/chunking/structure_chunker.py`, который принимает `ParsedDocument` и производит structure-aware чанки (НЕ naive fixed-size), по типам §9.2 Step 3: title/abstract, methods, results, figure captions, table rows, experimental procedure paragraphs, measurement rows.
+- [x] Определить Pydantic-модель `Chunk` в `packages/kg_schema/` строго по §9.2 Step 3: `chunk_id` (`chunk:{uuid}`), `doc_id`, `section_path`, `page_start`, `page_end`, `text`, `chunk_type` ∈ {`paragraph`,`table_row`,`caption`}, `tokens`.
+- [x] Реализовать сегментацию по document hierarchy: каждый параграф/логический блок → чанк `paragraph` с корректным `section_path` из §5.7.
+- [x] Реализовать построчный разбор таблиц: каждая значимая строка таблицы → чанк `table_row` (с сохранением заголовков колонок в тексте для контекста) и ссылкой на `table_id`.
+- [x] Реализовать чанки для подписей рисунков → `chunk_type=caption` с page reference.
+- [x] Подсчитывать `tokens` для каждого чанка реальным токенайзером (совместимым с эмбеддинг/LLM-моделью); задать max-token порог с мягким разбиением слишком длинных параграфов по предложениям без потери `section_path`/page refs.
+- [x] Прокинуть в каждый чанк дополнительные метаданные для downstream (§9.2 Step 8 payload): `source_type` (`paragraph|table_row|caption`), ссылки на `table_id`/`figure_id`, `char_start`/`char_end` внутри исходного текста (для Evidence-модели §8.3).
+- [x] Гарантировать, что эмитируемый payload чанка содержит доступные на этапе ingestion поля §9.2 Step 8 (`doc_id`, `chunk_id`, `source_type`, `page_start`/`page_end`, `section_path`); поля `entity_ids`/`material_ids`/`property_ids`/`confidence`/`review_status` дозаполняет extraction/indexing-раздел.
+- [x] Сериализовать все чанки документа в `kg-parsed/documents/{doc_id}/chunks.jsonl` и вернуть их как результат этапа chunking.
+- [x] Эмитировать чанки в хендофф для downstream-разделов (extraction §9.2 Step 4 и indexing §9.2 Step 8) — публикация в очередь/шину (Redis/Dagster asset), НЕ индексируя их в этом разделе.
+- [x] Написать unit-тесты чанкера на фикстурах: проверить, что для абзаца создаётся `paragraph`-чанк с непустым `section_path`, для строки таблицы — `table_row`, для подписи — `caption`; проверить корректность `page_start/page_end` и `tokens`.
 
 **Критерий приёмки:** для тестового документа `chunks.jsonl` содержит чанки всех трёх `chunk_type`; каждый чанк валиден по Pydantic-схеме §9.2 Step 3 (непустые `chunk_id`, `doc_id`, `section_path`, корректные `page_start ≤ page_end`, `tokens > 0`); ни один чанк не длиннее сконфигурированного max-token порога.
 
@@ -1502,18 +1502,18 @@ OSS для клонирования/вендоринга (§22):
 
 ### 7.4 Парсер сырых значений (диапазоны, ±, неравенства, нотация)
 
-- [ ] Создать `packages/kg_extractors/units/value_parser.py` (или `packages/kg_common/units/value_parser.py` — см. 7.9) с функцией `parse_raw_value(raw: str) -> ParsedValue`.
-- [ ] Определить Pydantic-модель `ParsedValue` с полями: `kind` (`scalar` | `range` | `bound` | `list` | `unparseable`), `value`, `value_min`, `value_max`, `uncertainty`, `operator` (`=`|`>`|`>=`|`<`|`<=`|`~`), `unit_str`, `raw`, `warnings: list[str]`.
-- [ ] Парсить скаляр с единицей: `"148 HV"`, `"148HV"`, `"320 MPa"`, `"180 °C"`, `"2 h"` — разделять число и единицу, включая слипшиеся написания.
-- [ ] Парсить диапазоны: `"12–28 %"`, `"12-28%"`, `"120 to 150 MPa"`, `"120...150"`, `"от 120 до 150"` — распознавать разные тире (`-`, `–`, `—`), `to`, `…`, русские предлоги; заполнять `value_min`/`value_max`, `value` = среднее (с пометкой).
-- [ ] Парсить погрешность `±`: `"180 ± 5 °C"`, `"180+/-5"`, `"180 +- 5"` — заполнять `value` и `uncertainty`.
-- [ ] Парсить неравенства: `"≥ 320 MPa"`, `">=320"`, `"< 0.1 mm/year"`, `"≤2 at%"`, `"max 300 HV"`, `"min 320 MPa"` — заполнять `operator` и `value` (bound).
-- [ ] Парсить научную нотацию и разделители: `"1.2e-3"`, `"1,2·10^3"`, `"1.5 × 10^6"`, `"1 200"` (пробел как разделитель тысяч), `"1,5"` (запятая как десятичный разделитель, RU/EN) — с явной эвристикой RU/EN и warning при неоднозначности.
-- [ ] Парсить приблизительные значения: `"~150"`, `"≈150"`, `"about 150"`, `"порядка 150"` → `operator="~"`.
-- [ ] Парсить значения с единицей до числа и локализованные единицы: `"HV 148"`, `"МПа 320"` (кириллические единицы) → маппинг кириллица→латиница (`МПа→MPa`, `ГПа→GPa`, `°С→degC`).
-- [ ] Отделять условие/контекст от значения (например `"148 HV (after aging)"`) — контекст в отдельное поле, не в число.
-- [ ] Возвращать `kind="unparseable"` с сохранением `raw` и warning, если ничего не распозналось; НИКОГДА не бросать исключение наружу.
-- [ ] Нормализовать десятичный разделитель, unicode-минусы, неразрывные пробелы, множественные пробелы перед передачей строки единицы в pint.
+- [x] Создать `packages/kg_extractors/units/value_parser.py` (или `packages/kg_common/units/value_parser.py` — см. 7.9) с функцией `parse_raw_value(raw: str) -> ParsedValue`.
+- [x] Определить Pydantic-модель `ParsedValue` с полями: `kind` (`scalar` | `range` | `bound` | `list` | `unparseable`), `value`, `value_min`, `value_max`, `uncertainty`, `operator` (`=`|`>`|`>=`|`<`|`<=`|`~`), `unit_str`, `raw`, `warnings: list[str]`.
+- [x] Парсить скаляр с единицей: `"148 HV"`, `"148HV"`, `"320 MPa"`, `"180 °C"`, `"2 h"` — разделять число и единицу, включая слипшиеся написания.
+- [x] Парсить диапазоны: `"12–28 %"`, `"12-28%"`, `"120 to 150 MPa"`, `"120...150"`, `"от 120 до 150"` — распознавать разные тире (`-`, `–`, `—`), `to`, `…`, русские предлоги; заполнять `value_min`/`value_max`, `value` = среднее (с пометкой).
+- [x] Парсить погрешность `±`: `"180 ± 5 °C"`, `"180+/-5"`, `"180 +- 5"` — заполнять `value` и `uncertainty`.
+- [x] Парсить неравенства: `"≥ 320 MPa"`, `">=320"`, `"< 0.1 mm/year"`, `"≤2 at%"`, `"max 300 HV"`, `"min 320 MPa"` — заполнять `operator` и `value` (bound).
+- [x] Парсить научную нотацию и разделители: `"1.2e-3"`, `"1,2·10^3"`, `"1.5 × 10^6"`, `"1 200"` (пробел как разделитель тысяч), `"1,5"` (запятая как десятичный разделитель, RU/EN) — с явной эвристикой RU/EN и warning при неоднозначности.
+- [x] Парсить приблизительные значения: `"~150"`, `"≈150"`, `"about 150"`, `"порядка 150"` → `operator="~"`.
+- [x] Парсить значения с единицей до числа и локализованные единицы: `"HV 148"`, `"МПа 320"` (кириллические единицы) → маппинг кириллица→латиница (`МПа→MPa`, `ГПа→GPa`, `°С→degC`).
+- [x] Отделять условие/контекст от значения (например `"148 HV (after aging)"`) — контекст в отдельное поле, не в число.
+- [x] Возвращать `kind="unparseable"` с сохранением `raw` и warning, если ничего не распозналось; НИКОГДА не бросать исключение наружу.
+- [x] Нормализовать десятичный разделитель, unicode-минусы, неразрывные пробелы, множественные пробелы перед передачей строки единицы в pint.
 
 **Критерий приёмки:** набор из ≥ 40 табличных примеров (`packages/kg_extractors/units/tests/parser_cases.csv`) парсится в ожидаемый `ParsedValue`; `parse_raw_value("180 ± 5 °C").uncertainty == 5`; `parse_raw_value("≥ 320 MPa").operator == ">="`; `parse_raw_value("12–28 %").kind == "range"` и `value_min==12, value_max==28`; `parse_raw_value("1,2e-3")` корректно даёт `0.0012`; неразпознанное даёт `kind="unparseable"` без исключений.
 
@@ -1554,14 +1554,14 @@ OSS для клонирования/вендоринга (§22):
 
 ### 7.7 Валидация диапазонов свойств (sanity checks) и детект выбросов
 
-- [ ] Создать конфиг `packages/kg_common/units/data/property_ranges.yaml` с физически допустимыми диапазонами (min/max в canonical единицах) для каждого класса свойства: hardness (HV, HRC, HB отдельно), tensile/yield strength (MPa), temperature (degC/K), time (h), composition (0–100 %), cooling_rate, corrosion_rate, grain_size, elastic_modulus.
-- [ ] Реализовать `validate_range(nm: NormalizedMeasurement) -> list[Warning]`: проверять, что `value_normalized` попадает в допустимый диапазон класса; вне диапазона — флаг `SUSPECT_VALUE` + warning (не отбрасывать значение).
-- [ ] Добавить sanity-проверки согласованности: `value_min <= value <= value_max` для диапазонов; неотрицательность там, где требуется (время, размер зерна, состав); состав в сумме по элементам не превышает 100 wt% (мягкая проверка на уровне Composition).
-- [ ] Добавить проверку правдоподобия единицы против класса: например `hardness` в `MPa` без явного контекста → warning/ambiguous; `temperature` ниже 0 K → hard error.
-- [ ] Реализовать статистический outlier-детект по популяции: для (material_class × property_class) собирать распределение `value_normalized` и помечать выбросы (например по IQR/robust z-score) флагом `statistical_outlier` для ревью.
-- [ ] Детектировать вероятные ошибки единиц по «фактору 1000/10» (например значение прочности 0.32 вместо 320 MPa, или GPa/MPa путаница) — эвристика `unit_scale_suspect`.
-- [ ] Отделить hard-errors (нефизичные значения → в review, `value_normalized` не индексируется) от soft-warnings (подозрительно, но допускается) — разные флаги, разные последствия.
-- [ ] Связать `SUSPECT_VALUE`/`statistical_outlier` с curation review queue (§12.1 «LLM extracted value from low-quality OCR») и с contradiction detection (§11 conflicting measurements).
+- [x] Создать конфиг `packages/kg_common/units/data/property_ranges.yaml` с физически допустимыми диапазонами (min/max в canonical единицах) для каждого класса свойства: hardness (HV, HRC, HB отдельно), tensile/yield strength (MPa), temperature (degC/K), time (h), composition (0–100 %), cooling_rate, corrosion_rate, grain_size, elastic_modulus.
+- [x] Реализовать `validate_range(nm: NormalizedMeasurement) -> list[Warning]`: проверять, что `value_normalized` попадает в допустимый диапазон класса; вне диапазона — флаг `SUSPECT_VALUE` + warning (не отбрасывать значение).
+- [x] Добавить sanity-проверки согласованности: `value_min <= value <= value_max` для диапазонов; неотрицательность там, где требуется (время, размер зерна, состав); состав в сумме по элементам не превышает 100 wt% (мягкая проверка на уровне Composition).
+- [x] Добавить проверку правдоподобия единицы против класса: например `hardness` в `MPa` без явного контекста → warning/ambiguous; `temperature` ниже 0 K → hard error.
+- [x] Реализовать статистический outlier-детект по популяции: для (material_class × property_class) собирать распределение `value_normalized` и помечать выбросы (например по IQR/robust z-score) флагом `statistical_outlier` для ревью.
+- [x] Детектировать вероятные ошибки единиц по «фактору 1000/10» (например значение прочности 0.32 вместо 320 MPa, или GPa/MPa путаница) — эвристика `unit_scale_suspect`.
+- [x] Отделить hard-errors (нефизичные значения → в review, `value_normalized` не индексируется) от soft-warnings (подозрительно, но допускается) — разные флаги, разные последствия.
+- [x] Связать `SUSPECT_VALUE`/`statistical_outlier` с curation review queue (§12.1 «LLM extracted value from low-quality OCR») и с contradiction detection (§11 conflicting measurements).
 
 **Критерий приёмки:** значение `hardness = 5000 HV` помечается `SUSPECT_VALUE` (вне диапазона `property_ranges.yaml`) и уходит в review; `tensile_strength = -50 MPa` даёт hard-error и не индексируется как валидное; диапазон с `value_min > value_max` порождает warning согласованности; outlier-детект помечает значение, отстоящее от медианы популяции по robust z-score.
 
@@ -2766,16 +2766,16 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.8 Node: `intent_classifier` и routing (§7.5 Node 2, §7.2)
 
-- [ ] Реализовать `graph/nodes/intent_classifier.py`: LLM-классификация в один из 9 классов §7.5: `material_regime_property_query`, `entity_exploration`, `experiment_lookup`, `evidence_request`, `gap_analysis`, `contradiction_analysis`, `method_comparison`, `literature_summary`, `schema_help` → `state["intent"]`.
-- [ ] Использовать structured output (Pydantic enum) + few-shot примеры; `temperature=0` для детерминизма.
-- [ ] Реализовать routing-функцию `route_after_plan(state)` (§7.2 mermaid `ROUTE`): маппинг intent → retrieval branch:
-  - [ ] structured (`material_regime_property_query`, `experiment_lookup`, `entity_exploration`) → `structured_retrieval` (CYPHER).
-  - [ ] semantic (`literature_summary`, `method_comparison`, `evidence_request`) → `hybrid_retrieval` (HYBRID).
-  - [ ] global corpus (`literature_summary` broad) → `graphrag_search` community search (GRAG, §10.1 Mode C, §13.13).
-  - [ ] gap (`gap_analysis`, `contradiction_analysis`) → `gap_analyzer` (GAP).
-  - [ ] graph algorithms (§10.1 Mode D — similar materials / missing links / important labs / method clusters / anomaly) → `structured_retrieval` с `graph_algo`-стратегией (Neo4j GDS, §13.11); выбирается когда план содержит `retrieval_strategy=['graph_algo']`.
-  - [ ] `schema_help` → короткий путь к answer_synthesizer со schema-описанием (§6.2 `/graph/schema`).
-- [ ] Поддержать план с несколькими strategies одновременно (`retrieval_strategy` в query_plan, §7.5 Node 4 может содержать `["cypher_template","hybrid_chunks","evidence_lookup","gap_scan"]`) — routing через fan-out/последовательный обход strategies.
+- [x] Реализовать `graph/nodes/intent_classifier.py`: LLM-классификация в один из 9 классов §7.5: `material_regime_property_query`, `entity_exploration`, `experiment_lookup`, `evidence_request`, `gap_analysis`, `contradiction_analysis`, `method_comparison`, `literature_summary`, `schema_help` → `state["intent"]`.
+- [x] Использовать structured output (Pydantic enum) + few-shot примеры; `temperature=0` для детерминизма.
+- [x] Реализовать routing-функцию `route_after_plan(state)` (§7.2 mermaid `ROUTE`): маппинг intent → retrieval branch:
+  - [x] structured (`material_regime_property_query`, `experiment_lookup`, `entity_exploration`) → `structured_retrieval` (CYPHER).
+  - [x] semantic (`literature_summary`, `method_comparison`, `evidence_request`) → `hybrid_retrieval` (HYBRID).
+  - [x] global corpus (`literature_summary` broad) → `graphrag_search` community search (GRAG, §10.1 Mode C, §13.13).
+  - [x] gap (`gap_analysis`, `contradiction_analysis`) → `gap_analyzer` (GAP).
+  - [x] graph algorithms (§10.1 Mode D — similar materials / missing links / important labs / method clusters / anomaly) → `structured_retrieval` с `graph_algo`-стратегией (Neo4j GDS, §13.11); выбирается когда план содержит `retrieval_strategy=['graph_algo']`.
+  - [x] `schema_help` → короткий путь к answer_synthesizer со schema-описанием (§6.2 `/graph/schema`).
+- [x] Поддержать план с несколькими strategies одновременно (`retrieval_strategy` в query_plan, §7.5 Node 4 может содержать `["cypher_template","hybrid_chunks","evidence_lookup","gap_scan"]`) — routing через fan-out/последовательный обход strategies.
 
 **Критерий приёмки:** classifier на golden-наборе из ≥18 размеченных вопросов (по 2 на класс) даёт accuracy ≥0.85; routing-функция для каждого из 9 intent'ов возвращает корректную ветку (unit-тест, все ветки покрыты, включая GRAG и graph_algo); multi-strategy план проходит все указанные ветки.
 
@@ -2871,17 +2871,17 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.16 Node: `verifier` / critic + цикл дополнительного сбора доказательств (§7.5 Node 9, §7.2)
 
-- [ ] Реализовать `graph/nodes/verifier.py`, выполняющий проверки §7.5 Node 9:
-  - [ ] каждое численное значение в `answer_draft` имеет привязанное evidence (сверка чисел ↔ `state["evidence"]`).
-  - [ ] единицы не смешаны (одна физ. величина — одна каноническая единица, через `pint`).
-  - [ ] материал и режим не подменены (entities в ответе совпадают с `state["entities"]`/plan).
-  - [ ] answer не содержит unsupported claim (каждое утверждение мапится на evidence/graph).
-  - [ ] contradictions явно отмечены (если `state["contradictions"]` непуст — в ответе есть блок).
-  - [ ] для low-confidence добавлен warning.
-- [ ] Заполнять `state["verifier_report"]` (список нарушений с severity) и флаг `state["needs_more_evidence"]`.
-- [ ] Реализовать conditional edge `route_after_verify(state)` (§7.2 `VERIFY -->|needs more evidence| PLAN`): если есть исправимые пробелы (не хватает evidence для числа, пустой retrieval) И `verifier_attempts < MAX_VERIFY_ATTEMPTS` → инкремент `verifier_attempts` и переход обратно на `query_planner` (доп. сбор доказательств); иначе → `answer_synthesizer`.
-- [ ] Гарантировать ограничение цикла (`MAX_VERIFY_ATTEMPTS`, конфиг) для предотвращения бесконечного loop; при исчерпании — синтезировать ответ с явными warning'ами о недостающих доказательствах.
-- [ ] Citation guardrail (Phase 5 acceptance §16): блокировать выпуск числового claim без evidence — если после ретраев claim не подтверждён, удалять/помечать его как «unsupported» в `answer_draft`.
+- [x] Реализовать `graph/nodes/verifier.py`, выполняющий проверки §7.5 Node 9:
+  - [x] каждое численное значение в `answer_draft` имеет привязанное evidence (сверка чисел ↔ `state["evidence"]`).
+  - [x] единицы не смешаны (одна физ. величина — одна каноническая единица, через `pint`).
+  - [x] материал и режим не подменены (entities в ответе совпадают с `state["entities"]`/plan).
+  - [x] answer не содержит unsupported claim (каждое утверждение мапится на evidence/graph).
+  - [x] contradictions явно отмечены (если `state["contradictions"]` непуст — в ответе есть блок).
+  - [x] для low-confidence добавлен warning.
+- [x] Заполнять `state["verifier_report"]` (список нарушений с severity) и флаг `state["needs_more_evidence"]`.
+- [x] Реализовать conditional edge `route_after_verify(state)` (§7.2 `VERIFY -->|needs more evidence| PLAN`): если есть исправимые пробелы (не хватает evidence для числа, пустой retrieval) И `verifier_attempts < MAX_VERIFY_ATTEMPTS` → инкремент `verifier_attempts` и переход обратно на `query_planner` (доп. сбор доказательств); иначе → `answer_synthesizer`.
+- [x] Гарантировать ограничение цикла (`MAX_VERIFY_ATTEMPTS`, конфиг) для предотвращения бесконечного loop; при исчерпании — синтезировать ответ с явными warning'ами о недостающих доказательствах.
+- [x] Citation guardrail (Phase 5 acceptance §16): блокировать выпуск числового claim без evidence — если после ретраев claim не подтверждён, удалять/помечать его как «unsupported» в `answer_draft`.
 
 **Критерий приёмки:** ответ с числом без evidence помечается verifier'ом как нарушение и (при наличии бюджета попыток) инициирует возврат на planner; после `MAX_VERIFY_ATTEMPTS` цикл завершается и финальный ответ НЕ содержит числовых claim без evidence (проверяемо тестом: подставлен draft с «hardness = 148 HV» без evidence → в финале claim либо подтверждён, либо снят/помечен); смешанные единицы (HV и MPa для hardness) детектируются.
 
@@ -2889,15 +2889,15 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.17 Node: `answer_synthesizer` (§7.5 Node 10)
 
-- [ ] Реализовать `graph/nodes/answer_synthesizer.py`, формирующий `state["final_answer"]` в структуре §7.5 Node 10 и §5.2.2: краткая сводка; «что найдено»; таблица экспериментов; «что влияет на эффект»; «пробелы»; «на что опирается ответ» (citations); ссылка на graph payload.
-- [ ] Сформировать таб-структуру ответа под UI-вкладки §5.2.2: `[Summary] [Experiments] [Evidence] [Graph] [Gaps] [Contradictions]` — по секции/пейлоуду на каждую вкладку.
-- [ ] Вычислить и включить агрегаты (как в примере §5.2.2): число экспериментов и статей, диапазон эффекта (напр. «hardness +12–28%»), группировку расходящихся случаев по причине (different quench rate / composition), число случаев без baseline (data gap).
-- [ ] Inline-citations: каждое число/claim сопровождается ссылкой на `EvidenceRef` (`ev:*`), совместимо с UI inline citations (§5.2.2).
-- [ ] Сформировать поле `citations: list` в формате ответа §6.2 (список `EvidenceRef`/`ev:*`, на которые опирается ответ).
-- [ ] Собрать табличный `TablePayload` экспериментов (§5.3 `table`) из `state["retrieved_experiments"]` в формате примера ответа §6.2 (`material, processing, property, value, unit, effect, confidence, evidence_ids`).
-- [ ] Собрать экспортируемый report-артефакт (для кнопки `export report`, §5.2.2): самодостаточный ответ со всеми секциями, таблицей и citations (markdown/JSON).
-- [ ] Warning-panel данные: contradictions, low-confidence, missing data (§5.2.2) — из `state["contradictions"]`/`gaps`/verifier_report.
-- [ ] Поддержать вывод на языке пользователя (`state["language"]`).
+- [x] Реализовать `graph/nodes/answer_synthesizer.py`, формирующий `state["final_answer"]` в структуре §7.5 Node 10 и §5.2.2: краткая сводка; «что найдено»; таблица экспериментов; «что влияет на эффект»; «пробелы»; «на что опирается ответ» (citations); ссылка на graph payload.
+- [x] Сформировать таб-структуру ответа под UI-вкладки §5.2.2: `[Summary] [Experiments] [Evidence] [Graph] [Gaps] [Contradictions]` — по секции/пейлоуду на каждую вкладку.
+- [x] Вычислить и включить агрегаты (как в примере §5.2.2): число экспериментов и статей, диапазон эффекта (напр. «hardness +12–28%»), группировку расходящихся случаев по причине (different quench rate / composition), число случаев без baseline (data gap).
+- [x] Inline-citations: каждое число/claim сопровождается ссылкой на `EvidenceRef` (`ev:*`), совместимо с UI inline citations (§5.2.2).
+- [x] Сформировать поле `citations: list` в формате ответа §6.2 (список `EvidenceRef`/`ev:*`, на которые опирается ответ).
+- [x] Собрать табличный `TablePayload` экспериментов (§5.3 `table`) из `state["retrieved_experiments"]` в формате примера ответа §6.2 (`material, processing, property, value, unit, effect, confidence, evidence_ids`).
+- [x] Собрать экспортируемый report-артефакт (для кнопки `export report`, §5.2.2): самодостаточный ответ со всеми секциями, таблицей и citations (markdown/JSON).
+- [x] Warning-panel данные: contradictions, low-confidence, missing data (§5.2.2) — из `state["contradictions"]`/`gaps`/verifier_report.
+- [x] Поддержать вывод на языке пользователя (`state["language"]`).
 
 **Критерий приёмки:** для эталонного вопроса (§5.2.2 Al-Cu пример) ответ содержит все секции/вкладки (сводка/эксперименты/evidence/graph/пробелы/contradictions), таблицу экспериментов, агрегаты (счётчики экспериментов/статей, диапазон эффекта) и inline-citations; ни одно числовое значение не выводится без соответствующего `evidence_id` (перепроверка verifier'ом); язык ответа совпадает с языком вопроса.
 
@@ -2905,10 +2905,10 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.18 Node: `visualization_payload` builder (§7.2 VIS)
 
-- [ ] Реализовать `graph/nodes/visualization_payload.py`, вызывающий `build_graph_visualization_payload` → `state["visualization_payload"]` в формате `GraphResponse` (§5.3).
-- [ ] Мапить визуальные кодировки (§5.2.3): `node.type` → цвет; `evidenceCount`/centrality → размер; `edge.evidenceCount` → толщина; `edge.confidence` → opacity; `inferred=true` → dashed; `contradicted=true` → red; `missingFields`непусто → hollow node; `verified=true` → lock. Все атрибуты класть в узлы/рёбра payload.
-- [ ] Заполнить `layoutHints` (`rootNodeIds` из resolved entities, `communities` из GraphRAG — §13.13) и `queryContext` (`userQuery`, `filters`, `generatedCypher` из `state["cypher_queries"]`).
-- [ ] Добавить `Gap`-узлы (§5.3 `type:'Gap'`) для найденных пробелов, чтобы UI Gap Dashboard (§5.2.7) мог их отрисовать.
+- [x] Реализовать `graph/nodes/visualization_payload.py`, вызывающий `build_graph_visualization_payload` → `state["visualization_payload"]` в формате `GraphResponse` (§5.3).
+- [x] Мапить визуальные кодировки (§5.2.3): `node.type` → цвет; `evidenceCount`/centrality → размер; `edge.evidenceCount` → толщина; `edge.confidence` → opacity; `inferred=true` → dashed; `contradicted=true` → red; `missingFields`непусто → hollow node; `verified=true` → lock. Все атрибуты класть в узлы/рёбра payload.
+- [x] Заполнить `layoutHints` (`rootNodeIds` из resolved entities, `communities` из GraphRAG — §13.13) и `queryContext` (`userQuery`, `filters`, `generatedCypher` из `state["cypher_queries"]`).
+- [x] Добавить `Gap`-узлы (§5.3 `type:'Gap'`) для найденных пробелов, чтобы UI Gap Dashboard (§5.2.7) мог их отрисовать.
 
 **Критерий приёмки:** payload валиден по TS-типу `GraphResponse` (§5.3), проходит JSON-schema-валидацию; contradicted edges помечены `contradicted=true`, inferred — `inferred=true`, узлы с `missingFields` присутствуют; `queryContext.generatedCypher` содержит исполненный Cypher; payload рендерится в Reagraph-фикстуре без ошибок.
 
