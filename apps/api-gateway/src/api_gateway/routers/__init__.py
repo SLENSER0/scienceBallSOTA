@@ -15,6 +15,7 @@ def attach_routers(app: FastAPI) -> None:
         export,
         gaps,
         graph,
+        ingest,
         notifications,
         query,
         search,
@@ -32,3 +33,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(export.router)
     app.include_router(gaps.router)
     app.include_router(curation.router)
+    app.include_router(ingest.router)

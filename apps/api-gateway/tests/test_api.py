@@ -512,3 +512,15 @@ def test_graph_validate(client: TestClient) -> None:
 def test_admin_technoeconomic(client: TestClient) -> None:
     r = client.get("/api/v1/admin/technoeconomic").json()
     assert "indicators" in r or "by_indicator" in r or "solutions" in r
+
+
+def test_ingest_jobs_lifecycle(client: TestClient) -> None:
+    # §14.10: create → status → list → cancel
+    jid = client.post("/api/v1/ingest/jobs", json={"kind": "ingest", "total": 10}).json()["job_id"]
+    st = client.get(f"/api/v1/ingest/jobs/{jid}").json()
+    assert st["status"] == "queued" and st["total"] == 10
+    lst = client.get("/api/v1/ingest/jobs", params={"kind": "ingest"}).json()["jobs"]
+    assert any(j["job_id"] == jid for j in lst)
+    cancelled = client.post(f"/api/v1/ingest/jobs/{jid}/cancel").json()
+    assert cancelled["status"] == "cancelled"
+    assert client.get("/api/v1/ingest/jobs/nope").status_code == 404
