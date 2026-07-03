@@ -20,12 +20,15 @@ def _audit_path() -> Path:
 
 
 def record(action: str, *, user: str, role: str, detail: dict | None = None) -> None:
+    from kg_common.security.redaction import redact_mapping
+
     entry = {
         "ts": int(time.time()),
         "user": user,
         "role": role,
         "action": action,
-        "detail": detail or {},
+        # redact any secret/PII that slipped into the detail payload (§19.7)
+        "detail": redact_mapping(detail or {}),
     }
     try:
         p = _audit_path()

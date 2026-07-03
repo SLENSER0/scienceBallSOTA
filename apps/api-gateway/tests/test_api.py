@@ -397,3 +397,13 @@ def test_error_taxonomy_wired(client: TestClient) -> None:
     from api_gateway.main import create_app
 
     assert KgError in create_app().exception_handlers
+
+
+def test_audit_redacts_secrets(client: TestClient) -> None:
+    from api_gateway import audit
+
+    audit.record("test", user="u", role="admin", detail={"token": "sk-abcdef1234567890", "q": "ok"})
+    entries = audit.tail(5)
+    rec = next(e for e in entries if e["action"] == "test")
+    assert rec["detail"]["q"] == "ok"
+    assert "sk-abcdef1234567890" not in str(rec["detail"])  # secret masked
