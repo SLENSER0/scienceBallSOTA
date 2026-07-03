@@ -373,8 +373,8 @@ class IngestionPipeline:
 
 
 def _merge(a: DocumentExtraction, b: DocumentExtraction) -> DocumentExtraction:
-    a.entities.extend(b.entities)
-    a.measurements.extend(b.measurements)
-    a.relations.extend(b.relations)
-    a.claims.extend(b.claims)
-    return a
+    # §6.13: dedup entities/measurements across rule+LLM and fuse confidence
+    # (noisy-OR) instead of blindly concatenating.
+    from kg_extractors.merge_extractions import merge_extractions
+
+    return merge_extractions([a, b])

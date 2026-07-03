@@ -202,3 +202,16 @@ def test_pipeline_normal_measurement_in_range() -> None:
         assert cd and cd[0][0] == 250.0 and cd[0][1] == "A/m^2"
     finally:
         store.close()
+
+
+def test_merge_dedups_rule_and_llm_extractions() -> None:
+    # §6.13: the pipeline _merge now dedups + fuses instead of concatenating
+    from ingestion_service.pipeline import _merge
+
+    from kg_extractors.rule_extractor import extract_rules
+
+    ex = extract_rules(SAMPLE)
+    n_before = len(ex.entities)
+    merged = _merge(extract_rules(SAMPLE), extract_rules(SAMPLE))  # identical twice
+    # merging identical extractions must not double the entity count
+    assert len(merged.entities) <= n_before
