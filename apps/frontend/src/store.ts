@@ -18,7 +18,37 @@ interface AppState {
   setAnswer: (a: AnswerPayload | null) => void;
   selectedNode: GraphNode | null;
   setSelectedNode: (n: GraphNode | null) => void;
+  // Deep-research state — lives in the app-level store so switching tabs mid-run
+  // never loses the reasoning trace or the report (the «pages disappear» fix).
+  deep: DeepResearchState;
+  setDeep: (patch: Partial<DeepResearchState>) => void;
+  resetDeep: (question: string) => void;
 }
+
+export interface DeepStage {
+  node: string;
+  label: string;
+}
+export interface DeepResearchState {
+  question: string;
+  running: boolean;
+  stages: DeepStage[];
+  reasoning: string; // accumulated intermediate reasoning (node outputs)
+  tokens: string; // live streamed tokens (the model «thinking»)
+  report: string;
+  engine: string;
+  error: string;
+}
+const EMPTY_DEEP: DeepResearchState = {
+  question: '',
+  running: false,
+  stages: [],
+  reasoning: '',
+  tokens: '',
+  report: '',
+  engine: '',
+  error: '',
+};
 
 // Restore a persisted session so a reload keeps the user signed in.
 const SESSION_KEY = 'sb.session';
@@ -61,4 +91,7 @@ export const useStore = create<AppState>((set) => ({
   setAnswer: (answer) => set({ answer }),
   selectedNode: null,
   setSelectedNode: (selectedNode) => set({ selectedNode }),
+  deep: EMPTY_DEEP,
+  setDeep: (patch) => set((s) => ({ deep: { ...s.deep, ...patch } })),
+  resetDeep: (question) => set({ deep: { ...EMPTY_DEEP, question, running: true } }),
 }));

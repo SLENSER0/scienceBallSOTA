@@ -12,9 +12,11 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from api_gateway.auth import current_role, current_user
@@ -94,6 +96,36 @@ async def deep(body: PlanBody, role: str = Depends(current_role)) -> dict:
         "engine": "source-catalog-fallback",
         "plan": build_plan(body.question, source_ids=body.source_ids).as_dict(),
     }
+
+
+def _sse(event: str, data: dict) -> bytes:
+    body = json.dumps(data, ensure_ascii=False, default=str)
+    return f"event: {event}\ndata: {body}\n\n".encode()
+
+
+@router.get("/deep/stream")
+async def deep_stream(
+    question: str = Query(min_length=1), role: str = Depends(current_role)
+) -> StreamingResponse:
+    """Stream the REAL open_deep_research run as SSE: live stages + reasoning + report.
+
+    Emits ``stage`` (which ODR node ran), ``reasoning`` (its intermediate output),
+    ``token`` (live LLM tokens), ``report`` (final), ``done`` — so the UI shows the
+    reasoning trace as it happens (open-webui «thinking» pattern).
+    """
+    from api_gateway.deep_researcher_runner import deep_research_available, stream_deep_research
+
+    async def gen():  # type: ignore[no-untyped-def]
+        if not deep_research_available():
+            yield _sse("error", {"message": "open_deep_research недоступен"})
+            return
+        try:
+            async for event, data in stream_deep_research(question):
+                yield _sse(event, data)
+        except Exception as exc:  # surface a failure mid-stream
+            yield _sse("error", {"message": str(exc)[:200]})
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @router.post("/articles")

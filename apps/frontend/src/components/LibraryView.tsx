@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookPlus,
   Brain,
+  ChevronDown,
+  ChevronRight,
   ExternalLink,
   FlaskConical,
   Loader2,
@@ -13,6 +15,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { api } from '../api';
+import { useStore } from '../store';
 
 // «Библиотека» — add scientific articles to the graph. Two flows:
 // (1) deep-research: decompose a question into sub-questions × ready-to-open
@@ -33,7 +36,44 @@ export function LibraryView() {
   const deepStatus = useQuery({ queryKey: ['deep-status'], queryFn: api.deepStatus });
 
   const plan = useMutation({ mutationFn: (q: string) => api.researchPlan(q) });
-  const deep = useMutation({ mutationFn: (q: string) => api.deepResearch(q) });
+
+  // Deep research streams into the app-level store (survives tab switches).
+  const deep = useStore((s) => s.deep);
+  const setDeep = useStore((s) => s.setDeep);
+  const resetDeep = useStore((s) => s.resetDeep);
+  const esRef = useRef<EventSource | null>(null);
+
+  const startDeep = (q: string) => {
+    esRef.current?.close();
+    resetDeep(q);
+    const es = new EventSource(`/api/v1/research/deep/stream?question=${encodeURIComponent(q)}`);
+    esRef.current = es;
+    es.addEventListener('stage', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDeep({ stages: [...useStore.getState().deep.stages, { node: d.node, label: d.label }] });
+    });
+    es.addEventListener('reasoning', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDeep({ reasoning: `${useStore.getState().deep.reasoning}\n\n### ${d.node}\n${d.text}` });
+    });
+    es.addEventListener('token', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDeep({ tokens: useStore.getState().deep.tokens + (d.text ?? '') });
+    });
+    es.addEventListener('report', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDeep({ report: d.text ?? '' });
+    });
+    es.addEventListener('done', () => {
+      setDeep({ running: false });
+      es.close();
+    });
+    es.addEventListener('error', (e) => {
+      const msg = (e as MessageEvent).data ? JSON.parse((e as MessageEvent).data).message : 'stream error';
+      setDeep({ running: false, error: String(msg) });
+      es.close();
+    });
+  };
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -70,32 +110,19 @@ export function LibraryView() {
               Ссылки
             </button>
             <button
-              onClick={() => question.trim() && deep.mutate(question)}
-              disabled={deep.isPending || !question.trim() || !deepStatus.data?.available}
+              onClick={() => question.trim() && startDeep(question)}
+              disabled={deep.running || !question.trim() || !deepStatus.data?.available}
               className="flex items-center gap-2 rounded-md border border-copper/40 bg-copper/10 px-4 text-sm text-copper transition enabled:hover:bg-copper/20 disabled:opacity-40"
-              title={deepStatus.data?.available ? 'Deep-research (open_deep_research на OSS-LLM, ~1-2 мин)' : 'Движок недоступен'}
+              title={deepStatus.data?.available ? 'Deep-research (open_deep_research + реальный веб-поиск, ~2-3 мин)' : 'Движок недоступен'}
             >
-              {deep.isPending ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}
+              {deep.running ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}
               Deep-research
             </button>
           </div>
 
-          {deep.isPending && (
-            <div className="mt-3 flex items-center gap-2 font-mono text-xs text-faint">
-              <Loader2 size={13} className="animate-spin text-copper" />
-              open_deep_research анализирует источники (clarify → brief → research → отчёт)…
-            </div>
-          )}
-          {deep.data?.report && (
-            <div className="mt-4 rounded-md border border-copper/30 bg-surface/40 p-4">
-              <div className="mb-2 flex items-center gap-2 text-xs text-faint">
-                <Brain size={13} className="text-copper" />
-                open_deep_research · {deep.data.model ?? deep.data.engine}
-              </div>
-              <div className="md max-h-[420px] overflow-y-auto">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{deep.data.report}</ReactMarkdown>
-              </div>
-            </div>
+          <DeepResearchPanel />
+          {deep.error && (
+            <div className="mt-2 text-xs text-contradiction">Ошибка: {deep.error}</div>
           )}
 
           {plan.data && (
@@ -166,6 +193,79 @@ export function LibraryView() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// open-webui-style deep-research trace: live stage pipeline + a collapsible
+// «Рассуждение» panel that streams the model's thinking, then the final report.
+function DeepResearchPanel() {
+  const deep = useStore((s) => s.deep);
+  const [showReasoning, setShowReasoning] = useState(true);
+  if (!deep.question && !deep.running) return null;
+
+  const live = deep.reasoning || deep.tokens;
+  return (
+    <div className="mt-4 rounded-md border border-copper/30 bg-surface/40 p-4">
+      <div className="mb-3 flex items-center gap-2 text-xs text-faint">
+        <Brain size={14} className="text-copper" />
+        open_deep_research · реальный веб-поиск
+        {deep.running && <Loader2 size={12} className="animate-spin text-copper" />}
+      </div>
+
+      {/* Stage pipeline */}
+      {deep.stages.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {deep.stages.map((s, i) => (
+            <span key={i} className="flex items-center gap-1">
+              <span
+                className={`rounded px-2 py-0.5 text-[11px] ${
+                  i === deep.stages.length - 1 && deep.running
+                    ? 'bg-copper/20 text-copper'
+                    : 'bg-surface text-nickel'
+                }`}
+              >
+                {s.label}
+              </span>
+              {i < deep.stages.length - 1 && <ChevronRight size={11} className="text-faint" />}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Reasoning (collapsible «thinking») */}
+      {live && (
+        <div className="mb-3 rounded border border-line bg-graphite/40">
+          <button
+            onClick={() => setShowReasoning((v) => !v)}
+            className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs text-faint hover:text-nickel"
+          >
+            {showReasoning ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            {deep.running ? 'Рассуждение (в реальном времени)…' : 'Рассуждение'}
+          </button>
+          {showReasoning && (
+            <div className="max-h-56 overflow-y-auto whitespace-pre-wrap border-t border-line px-3 py-2 font-mono text-[11px] leading-relaxed text-muted">
+              {deep.reasoning}
+              {deep.running && deep.tokens && (
+                <span className="text-faint">{deep.tokens.slice(-1200)}</span>
+              )}
+              {deep.running && <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-copper/70 align-middle" />}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Final report */}
+      {deep.report && (
+        <div className="md max-h-[440px] overflow-y-auto rounded border border-line bg-graphite/30 p-3">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{deep.report}</ReactMarkdown>
+        </div>
+      )}
+      {deep.running && !deep.report && (
+        <div className="font-mono text-[11px] text-faint">
+          Анализ источников… отчёт появится по завершении (~2-3 мин).
+        </div>
+      )}
     </div>
   );
 }

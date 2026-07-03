@@ -124,6 +124,13 @@ class Settings(BaseSettings):
     oidc_client_id: str = Field(default="science-ball", alias="OIDC_CLIENT_ID")
     oidc_audience: str = Field(default="science-ball", alias="OIDC_AUDIENCE")
 
+    # -- Deep research (open_deep_research) — needs a strong OSS tool-caller ---
+    # The supervisor/researcher roles must reliably emit tool calls; a large
+    # instruct model handles this best. Override if it gets rate-limited upstream.
+    deep_research_model: str = Field(
+        default="meta-llama/llama-3.3-70b-instruct", alias="DEEP_RESEARCH_MODEL"
+    )
+
     # -- Query hardening (§19.6) ------------------------------------------
     # Free-form Cypher is OFF by default; the agent uses parameterized templates.
     allow_raw_cypher: bool = Field(default=False, alias="ALLOW_RAW_CYPHER")
