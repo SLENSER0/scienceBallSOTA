@@ -13,6 +13,7 @@ def attach_routers(app: FastAPI) -> None:
         comparison,
         curation,
         evidence,
+        experiments,
         export,
         gaps,
         graph,
@@ -38,3 +39,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(ingest.router)
     app.include_router(views.router)
     app.include_router(chat.router)
+    app.include_router(experiments.router)
