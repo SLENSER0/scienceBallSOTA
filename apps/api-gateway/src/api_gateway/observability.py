@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections import defaultdict
+from collections import defaultdict, deque
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,25 +19,39 @@ from kg_common import get_logger
 _log = get_logger("api.obs")
 
 
+def _percentile(values: list[float], pct: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    k = min(len(s) - 1, round((pct / 100.0) * (len(s) - 1)))
+    return round(s[k], 1)
+
+
 class Metrics:
     def __init__(self) -> None:
         self.count: dict[str, int] = defaultdict(int)
         self.errors: dict[str, int] = defaultdict(int)
         self.latency_ms_sum: dict[str, float] = defaultdict(float)
+        # bounded window of recent latencies per route for percentile estimates
+        self.latencies: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=256))
 
     def record(self, route: str, ms: float, *, error: bool) -> None:
         self.count[route] += 1
         self.latency_ms_sum[route] += ms
+        self.latencies[route].append(ms)
         if error:
             self.errors[route] += 1
 
     def snapshot(self) -> dict:
         out = {}
         for route, n in self.count.items():
+            recent = list(self.latencies[route])
             out[route] = {
                 "count": n,
                 "errors": self.errors.get(route, 0),
                 "avg_ms": round(self.latency_ms_sum[route] / n, 1) if n else 0.0,
+                "p50_ms": _percentile(recent, 50),
+                "p95_ms": _percentile(recent, 95),
             }
         return out
 

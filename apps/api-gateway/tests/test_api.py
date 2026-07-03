@@ -307,3 +307,11 @@ def test_request_id_propagation(client: TestClient) -> None:
     # an inbound request id is honored (continuous trace, §18.2)
     r2 = client.get("/api/v1/admin/health", headers={"X-Request-ID": "trace-abc-123"})
     assert r2.headers.get("X-Request-ID") == "trace-abc-123"
+
+
+def test_metrics_has_latency_percentiles(client: TestClient) -> None:
+    for _ in range(3):
+        client.get("/api/v1/admin/health")
+    m = client.get("/api/v1/admin/metrics").json()["routes"]
+    row = next(v for v in m.values() if v["count"] >= 1)
+    assert "p50_ms" in row and "p95_ms" in row and row["p95_ms"] >= 0.0
