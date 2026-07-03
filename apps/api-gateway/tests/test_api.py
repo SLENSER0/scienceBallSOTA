@@ -225,3 +225,21 @@ def test_graph_nodes_and_path(client: TestClient) -> None:
     # missing node → not found
     miss = client.get("/api/v1/graph/path", params={"source": "nope", "target": "nada"}).json()
     assert miss["found"] is False
+
+
+def test_gaps_detail_matrix_and_filter(client: TestClient) -> None:
+    client.post("/api/v1/gaps/scan")
+    gaps = client.get("/api/v1/gaps").json()["gaps"]
+    assert gaps
+    gid = gaps[0]["id"]
+    d = client.get(f"/api/v1/gaps/{gid}").json()
+    assert d["id"] == gid and "about" in d
+    # matrix view
+    m = client.get("/api/v1/gaps/matrix").json()
+    assert m["matrix"]
+    # filter by type returns only that type
+    gt = gaps[0]["type"]
+    filt = client.get("/api/v1/gaps", params={"gap_type": gt}).json()["gaps"]
+    assert all(g["type"] == gt for g in filt)
+    # unknown gap → 404
+    assert client.get("/api/v1/gaps/nope").status_code == 404
