@@ -24,6 +24,11 @@ def client(tmp_path_factory):  # type: ignore[no-untyped-def]
     return TestClient(app)
 
 
+def _auth(client: TestClient, role: str) -> dict[str, str]:
+    tok = client.post("/api/v1/auth/login", json={"username": role, "role": role}).json()["token"]
+    return {"Authorization": f"Bearer {tok}"}
+
+
 def test_health(client: TestClient) -> None:
     assert client.get("/api/v1/admin/health").json()["status"] == "ok"
 
@@ -263,3 +268,33 @@ def test_post_search_unified_hits_filters_and_422(client: TestClient) -> None:
         json={"query": "вода", "top_k": 50, "filters": {"verified_only": True}},
     ).json()["count"]
     assert v <= all_hits
+
+
+def test_evidence_by_node_and_review(client: TestClient) -> None:
+    import api_gateway.deps as deps
+
+    # insert a fact backed by an evidence span
+    store = deps.get_store()
+    store.upsert_node("meas:evtest", "Measurement", name="твёрдость", value_normalized=145.0)
+    store.upsert_node("ev:evtest", "Evidence", text="145 HV после старения", doc_id="doc:x", page=3)
+    store.upsert_edge("meas:evtest", "ev:evtest", "SUPPORTED_BY")
+
+    by = client.get("/api/v1/evidence/by-node/meas:evtest").json()
+    assert by["count"] == 1 and by["evidence"][0]["evidence_id"] == "ev:evtest"
+
+    # curator review flips the evidence status
+    rv = client.post(
+        "/api/v1/evidence/ev:evtest/review",
+        json={"status": "accepted"},
+        headers=_auth(client, "curator"),
+    )
+    assert rv.status_code == 200 and rv.json()["review_status"] == "accepted"
+    assert client.get("/api/v1/evidence/ev:evtest").json()["review_status"] == "accepted"
+
+    # researcher may not review (RBAC)
+    forbidden = client.post(
+        "/api/v1/evidence/ev:evtest/review",
+        json={"status": "rejected"},
+        headers=_auth(client, "researcher"),
+    )
+    assert forbidden.status_code == 403
