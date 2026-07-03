@@ -3083,22 +3083,22 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 14.4 Chat endpoints, SSE и WebSocket streaming (интеграция с §7)
 
-- [x] `POST /api/v1/chat/sessions` — создать chat-сессию; body: `{ "title"?, "metadata"? }`; ответ `{ "session_id", "created_at", "user_id" }`; запись в Postgres.
-- [x] `GET /api/v1/chat/sessions` — список сессий/последних вопросов пользователя (§5.2.1 «последние вопросы»): пагинация, сортировка по дате, фильтр по дате; только свои сессии; элемент `{ session_id, title, created_at, last_message_at }`.
-- [x] `GET /api/v1/chat/sessions/{session_id}` — вернуть сессию с историей сообщений (`messages: [...]`), tool-трейсами и прикреплёнными артефактами (graph/table/evidence/gaps/contradictions); `404` если чужая/нет.
-- [x] `POST /api/v1/chat/sessions/{session_id}/messages` — принять сообщение пользователя `{ "content", "attachments"? }`, сохранить, запустить прогон LangGraph в `agent-service` (`AGENT_SERVICE_URL`, §13.1); режим ответа: синхронный JSON ИЛИ инициирование стрима (см. ниже). Возвращает `{ "message_id", "stream_url" }`.
-    - [x] Поддержать в `attachments` передачу `node_ids`/выделенного подграфа для сценария «ask agent about selected subgraph» (§5.2.3 lasso selection).
-- [x] `GET /api/v1/chat/sessions/{session_id}/stream` — SSE endpoint: проксирует поток событий из `agent-service` наружу. Использовать `sse-starlette`/`EventSourceResponse`.
-    - [x] Реализовать сериализацию строго по контракту `ChatStreamEvent` (§5.3): типы событий `token`, `tool_start`, `tool_end`, `evidence`, `graph`, `table`, `gap`, `error`. Каждое SSE-сообщение = `event: <type>` + `data: <json>`.
-    - [x] Для события `tool_start`/`tool_end` транслировать поля §5.3 (`tool`, `args`/`summary`, `dataRef`) — для tool-call timeline UI (§5.2.2: `resolved entities`, `graph query`, `vector search`, `evidence check`, `gap scan`).
-    - [x] Для события `graph` тело соответствует `GraphResponse` (§5.3: `nodes`, `edges`, `layoutHints`, `queryContext`).
-    - [x] Для события `evidence` — массив `EvidenceRef` (id, doc_id, page, snippet), для `gap` — `GapFinding[]` (§11.1 типы), для `table` — `TablePayload` (§5.3).
-    - [x] Отправлять heartbeat/`: keep-alive` каждые N секунд для предотвращения таймаута прокси; корректно завершать поток событием окончания.
-    - [x] Обрабатывать client disconnect (отмена генерации в `agent-service`) и восстановление по `Last-Event-ID` (resume токенов, если поддерживается агентом).
-- [x] Реализовать WebSocket-вариант `/api/v1/chat/sessions/{session_id}/ws` (двунаправленный): приём пользовательских сообщений и отправка тех же `ChatStreamEvent`; авторизация по токену в query/subprotocol; ping/pong keepalive.
-- [x] Персистить финальный ответ и все стрим-артефакты (graph/table/evidence/gaps/contradictions) в историю сессии по завершении прогона (для табов §5.2.2 [Summary][Experiments][Evidence][Graph][Gaps][Contradictions]).
-- [x] `GET /api/v1/chat/sessions/{session_id}/messages/{message_id}/export` — экспорт ответа-отчёта (§5.2.2 «export report») в JSON/Markdown с summary/experiments/evidence/graph/gaps/contradictions.
-- [x] Гарантировать guardrail-контракт (§7, Phase 5 «no numeric claim without evidence»): если событие ответа содержит числовые claim без `evidence_ids`, помечать/фильтровать — но реализация гварда на стороне агента; шлюз лишь корректно транслирует поле.
+- [ ] `POST /api/v1/chat/sessions` — создать chat-сессию; body: `{ "title"?, "metadata"? }`; ответ `{ "session_id", "created_at", "user_id" }`; запись в Postgres.
+- [ ] `GET /api/v1/chat/sessions` — список сессий/последних вопросов пользователя (§5.2.1 «последние вопросы»): пагинация, сортировка по дате, фильтр по дате; только свои сессии; элемент `{ session_id, title, created_at, last_message_at }`.
+- [ ] `GET /api/v1/chat/sessions/{session_id}` — вернуть сессию с историей сообщений (`messages: [...]`), tool-трейсами и прикреплёнными артефактами (graph/table/evidence/gaps/contradictions); `404` если чужая/нет.
+- [ ] `POST /api/v1/chat/sessions/{session_id}/messages` — принять сообщение пользователя `{ "content", "attachments"? }`, сохранить, запустить прогон LangGraph в `agent-service` (`AGENT_SERVICE_URL`, §13.1); режим ответа: синхронный JSON ИЛИ инициирование стрима (см. ниже). Возвращает `{ "message_id", "stream_url" }`.
+    - [ ] Поддержать в `attachments` передачу `node_ids`/выделенного подграфа для сценария «ask agent about selected subgraph» (§5.2.3 lasso selection).
+- [ ] `GET /api/v1/chat/sessions/{session_id}/stream` — SSE endpoint: проксирует поток событий из `agent-service` наружу. Использовать `sse-starlette`/`EventSourceResponse`.
+    - [ ] Реализовать сериализацию строго по контракту `ChatStreamEvent` (§5.3): типы событий `token`, `tool_start`, `tool_end`, `evidence`, `graph`, `table`, `gap`, `error`. Каждое SSE-сообщение = `event: <type>` + `data: <json>`.
+    - [ ] Для события `tool_start`/`tool_end` транслировать поля §5.3 (`tool`, `args`/`summary`, `dataRef`) — для tool-call timeline UI (§5.2.2: `resolved entities`, `graph query`, `vector search`, `evidence check`, `gap scan`).
+    - [ ] Для события `graph` тело соответствует `GraphResponse` (§5.3: `nodes`, `edges`, `layoutHints`, `queryContext`).
+    - [ ] Для события `evidence` — массив `EvidenceRef` (id, doc_id, page, snippet), для `gap` — `GapFinding[]` (§11.1 типы), для `table` — `TablePayload` (§5.3).
+    - [ ] Отправлять heartbeat/`: keep-alive` каждые N секунд для предотвращения таймаута прокси; корректно завершать поток событием окончания.
+    - [ ] Обрабатывать client disconnect (отмена генерации в `agent-service`) и восстановление по `Last-Event-ID` (resume токенов, если поддерживается агентом).
+- [ ] Реализовать WebSocket-вариант `/api/v1/chat/sessions/{session_id}/ws` (двунаправленный): приём пользовательских сообщений и отправка тех же `ChatStreamEvent`; авторизация по токену в query/subprotocol; ping/pong keepalive.
+- [ ] Персистить финальный ответ и все стрим-артефакты (graph/table/evidence/gaps/contradictions) в историю сессии по завершении прогона (для табов §5.2.2 [Summary][Experiments][Evidence][Graph][Gaps][Contradictions]).
+- [ ] `GET /api/v1/chat/sessions/{session_id}/messages/{message_id}/export` — экспорт ответа-отчёта (§5.2.2 «export report») в JSON/Markdown с summary/experiments/evidence/graph/gaps/contradictions.
+- [ ] Гарантировать guardrail-контракт (§7, Phase 5 «no numeric claim without evidence»): если событие ответа содержит числовые claim без `evidence_ids`, помечать/фильтровать — но реализация гварда на стороне агента; шлюз лишь корректно транслирует поле.
 
 **Критерий приёмки:** клиент открывает SSE на `/chat/sessions/{id}/stream`, получает последовательность событий `token`/`tool_start`/`tool_end`/`evidence`/`graph`/`table`/`gap` в формате §5.3; WebSocket-вариант передаёт те же события; `GET /chat/sessions` возвращает последние вопросы пользователя; после завершения `GET /chat/sessions/{id}` возвращает сохранённую историю с артефактами; `messages/{id}/export` отдаёт отчёт; отключение клиента отменяет генерацию.
 
