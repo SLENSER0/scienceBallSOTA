@@ -121,6 +121,29 @@ class Settings(BaseSettings):
     allow_raw_cypher: bool = Field(default=False, alias="ALLOW_RAW_CYPHER")
     cypher_max_rows: int = Field(default=1000, alias="CYPHER_MAX_ROWS")
 
+    # -- Confidence-of-absence opt-in flags (§33/N1-N3) -------------------
+    # All default OFF so existing absence pins stay green; each toggles a distinct
+    # part of the mention-vs-value USP and composes independently.
+    #   N1 honest_recall_priors — floor the prose recall prior to the committed
+    #       reality (prose candidates are review-gated, not auto-committed), so the
+    #       recall guardrail stops overstating and the verdict does not collapse
+    #       into the abstain band.
+    #   N2 absence_value_gate — downgrade possible_miss→genuine_gap when the prose
+    #       only *names* a property with no measurable value (see absence_signals).
+    #   N3 prose_observation_extraction — allow prose numeric values to enter as
+    #       review-gated Observation candidates (never auto-committed).
+    honest_recall_priors: bool = Field(default=False, alias="MKG_HONEST_RECALL_PRIORS")
+    absence_value_gate: bool = Field(default=False, alias="MKG_ABSENCE_VALUE_GATE")
+    prose_observation_extraction: bool = Field(
+        default=False, alias="MKG_PROSE_OBSERVATION_EXTRACTION"
+    )
+
+    def prose_observations_committed(self) -> bool | None:
+        """N1 mapping: the honest floor is opt-in (``False`` → floor the prose prior;
+        ``None`` → legacy). It never returns ``True`` — a committed prose recall
+        requires N3 plus approved reviews, out of this toggle's scope."""
+        return False if self.honest_recall_priors else None
+
     def require_prod_secret(self) -> None:
         """Fail-fast if a non-local deployment still uses the placeholder secret."""
         secret = self.jwt_secret.get_secret_value()

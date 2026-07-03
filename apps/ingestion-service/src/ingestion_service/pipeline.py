@@ -20,7 +20,8 @@ from kg_extractors.composition_extractor import extract_compositions
 from kg_extractors.processing_extractor import extract_processing
 from kg_extractors.rule_extractor import extract_rules
 from kg_retrievers.graph_store import KuzuGraphStore
-from kg_schema.extraction import DocumentExtraction
+from kg_retrievers.value_in_mention import value_present_in_text
+from kg_schema.extraction import DocumentExtraction, EntityExtract
 from kg_schema.taxonomy import load_taxonomy
 
 _log = get_logger("ingest")
@@ -75,6 +76,7 @@ class IngestionPipeline:
         llm_max_chunks: int = 0,
         metastore: MetaStore | None = None,
         source_registry: SourceRegistry | None = None,
+        prose_observation_extraction: bool | None = None,
     ) -> None:
         self.store = store
         self.use_llm = use_llm
@@ -83,6 +85,15 @@ class IngestionPipeline:
         self.metastore = metastore
         # Optional source registry (§5.4). None → no registration.
         self.source_registry = source_registry
+        # §33/N3: when on, prose-sourced numeric measurements are review-gated
+        # (never auto-committed) — a value in prose is treated as a candidate that
+        # needs a human, not an accepted fact. None resolves from config
+        # (MKG_PROSE_OBSERVATION_EXTRACTION, default off); explicit bool overrides.
+        if prose_observation_extraction is None:
+            from kg_common.config import get_settings
+
+            prose_observation_extraction = get_settings().prose_observation_extraction
+        self.prose_observation_extraction = prose_observation_extraction
         self.tax = load_taxonomy()
         self.run_id = make_id("ExtractorRun", f"ingest-{datetime.now(UTC).date()}")
         self._now = datetime.now(UTC).isoformat()
@@ -258,6 +269,22 @@ class IngestionPipeline:
                 )
             )
 
+    def _property_aliases(self, e: EntityExtract) -> list[str]:
+        """Surface forms used to locate a property mention in the chunk text (§33/N2).
+
+        Prefers the taxonomy's bilingual term set; always includes the extracted
+        surface form and the canonical name so the value detector can find the
+        sentence that names *this* property.
+        """
+        terms: list[str] = []
+        entry = self.tax.by_id(e.canonical_name or "")
+        if entry:
+            terms.extend(entry.all_terms)
+        for t in (e.text, e.canonical_name):
+            if t and t not in terms:
+                terms.append(t)
+        return [t for t in terms if t]
+
     def _apply_extraction(
         self, ex: DocumentExtraction, doc_id: str, chunk_id: str, page: int, text: str = ""
     ) -> None:
@@ -266,9 +293,18 @@ class IngestionPipeline:
         for e in ex.entities:
             nid = self._upsert_entity(e.canonical_name or e.text, e.entity_type, e.text)
             if nid:
-                self.store.upsert_edge(
-                    chunk_id, nid, "MENTIONS", **self._prov(confidence=e.confidence)
-                )
+                edge_props = self._prov(confidence=e.confidence)
+                # §33/N2: stamp the measurable-value-in-mention signal on prose
+                # Property MENTIONS edges, so the opt-in absence value gate (D3)
+                # can tell a bare property mention ("названо, не измерено") from
+                # one that actually states a value. Cheap offline regex; only
+                # Property edges carry it — material/structural edges do not, and
+                # the gate treats a missing flag as "unknown" (never downgrades).
+                if e.entity_type == "Property" and text:
+                    edge_props["value_present"] = value_present_in_text(
+                        text, self._property_aliases(e)
+                    )
+                self.store.upsert_edge(chunk_id, nid, "MENTIONS", **edge_props)
                 self.stats.entities += 1
                 if e.entity_type == "Material" and material_id is None:
                     material_id = nid
@@ -311,7 +347,12 @@ class IngestionPipeline:
                 value_normalized=(nm.value_normalized if nm else m.value),
                 normalized_unit=(nm.normalized_unit if nm else m.unit),
                 in_range=(nm.in_range if nm else None),
-                review_needed=(nm.review_needed if nm else False),
+                # §7.7 range-review OR §33/N3 prose review-gate: a prose numeric
+                # value never auto-commits when the N3 flag is on.
+                review_needed=(
+                    (nm.review_needed if nm else False)
+                    or (self.prose_observation_extraction and m.value is not None)
+                ),
                 quality_flags=("|".join(nm.flags) if nm and nm.flags else ""),
                 value_raw=m.value_raw,
                 unit=m.unit,

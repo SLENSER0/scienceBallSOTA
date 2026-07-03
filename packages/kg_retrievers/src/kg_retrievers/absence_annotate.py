@@ -118,6 +118,7 @@ def annotate_gaps(
     gaps: Iterable[Any],
     *,
     recall_prior: float = DEFAULT_RECALL_PRIOR,
+    value_gate: bool | None = None,
 ) -> list[AnnotatedGap]:
     """Annotate each gap with a §25.13 absence verdict via :func:`classify_cell`.
 
@@ -126,15 +127,28 @@ def annotate_gaps(
     derived deterministically from the cell. ``property_id`` may be a ``Property``
     node id or a bare property name (whatever :func:`classify_cell` accepts).
     ``recall_prior`` is forwarded to the classifier and governs how empty,
-    unmentioned cells split between ``genuine_gap`` and ``possible_miss``. The
-    classifier's ``p_truly_absent`` is carried through unchanged. Read-only.
+    unmentioned cells split between ``genuine_gap`` and ``possible_miss``.
+
+    ``value_gate`` (opt-in — §33/N2): with it on, a mentioned cell whose prose only
+    *names* the property (states no value) is downgraded ``possible_miss`` →
+    ``genuine_gap``. Passing ``None`` (the default) resolves it from configuration
+    (``Settings.absence_value_gate``, env ``MKG_ABSENCE_VALUE_GATE``, default off),
+    so the flag flows from config to the production absence surface; an explicit
+    ``True`` / ``False`` overrides config. The classifier's ``p_truly_absent`` is
+    carried through unchanged. Read-only.
     """
+    if value_gate is None:
+        from kg_common.config import get_settings
+
+        value_gate = get_settings().absence_value_gate
     out: list[AnnotatedGap] = []
     for gap in gaps:
         material_id = _read(gap, "material_id")
         property_id = _read(gap, "property_id")
         gap_id = _read(gap, "gap_id") or make_id("Gap", f"{material_id}:{property_id}")
-        sig = classify_cell(store, material_id, property_id, recall_prior=recall_prior)
+        sig = classify_cell(
+            store, material_id, property_id, recall_prior=recall_prior, value_gate=value_gate
+        )
         out.append(
             AnnotatedGap(
                 gap_id=gap_id,
@@ -145,7 +159,7 @@ def annotate_gaps(
                 note=_note_for(sig.verdict),
             )
         )
-    _log.info("annotate_gaps.done", gaps=len(out), recall_prior=recall_prior)
+    _log.info("annotate_gaps.done", gaps=len(out), recall_prior=recall_prior, value_gate=value_gate)
     return out
 
 

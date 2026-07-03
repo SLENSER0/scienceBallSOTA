@@ -10,6 +10,7 @@ dependencies = [
     "kg-extractors",
     "kg-retrievers",
     "agent-service",
+    "numpy>=1.26",
 ]
 
 [build-system]
