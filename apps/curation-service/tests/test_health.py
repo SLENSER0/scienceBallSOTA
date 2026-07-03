@@ -102,3 +102,32 @@ def test_resolve_contradiction_and_practice_type() -> None:
         assert "mark_as_domestic_practice" in actions
     finally:
         store.close()
+
+
+def test_manual_evidence_and_split() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from curation_service.curation import CurationService
+
+    from kg_retrievers.graph_store import KuzuGraphStore
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        store.upsert_node("meas:m", "Measurement", name="твёрдость 145 HV")
+        store.upsert_node("mat:merged", "Material", name="Al-Cu смесь")
+        svc = CurationService(store)
+        res = svc.add_manual_evidence("meas:m", text="эксперт подтвердил 145 HV", actor="cur")
+        ev = store.get_node(res["evidence_id"])
+        assert ev["source_type"] == "manual" and ev["verified"] is True
+        # SUPPORTED_BY edge created
+        n = store.rows(
+            "MATCH (:Node {id:'meas:m'})-[:Rel {type:'SUPPORTED_BY'}]->(e:Node) RETURN count(e)"
+        )
+        assert n[0][0] == 1
+        sp = svc.split_entity("mat:merged", new_name="Медь М1", actor="cur")
+        assert store.get_node(sp["new_id"]) is not None
+        assert "split" in {h["action"] for h in svc.history("mat:merged")}
+    finally:
+        store.close()

@@ -12,7 +12,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from kg_common import get_logger, uuid5_id
+from kg_common import get_logger, make_id, uuid5_id
 from kg_retrievers.graph_store import KuzuGraphStore
 from kg_schema.enums import CurationAction
 
@@ -110,7 +110,11 @@ class CurationService:
             node_id, before["label"], inferred=inferred, updated_at=self._now(), created_by=actor
         )
         return self._record(
-            CurationAction.MARK_INFERRED, node_id, before, self.store.get_node(node_id), actor,
+            CurationAction.MARK_INFERRED,
+            node_id,
+            before,
+            self.store.get_node(node_id),
+            actor,
             reason or f"inferred={inferred}",
         )
 
@@ -126,6 +130,62 @@ class CurationService:
             CurationAction.ANNOTATE, node_id, before, self.store.get_node(node_id), actor, note
         )
 
+    def add_manual_evidence(
+        self,
+        node_id: str,
+        *,
+        text: str,
+        doc_id: str = "manual",
+        actor: str,
+        page: int | None = None,
+    ) -> dict[str, Any]:
+        """Curator attaches a manual evidence span to a fact (§12.2 manual-evidence)."""
+        before = self.store.get_node(node_id)
+        if before is None:
+            raise KeyError(node_id)
+        ev_id = uuid5_id("Evidence", node_id, text, actor)
+        self.store.upsert_node(
+            ev_id,
+            "Evidence",
+            text=text[:2000],
+            doc_id=doc_id,
+            page=page,
+            source_type="manual",
+            evidence_strength="expert_assertion",
+            created_by=actor,
+            review_status="accepted",
+            verified=True,
+            created_at=self._now(),
+            schema_version=SCHEMA_VERSION,
+        )
+        self.store.upsert_edge(node_id, ev_id, "SUPPORTED_BY", created_at=self._now())
+        self._record(CurationAction.MANUAL_EVIDENCE, node_id, before, None, actor, text[:80])
+        return {"evidence_id": ev_id, "node_id": node_id, "action": "manual_evidence"}
+
+    def split_entity(
+        self, node_id: str, *, new_name: str, actor: str, reason: str = ""
+    ) -> dict[str, Any]:
+        """Split a wrongly-merged entity: create a sibling canonical (§12.2 split)."""
+        orig = self.store.get_node(node_id)
+        if orig is None:
+            raise KeyError(node_id)
+        new_id = make_id(orig["label"], new_name)
+        self.store.upsert_node(
+            new_id,
+            orig["label"],
+            name=new_name,
+            canonical_name=new_name,
+            review_status="corrected",
+            verified=True,
+            created_by=actor,
+            created_at=self._now(),
+            schema_version=SCHEMA_VERSION,
+        )
+        self._record(
+            CurationAction.SPLIT, node_id, orig, self.store.get_node(new_id), actor, reason
+        )
+        return {"original_id": node_id, "new_id": new_id, "action": "split"}
+
     def resolve_contradiction(
         self, contradiction_id: str, *, resolution: str, actor: str, reason: str = ""
     ) -> dict[str, Any]:
@@ -134,12 +194,20 @@ class CurationService:
         if before is None or before.get("label") != "Contradiction":
             raise KeyError(f"contradiction {contradiction_id} not found")
         self.store.upsert_node(
-            contradiction_id, "Contradiction", review_status="resolved",
-            resolution=resolution, verified=True, updated_at=self._now(),
+            contradiction_id,
+            "Contradiction",
+            review_status="resolved",
+            resolution=resolution,
+            verified=True,
+            updated_at=self._now(),
         )
         return self._record(
-            CurationAction.RESOLVE_CONTRADICTION, contradiction_id, before,
-            self.store.get_node(contradiction_id), actor, reason or resolution,
+            CurationAction.RESOLVE_CONTRADICTION,
+            contradiction_id,
+            before,
+            self.store.get_node(contradiction_id),
+            actor,
+            reason or resolution,
         )
 
     def set_practice_type(self, node_id: str, practice_type: str, *, actor: str) -> dict[str, Any]:

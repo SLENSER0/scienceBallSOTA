@@ -138,3 +138,36 @@ def set_practice_type(
         return _svc().set_practice_type(entity_id, body.practice_type, actor=x_user)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+class ManualEvidenceBody(BaseModel):
+    text: str
+    doc_id: str = "manual"
+    page: int | None = None
+
+
+class SplitBody(BaseModel):
+    new_name: str
+    reason: str = ""
+
+
+@router.post("/entities/{entity_id}/manual-evidence")
+def manual_evidence(
+    entity_id: str, body: ManualEvidenceBody, x_user: str = Header(default="curator")
+) -> dict:
+    try:
+        return _svc().add_manual_evidence(
+            entity_id, text=body.text, doc_id=body.doc_id, page=body.page, actor=x_user
+        )
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post("/entities/{entity_id}/split")
+def split(entity_id: str, body: SplitBody, x_user: str = Header(default="curator")) -> dict:
+    try:
+        return _svc().split_entity(
+            entity_id, new_name=body.new_name, actor=x_user, reason=body.reason
+        )
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
