@@ -76,6 +76,7 @@ class IngestionPipeline:
         llm_max_chunks: int = 0,
         metastore: MetaStore | None = None,
         source_registry: SourceRegistry | None = None,
+        prose_observation_extraction: bool | None = None,
     ) -> None:
         self.store = store
         self.use_llm = use_llm
@@ -84,6 +85,15 @@ class IngestionPipeline:
         self.metastore = metastore
         # Optional source registry (§5.4). None → no registration.
         self.source_registry = source_registry
+        # §33/N3: when on, prose-sourced numeric measurements are review-gated
+        # (never auto-committed) — a value in prose is treated as a candidate that
+        # needs a human, not an accepted fact. None resolves from config
+        # (MKG_PROSE_OBSERVATION_EXTRACTION, default off); explicit bool overrides.
+        if prose_observation_extraction is None:
+            from kg_common.config import get_settings
+
+            prose_observation_extraction = get_settings().prose_observation_extraction
+        self.prose_observation_extraction = prose_observation_extraction
         self.tax = load_taxonomy()
         self.run_id = make_id("ExtractorRun", f"ingest-{datetime.now(UTC).date()}")
         self._now = datetime.now(UTC).isoformat()
@@ -337,7 +347,12 @@ class IngestionPipeline:
                 value_normalized=(nm.value_normalized if nm else m.value),
                 normalized_unit=(nm.normalized_unit if nm else m.unit),
                 in_range=(nm.in_range if nm else None),
-                review_needed=(nm.review_needed if nm else False),
+                # §7.7 range-review OR §33/N3 prose review-gate: a prose numeric
+                # value never auto-commits when the N3 flag is on.
+                review_needed=(
+                    (nm.review_needed if nm else False)
+                    or (self.prose_observation_extraction and m.value is not None)
+                ),
                 quality_flags=("|".join(nm.flags) if nm and nm.flags else ""),
                 value_raw=m.value_raw,
                 unit=m.unit,
