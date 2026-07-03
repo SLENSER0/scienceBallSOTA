@@ -8,6 +8,7 @@ import {
   Loader2,
   ScrollText,
   ShieldCheck,
+  Waypoints,
 } from 'lucide-react';
 import { api } from '../api';
 
@@ -20,6 +21,7 @@ export function AdminView() {
   const lineage = useQuery({ queryKey: ['admin-lineage'], queryFn: api.adminLineage });
   const matrix = useQuery({ queryKey: ['admin-matrix'], queryFn: api.adminCoverageMatrix });
   const tech = useQuery({ queryKey: ['admin-tech'], queryFn: api.adminTechnoeconomic });
+  const algos = useQuery({ queryKey: ['admin-algos'], queryFn: api.adminGraphAlgos });
   const audit = useQuery({ queryKey: ['admin-audit'], queryFn: () => api.auditTail(40) });
 
   const byLabel = Object.entries(stats.data?.by_label ?? {}).sort((a, b) => b[1] - a[1]);
@@ -113,6 +115,32 @@ export function AdminView() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </Section>
+
+        {/* Graph analytics — degree centrality (most connected entities) */}
+        <Section icon={<Waypoints size={15} />} title="Аналитика графа · центральность (топ-узлы)">
+          {algos.isLoading ? (
+            <Loading />
+          ) : (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {(algos.data?.degree_centrality ?? []).slice(0, 12).map((c) => (
+                <div key={c.entity_id} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted">
+                    {c.entity_id}
+                  </span>
+                  <div className="h-2 w-24 shrink-0 overflow-hidden rounded-sm bg-line/60">
+                    <div
+                      className="h-full rounded-sm bg-copper/60"
+                      style={{ width: `${Math.max(4, c.score * 100)}%` }}
+                    />
+                  </div>
+                  <span className="metric w-10 shrink-0 text-right text-[10px] text-nickel">
+                    {c.score.toFixed(2)}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </Section>

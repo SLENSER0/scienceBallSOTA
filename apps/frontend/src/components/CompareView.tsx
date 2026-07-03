@@ -1,9 +1,33 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowRight, CircleCheck, CircleSlash, Loader2 } from 'lucide-react';
+import { ArrowRight, CircleCheck, CircleSlash, Download, Loader2 } from 'lucide-react';
 import { api } from '../api';
 
 type Cell = { value?: number; unit?: string; gap?: boolean; evidence_ids?: string[] };
+
+// Flatten a comparison cell to plain text for CSV (§17.16).
+function cellText(v: unknown): string {
+  if (v && typeof v === 'object') {
+    const c = v as Cell;
+    if (c.gap) return '—';
+    if (c.value !== undefined) return `${c.value}${c.unit ? ' ' + c.unit : ''}`;
+    return '';
+  }
+  return v == null ? '' : String(v);
+}
+
+function downloadCsv(columns: string[], rows: Record<string, unknown>[]): void {
+  const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
+  const lines = [columns.map(esc).join(',')];
+  for (const row of rows) lines.push(columns.map((c) => esc(cellText(row[c]))).join(','));
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `klubok-compare-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const EXAMPLES = [
   'методы обессоливания воды: обратный осмос, ионный обмен, электродиализ',
@@ -57,9 +81,18 @@ export function CompareView() {
 
         {cmp.data && (
           <>
-            <div className="eyebrow mb-2">
-              покрытие: {cmp.data.coverage.cells_with_evidence}/{cmp.data.coverage.cells_total} ячеек
-              с доказательствами · {cmp.data.coverage.solutions} решений
+            <div className="mb-2 flex items-center gap-2">
+              <span className="eyebrow">
+                покрытие: {cmp.data.coverage.cells_with_evidence}/{cmp.data.coverage.cells_total}{' '}
+                ячеек с доказательствами · {cmp.data.coverage.solutions} решений
+              </span>
+              <button
+                onClick={() => downloadCsv(cmp.data!.columns, cmp.data!.rows)}
+                className="chip ml-auto text-faint hover:border-copper/40 hover:text-copper"
+                title="Экспорт таблицы в CSV"
+              >
+                <Download size={11} /> CSV
+              </button>
             </div>
             <div className="panel overflow-x-auto">
               <table className="w-full text-sm">

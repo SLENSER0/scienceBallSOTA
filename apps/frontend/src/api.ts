@@ -132,6 +132,9 @@ export const api = {
   adminTechnoeconomic(): Promise<{ solutions: string[] }> {
     return req('/api/v1/admin/technoeconomic');
   },
+  adminGraphAlgos(): Promise<{ degree_centrality: { entity_id: string; score: number }[] }> {
+    return req('/api/v1/admin/graph-algos');
+  },
   adminCoverageMatrix(): Promise<{ matrix: { materials: string[]; properties?: string[] } }> {
     return req('/api/v1/admin/coverage-matrix');
   },
