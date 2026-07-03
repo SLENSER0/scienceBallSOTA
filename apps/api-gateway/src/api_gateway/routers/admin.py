@@ -100,6 +100,15 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/retrieval-eval")
+def retrieval_eval() -> dict:
+    """Run the retrieval eval (Recall@k/MRR/nDCG) over the seed golden set (§4.11/§18.6)."""
+    from kg_eval.retrieval_eval import run_retrieval_eval
+
+    report = run_retrieval_eval(get_store())
+    return report.as_dict() if hasattr(report, "as_dict") else dict(report)
+
+
 @router.get("/validate-shapes")
 def validate_shapes(limit: int = 500) -> dict:
     """SHACL-style conformance report over graph nodes — FAIR/evidence-first (§24.19)."""

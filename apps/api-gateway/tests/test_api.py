@@ -375,3 +375,8 @@ def test_admin_validate_shapes(client: TestClient) -> None:
     r = client.get("/api/v1/admin/validate-shapes").json()
     assert "conforms" in r and "total" in r and "by_severity" in r
     assert r["total"] >= 1
+
+
+def test_admin_retrieval_eval(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/retrieval-eval").json()
+    assert "aggregate" in r and "per_query" in r
