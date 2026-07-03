@@ -13,12 +13,19 @@ const EXAMPLES = [
   'Способы закачки шахтных вод в глубокие горизонты в России и за рубежом, технико-экономические показатели',
 ];
 
+const GEO_OPTIONS = [
+  { id: 'all', label: 'Вся практика' },
+  { id: 'russia', label: 'Отечественная' },
+  { id: 'foreign', label: 'Зарубежная' },
+];
+
 export function AskView() {
   const { role, useLlm, answer, setAnswer, setSelectedNode } = useStore();
   const [q, setQ] = useState('');
+  const [geo, setGeo] = useState('all');
 
   const ask = useMutation({
-    mutationFn: (query: string) => api.query(query, { role, useLlm }),
+    mutationFn: (query: string) => api.query(query, { role, useLlm, geography: geo }),
     onSuccess: (a) => {
       setAnswer(a);
       setSelectedNode(null);
@@ -54,6 +61,27 @@ export function AskView() {
                 {ask.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 <span className="hidden sm:inline">Распутать</span>
               </button>
+            </div>
+          </div>
+
+          {/* Geographic filter — отечественная / зарубежная практика */}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-faint">практика:</span>
+            <div className="flex overflow-hidden rounded-md border border-line">
+              {GEO_OPTIONS.map((o) => (
+                <button
+                  key={o.id}
+                  onClick={() => {
+                    setGeo(o.id);
+                    if (answer && q.trim()) submit(q);
+                  }}
+                  className={`px-2.5 py-1 text-[11px] transition ${
+                    geo === o.id ? 'bg-copper/20 text-copper' : 'text-faint hover:text-nickel'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
           </div>
 

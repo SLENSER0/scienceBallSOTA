@@ -40,6 +40,7 @@ export interface AuthConfig {
 export interface QueryOptions {
   role?: string;
   useLlm?: boolean;
+  geography?: string; // russia | cis | foreign | global | all
 }
 
 export interface ChatSession {
@@ -69,7 +70,12 @@ export const api = {
   query(query: string, opts: QueryOptions = {}): Promise<AnswerPayload> {
     return req<AnswerPayload>('/api/v1/query', {
       method: 'POST',
-      body: JSON.stringify({ query, role: opts.role ?? 'researcher', use_llm: opts.useLlm ?? true }),
+      body: JSON.stringify({
+        query,
+        role: opts.role ?? 'researcher',
+        use_llm: opts.useLlm ?? true,
+        geography: opts.geography && opts.geography !== 'all' ? opts.geography : null,
+      }),
     });
   },
   coverage(): Promise<{ domains: CoverageDomain[] }> {

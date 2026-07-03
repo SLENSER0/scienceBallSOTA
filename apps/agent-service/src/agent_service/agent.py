@@ -25,6 +25,7 @@ class AgentState(TypedDict, total=False):
     query: str
     role: str
     use_llm: bool
+    geography: str  # explicit практика filter: russia | cis | foreign | global | all
     preprocess: dict[str, Any]
     intent: Any
     intent_class: dict[str, Any]
@@ -46,6 +47,10 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
         from agent_service.intent_classifier import classify_intent
 
         intent = parse_query(state["query"])
+        # Explicit UI geography filter overrides whatever the text implied (§ гео-фильтр).
+        geo = state.get("geography")
+        if geo and geo != "all":
+            intent.practice_types = [geo]
         ic = classify_intent(state["query"])  # §13.8 explicit intent + routing
         _log.info(
             "agent.parsed",
@@ -136,8 +141,16 @@ def get_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
 
 
 def answer_query(
-    query: str, store: KuzuGraphStore, *, role: str = "researcher", use_llm: bool = True
+    query: str,
+    store: KuzuGraphStore,
+    *,
+    role: str = "researcher",
+    use_llm: bool = True,
+    geography: str | None = None,
 ) -> AnswerPayload:
     agent = get_agent(store)
-    out = agent.invoke({"query": query, "role": role, "use_llm": use_llm})
+    state: dict[str, Any] = {"query": query, "role": role, "use_llm": use_llm}
+    if geography:
+        state["geography"] = geography
+    out = agent.invoke(state)
     return out["answer"]

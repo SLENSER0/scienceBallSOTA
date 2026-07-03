@@ -21,6 +21,8 @@ class QueryRequest(BaseModel):
     query: str
     role: str = "researcher"
     use_llm: bool = True
+    # Explicit geographic filter — отечественная/зарубежная практика (§ гео-фильтр).
+    geography: str | None = None  # russia | cis | foreign | global | all | None
 
 
 @router.post("/query", response_model=AnswerPayload)
@@ -31,8 +33,10 @@ def query(
 ) -> AnswerPayload:
     from agent_service.agent import answer_query
 
-    audit.record("query", user=user, role=role, detail={"q": req.query[:200]})
-    return answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
+    audit.record("query", user=user, role=role, detail={"q": req.query[:200], "geo": req.geography})
+    return answer_query(
+        req.query, get_store(), role=role, use_llm=req.use_llm, geography=req.geography
+    )
 
 
 @router.post("/query/stream")
