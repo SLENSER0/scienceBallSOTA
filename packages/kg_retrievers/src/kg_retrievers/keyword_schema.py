@@ -39,10 +39,26 @@ MIN_TOKEN_LEN: int = 2
 # (``-``, ``,`` …) delimit tokens and never appear inside one (§4.6).
 _TOKEN_RE = re.compile(r"[0-9a-zа-яё]+")
 
-# Field groups of the mapping, split by OpenSearch field family (§4.6).
+# Field groups of the mapping, split by OpenSearch field family (§4.6). Keyword
+# fields drive the facet filters (material/property/source_type/review_status);
+# numeric fields drive range filters; the date field drives recency filters.
 TEXT_FIELDS: tuple[str, ...] = ("name", "aliases_text", "text")
-KEYWORD_FIELDS: tuple[str, ...] = ("id", "label", "domain")
-NUMERIC_FIELDS: tuple[str, ...] = ("value_normalized",)
+KEYWORD_FIELDS: tuple[str, ...] = (
+    "id",
+    "label",
+    "domain",
+    "material_ids",
+    "property_ids",
+    "source_type",
+    "review_status",
+)
+NUMERIC_FIELDS: tuple[str, ...] = (
+    "value_normalized",
+    "temperature_c",
+    "time_h",
+    "confidence",
+)
+DATE_FIELDS: tuple[str, ...] = ("published_date",)
 
 
 def analyze(text: str) -> list[str]:
@@ -81,8 +97,12 @@ class AnalyzerSpec:
 SCIENTIFIC_ANALYZER: AnalyzerSpec = AnalyzerSpec(
     name="scientific_text",
     tokenizer="standard",
-    filters=("lowercase", "asciifolding", "sci_word_delimiter"),
+    filters=("lowercase", "asciifolding", "sci_word_delimiter", "sci_english_stem"),
 )
+
+# Light English stemmer (§4.6) applied after delimiting — folds plural/verb forms
+# (``coatings`` → ``coat``) while the word_delimiter keeps chemical tokens intact.
+SCI_ENGLISH_STEM: dict[str, object] = {"type": "stemmer", "language": "english"}
 
 # Custom token filter referenced by SCIENTIFIC_ANALYZER: keep химические/единичные
 # токены (``Al-Cu``, ``AA2024``) intact — no split on numerics, keep the original.
@@ -122,11 +142,16 @@ def build_index_mapping() -> dict:
         properties[field] = {"type": "keyword"}
     for field in NUMERIC_FIELDS:
         properties[field] = {"type": "float"}
+    for field in DATE_FIELDS:
+        properties[field] = {"type": "date"}
     return {
         "settings": {
             "analysis": {
                 "analyzer": {SCIENTIFIC_ANALYZER.name: SCIENTIFIC_ANALYZER.as_dict()},
-                "filter": {"sci_word_delimiter": dict(SCI_WORD_DELIMITER)},
+                "filter": {
+                    "sci_word_delimiter": dict(SCI_WORD_DELIMITER),
+                    "sci_english_stem": dict(SCI_ENGLISH_STEM),
+                },
             }
         },
         "mappings": {"properties": properties},

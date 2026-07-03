@@ -22,9 +22,7 @@ def make_graph_store(settings: Any = None) -> Any:
     if s.runtime_profile == "server":
         from kg_retrievers.neo4j_store import Neo4jGraphStore
 
-        return Neo4jGraphStore(
-            s.neo4j_uri, s.neo4j_user, s.neo4j_password.get_secret_value()
-        )
+        return Neo4jGraphStore(s.neo4j_uri, s.neo4j_user, s.neo4j_password.get_secret_value())
     from kg_retrievers.graph_store import KuzuGraphStore
 
     return KuzuGraphStore(s.kuzu_db_path)

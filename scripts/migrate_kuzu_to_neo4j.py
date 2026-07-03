@@ -12,6 +12,7 @@ Usage:  uv run python scripts/migrate_kuzu_to_neo4j.py
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sys
 
@@ -44,10 +45,8 @@ def _edge_props(row: list) -> tuple[str, str, str, dict]:
     if contra is not None:
         props["contradicted"] = contra
     if props_json:
-        try:
+        with contextlib.suppress(json.JSONDecodeError, TypeError):
             props.update(json.loads(props_json))
-        except (json.JSONDecodeError, TypeError):
-            pass
     return src, dst, (rtype or "REL"), props
 
 

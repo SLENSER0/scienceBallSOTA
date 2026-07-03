@@ -83,8 +83,9 @@ def test_mapping_text_fields_use_analyzer() -> None:
 def test_mapping_keyword_vs_text_fields() -> None:
     """Keyword facet fields are unanalyzed keywords, distinct from text fields (§4.6)."""
     props = build_index_mapping()["mappings"]["properties"]
+    # §4.6 facet fields: ids + domain + material/property/source_type/review_status.
+    assert {"material_ids", "property_ids", "source_type", "review_status"} <= set(KEYWORD_FIELDS)
     for field in KEYWORD_FIELDS:
-        assert field in ("id", "label", "domain")
         assert props[field] == {"type": "keyword"}
         assert "analyzer" not in props[field]
     # A text field is never a keyword and vice-versa.
@@ -93,10 +94,12 @@ def test_mapping_keyword_vs_text_fields() -> None:
 
 
 def test_mapping_numeric_field() -> None:
-    """The normalised value field is a numeric ``float`` (§4.6)."""
+    """Numeric range-filter fields are ``float`` incl. the §4.6 measurand fields."""
     props = build_index_mapping()["mappings"]["properties"]
-    assert NUMERIC_FIELDS == ("value_normalized",)
-    assert props["value_normalized"] == {"type": "float"}
+    assert {"value_normalized", "temperature_c", "time_h", "confidence"} <= set(NUMERIC_FIELDS)
+    for field in NUMERIC_FIELDS:
+        assert props[field] == {"type": "float"}
+    assert props["published_date"] == {"type": "date"}
 
 
 def test_mapping_is_idempotent_and_analyzer_frozen() -> None:
