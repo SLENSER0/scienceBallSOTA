@@ -18,7 +18,7 @@ def ready() -> JSONResponse:
     try:
         get_store().rows("MATCH (n:Node) RETURN count(n) LIMIT 1")
         checks["graph"] = "ok"
-    except Exception as e:  # noqa: BLE001 — surface as not-ready, don't crash the probe
+    except Exception as e:  # surface as not-ready, don't crash the probe
         checks["graph"] = f"error: {type(e).__name__}"
         ok = False
     status = 200 if ok else 503
