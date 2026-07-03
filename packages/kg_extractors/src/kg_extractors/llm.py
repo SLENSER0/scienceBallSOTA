@@ -27,6 +27,11 @@ OSS_ALLOWED_PREFIXES = (
     "nousresearch/",
     "thudm/",
     "01-ai/",
+    "z-ai/",  # Zhipu GLM (GLM-4.5/4.6/5.x — MIT open weights)
+    "zhipu/",  # Zhipu alt namespace
+    "minimax/",  # MiniMax-M* (Apache-2.0 open weights) — multimodal
+    "ibm-granite/",  # IBM Granite (Apache-2.0) — embeddings/rerank
+    "moonshotai/",  # Kimi (Apache-2.0)
 )
 OSS_BLOCKED = (
     "meta-llama/",
@@ -124,6 +129,42 @@ class LLMClient:
         content = (getattr(msg, "content", "") or "").strip()
         reasoning = (getattr(msg, "reasoning", "") or "").strip()
         return content, reasoning
+
+    def complete_multimodal(
+        self,
+        user: str,
+        images: list[str],
+        *,
+        system: str | None = None,
+        model: str | None = None,
+        max_tokens: int = 1500,
+    ) -> str:
+        """Vision completion — analyse image(s) alongside a text prompt.
+
+        ``images`` are ``data:`` URIs or ``http(s)`` URLs. Routed to the
+        multimodal OSS model (MiniMax-M3) via OpenRouter's vision content format
+        (``image_url`` parts). Used by multimodal deep-research to read figures,
+        micrographs, flowsheets and screenshots.
+        """
+        mdl = model or self._settings.deep_research_multimodal_model
+        if not is_oss_model(mdl):
+            raise ValueError(f"Model '{mdl}' is not on the OSS allowlist (ADR-0006).")
+        content: list[dict[str, Any]] = [{"type": "text", "text": user}]
+        for img in images:
+            content.append({"type": "image_url", "image_url": {"url": img}})
+        messages: list[dict[str, Any]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": content})
+        resp = self._client.chat.completions.create(
+            model=mdl,
+            messages=messages,  # type: ignore[arg-type]
+            temperature=self._settings.llm_temperature,
+            max_tokens=max_tokens,
+            extra_body={"provider": {"sort": "throughput", "allow_fallbacks": True}},
+        )
+        self.used_models.append(mdl)
+        return (resp.choices[0].message.content or "").strip()
 
     def complete_json(
         self,

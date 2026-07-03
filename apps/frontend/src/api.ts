@@ -211,7 +211,31 @@ export const api = {
       body: JSON.stringify({ use_llm: useLlm }),
     });
   },
+
+  // -- Multimodal deep-research: analyse a figure/micrograph/screenshot (§ minimax-m3) --
+  async analyzeImage(file: File, question: string): Promise<MultimodalResult> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('question', question);
+    const res = await fetch('/api/v1/research/multimodal', {
+      method: 'POST',
+      headers: { ...authHeaders() },
+      body: form,
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail.detail || `${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<MultimodalResult>;
+  },
 };
+
+export interface MultimodalResult {
+  model: string | null;
+  question: string;
+  filename: string;
+  analysis: string;
+}
 
 export interface DocumentMeta {
   doc_id: string;

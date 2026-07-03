@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -25,6 +25,16 @@ from api_gateway.deps import get_store
 router = APIRouter(prefix="/api/v1/research", tags=["research"])
 
 _CAN_ADD = {"admin", "curator", "researcher", "analyst", "project_manager"}
+
+# Multimodal deep-research: figure/micrograph/flowsheet/screenshot analysis.
+_IMG_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+_IMG_MAX_BYTES = 12 * 1024 * 1024  # 12 MB image cap
 
 
 class PlanBody(BaseModel):
@@ -68,6 +78,56 @@ def deep_status() -> dict:
     from api_gateway.deep_researcher_runner import deep_research_available
 
     return {"available": deep_research_available(), "engine": "open_deep_research"}
+
+
+@router.post("/multimodal")
+async def multimodal(
+    question: str = Form("Опиши, что изображено, и извлеки все численные данные и обозначения."),
+    file: UploadFile = File(...),
+    role: str = Depends(current_role),
+) -> dict:
+    """Analyse an image (figure, micrograph, flowsheet, screenshot) with the OSS
+    multimodal model (MiniMax-M3) — the visual leg of multimodal deep-research.
+
+    Returns a structured Russian analysis the researcher can feed into deep-research
+    or attach to a manually-added article. Nothing is written to the graph here.
+    """
+    if role not in _CAN_ADD:
+        raise HTTPException(status_code=403, detail="role may not run multimodal analysis")
+
+    import base64
+    from pathlib import Path
+
+    suffix = Path(file.filename or "image.png").suffix.lower()
+    mime = _IMG_MIME.get(suffix)
+    if mime is None:
+        raise HTTPException(status_code=415, detail=f"unsupported image type: {suffix or 'none'}")
+
+    raw = await file.read(_IMG_MAX_BYTES + 1)
+    if len(raw) > _IMG_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="image too large (max 12 MB)")
+    data_uri = f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
+
+    from kg_extractors.llm import get_llm
+
+    system = (
+        "Ты — научный ассистент по горному делу и металлургии. Проанализируй изображение "
+        "и ответь по-русски, структурировано: (1) что изображено; (2) ключевые численные "
+        "данные, оси, единицы, подписи; (3) методы/материалы/режимы, если видны; "
+        "(4) релевантность к исследовательскому вопросу. Не выдумывай данных, которых нет."
+    )
+    llm = get_llm()
+    try:
+        analysis = llm.complete_multimodal(question, [data_uri], system=system, max_tokens=1500)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"multimodal model error: {exc}") from exc
+
+    return {
+        "model": llm.used_models[-1] if llm.used_models else None,
+        "question": question,
+        "filename": file.filename,
+        "analysis": analysis,
+    }
 
 
 @router.post("/deep")
