@@ -28,6 +28,15 @@ def me(role: str = Depends(current_role), user: str = Depends(current_user)) -> 
     return {"user": user, "role": role}
 
 
+@router.get("/auth/config")
+def auth_config() -> dict:
+    """Front-end auth descriptor: SSO (authentik OIDC) availability + dev-login roles."""
+    from api_gateway.auth_oidc import public_oidc_config
+    from kg_schema.enums import Role
+
+    return {"oidc": public_oidc_config(), "roles": [str(r) for r in Role]}
+
+
 @router.get("/admin/audit")
 def audit_tail(limit: int = 100, role: str = Depends(current_role)) -> dict:
     # only privileged roles can read the audit log

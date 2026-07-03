@@ -40,13 +40,26 @@ def decode_token(token: str) -> dict[str, Any] | None:
         return None
 
 
+def _bearer(authorization: str | None) -> str | None:
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return None
+
+
 def current_role(
     authorization: str | None = Header(default=None),
     x_role: str | None = Header(default=None),
 ) -> str:
-    """Resolve caller role: Bearer JWT → X-Role header (dev) → researcher."""
-    if authorization and authorization.lower().startswith("bearer "):
-        claims = decode_token(authorization[7:].strip())
+    """Resolve caller role: authentik OIDC token → dev HS256 JWT → X-Role → researcher."""
+    token = _bearer(authorization)
+    if token:
+        # authentik SSO (RS256) first — inert unless OIDC_ISSUER is configured
+        from api_gateway.auth_oidc import claims_to_identity, verify_oidc_token
+
+        oidc = verify_oidc_token(token)
+        if oidc:
+            return claims_to_identity(oidc)[1]
+        claims = decode_token(token)
         if claims and claims.get("role") in VALID_ROLES:
             return claims["role"]
     if x_role in VALID_ROLES:
@@ -55,8 +68,14 @@ def current_role(
 
 
 def current_user(authorization: str | None = Header(default=None)) -> str:
-    if authorization and authorization.lower().startswith("bearer "):
-        claims = decode_token(authorization[7:].strip())
+    token = _bearer(authorization)
+    if token:
+        from api_gateway.auth_oidc import claims_to_identity, verify_oidc_token
+
+        oidc = verify_oidc_token(token)
+        if oidc:
+            return claims_to_identity(oidc)[0]
+        claims = decode_token(token)
         if claims:
             return str(claims.get("sub", "anonymous"))
     return "anonymous"

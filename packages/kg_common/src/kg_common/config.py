@@ -116,6 +116,14 @@ class Settings(BaseSettings):
     )
     jwt_ttl_minutes: int = Field(default=720, alias="JWT_TTL_MINUTES")
 
+    # -- OIDC / authentik SSO (§19, optional) -----------------------------
+    # When OIDC_ISSUER is set the gateway also accepts authentik-issued RS256
+    # tokens (validated via the issuer JWKS) and maps OIDC groups → RBAC roles.
+    # The dev HS256 login stays available as a local fallback.
+    oidc_issuer: str = Field(default="", alias="OIDC_ISSUER")
+    oidc_client_id: str = Field(default="science-ball", alias="OIDC_CLIENT_ID")
+    oidc_audience: str = Field(default="science-ball", alias="OIDC_AUDIENCE")
+
     # -- Query hardening (§19.6) ------------------------------------------
     # Free-form Cypher is OFF by default; the agent uses parameterized templates.
     allow_raw_cypher: bool = Field(default=False, alias="ALLOW_RAW_CYPHER")

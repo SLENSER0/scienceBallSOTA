@@ -5,13 +5,36 @@ import type {
   GraphResponse,
 } from './types';
 
+function authHeaders(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('sb.session');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s?.token) return { Authorization: `Bearer ${s.token}` };
+      if (s?.role) return { 'X-Role': s.role }; // dev fallback: role header
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(init?.headers ?? {}),
+    },
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
+}
+
+export interface AuthConfig {
+  oidc: { enabled: boolean; issuer?: string; client_id?: string; authorize_url?: string; scopes?: string };
+  roles: string[];
 }
 
 export interface QueryOptions {
@@ -34,6 +57,15 @@ export interface ChatMessage {
 }
 
 export const api = {
+  authConfig(): Promise<AuthConfig> {
+    return req('/api/v1/auth/config');
+  },
+  login(username: string, role: string): Promise<{ token: string; role: string }> {
+    return req('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, role }),
+    });
+  },
   query(query: string, opts: QueryOptions = {}): Promise<AnswerPayload> {
     return req<AnswerPayload>('/api/v1/query', {
       method: 'POST',

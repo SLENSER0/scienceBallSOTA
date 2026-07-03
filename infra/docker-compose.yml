@@ -90,6 +90,56 @@ services:
       <<: *hc
       test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
 
+  # --- authentik SSO / OIDC identity provider (§19) --------------------
+  # OSS IdP (goauthentik). Its own Postgres; reuses the shared valkey/redis.
+  # Server UI on :9100 (host :9000 is minio). A mounted blueprint bootstraps
+  # the science-ball OIDC application + the 6 RBAC groups on first boot.
+  authentik-postgres:
+    image: postgres:16-alpine               # PostgreSQL License
+    <<: *restart
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: authentik
+      POSTGRES_DB: authentik
+    volumes: ["authentik_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "pg_isready -U authentik"]
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.10   # MIT
+    <<: *restart
+    command: server
+    environment: &authentik-env
+      AUTHENTIK_SECRET_KEY: dev-authentik-secret-change-me-0000000000000000
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ScienceBall@Admin2026
+      AUTHENTIK_BOOTSTRAP_TOKEN: science-ball-bootstrap-token
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@science-ball.local
+    ports: ["9100:9000", "9543:9443"]
+    volumes: ["./authentik/blueprints:/blueprints/custom:ro"]
+    depends_on:
+      authentik-postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      <<: *hc
+      start_period: 90s
+      test: ["CMD", "ak", "healthcheck"]
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.10   # MIT
+    <<: *restart
+    command: worker
+    environment: *authentik-env
+    volumes: ["./authentik/blueprints:/blueprints/custom:ro"]
+    depends_on:
+      authentik-postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
   docling-serve:
     image: quay.io/docling-project/docling-serve:latest   # MIT
     <<: *restart
@@ -159,3 +209,4 @@ volumes:
   opensearch_data:
   pg_data:
   minio_data:
+  authentik_pg:

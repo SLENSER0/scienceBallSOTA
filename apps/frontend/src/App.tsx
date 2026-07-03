@@ -7,9 +7,11 @@ import {
   TriangleAlert,
   Columns3,
   MessagesSquare,
+  LogOut,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
+import { LoginView, useOidcCallback } from './components/LoginView';
 import { ChatView } from './components/ChatView';
 import { AskView } from './components/AskView';
 import { CompareView } from './components/CompareView';
@@ -18,18 +20,26 @@ import { GapsView } from './components/GapsView';
 import { GlossaryView } from './components/GlossaryView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
 
-const NAV: { id: View; label: string; icon: typeof Network }[] = [
+const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
   { id: 'chat', label: 'Диалог', icon: MessagesSquare },
   { id: 'ask', label: 'Запрос', icon: Network },
   { id: 'compare', label: 'Сравнение', icon: Columns3 },
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
-  { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert },
+  // External partners get a restricted view — no internal gap/risk analytics.
+  { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
 ];
 
 export function App() {
-  const { view, setView, role, setRole, useLlm, setUseLlm } = useStore();
-  const stats = useQuery({ queryKey: ['stats'], queryFn: api.stats });
+  const { view, setView, role, useLlm, setUseLlm, user, signOut } = useStore();
+  useOidcCallback();
+  const stats = useQuery({ queryKey: ['stats'], queryFn: api.stats, enabled: !!user });
+
+  // Gate the whole app on sign-in — «красивая авторизация» first.
+  if (!user) return <LoginView />;
+
+  const nav = NAV.filter((n) => !n.roles || n.roles.includes(role));
+  if (!nav.some((n) => n.id === view)) setView('chat');
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -39,7 +49,7 @@ export function App() {
           <ClubokMark />
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {NAV.map(({ id, label, icon: Icon }) => (
+          {nav.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setView(id)}
@@ -74,20 +84,6 @@ export function App() {
                 {stats.data.counts.rels.toLocaleString('ru')} связей
               </span>
             )}
-            <label className="flex items-center gap-2 text-muted">
-              <span className="eyebrow">роль</span>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="rounded border border-line bg-surface px-2 py-1 font-mono text-xs text-ink"
-              >
-                {['researcher', 'analyst', 'project_manager', 'external_partner', 'curator'].map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
             <label className="flex cursor-pointer items-center gap-2 text-muted">
               <input
                 type="checkbox"
@@ -97,6 +93,19 @@ export function App() {
               />
               <span className="eyebrow">LLM-синтез</span>
             </label>
+            {/* Signed-in identity + role + sign-out */}
+            <div className="flex items-center gap-2 rounded-md border border-line bg-surface/60 px-2.5 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-verified" />
+              <span className="text-ink">{user}</span>
+              <span className="font-mono text-[10px] uppercase tracking-wide text-copper">{role}</span>
+              <button
+                onClick={signOut}
+                title="Выйти"
+                className="ml-1 text-faint transition hover:text-contradiction"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
           </div>
         </header>
 

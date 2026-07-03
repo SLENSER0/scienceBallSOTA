@@ -1,0 +1,57 @@
+# authentik blueprint (§19) — bootstraps the Научный клубок OIDC application,
+# its OAuth2 provider (client_id=science-ball, PKCE public client) and the six
+# RBAC groups that the gateway maps onto roles (see auth_oidc.GROUP_ROLE_MAP).
+# authentik auto-applies blueprints under /blueprints/custom on start.
+version: 1
+metadata:
+  name: science-ball-sso
+entries:
+  # --- RBAC groups → roles ---------------------------------------------
+  - model: authentik_core.group
+    id: grp-admins
+    identifiers: {name: science-ball-admins}
+    attrs: {is_superuser: false}
+  - model: authentik_core.group
+    identifiers: {name: science-ball-curators}
+  - model: authentik_core.group
+    identifiers: {name: science-ball-researchers}
+  - model: authentik_core.group
+    identifiers: {name: science-ball-analysts}
+  - model: authentik_core.group
+    identifiers: {name: science-ball-managers}
+  - model: authentik_core.group
+    identifiers: {name: science-ball-partners}
+
+  # --- OAuth2 / OIDC provider ------------------------------------------
+  - model: authentik_providers_oauth2.oauth2provider
+    id: sb-provider
+    identifiers: {name: science-ball-provider}
+    attrs:
+      client_type: public
+      client_id: science-ball
+      sub_mode: user_username
+      include_claims_in_id_token: true
+      # default authorization + invalidation flows shipped with authentik
+      authorization_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      redirect_uris:
+        - matching_mode: strict
+          url: http://localhost:3000/
+        - matching_mode: strict
+          url: http://localhost:5173/
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+
+  # --- application bound to the provider -------------------------------
+  - model: authentik_core.application
+    identifiers: {slug: science-ball}
+    attrs:
+      name: Научный клубок
+      slug: science-ball
+      provider: !KeyOf sb-provider
+      meta_launch_url: http://localhost:3000/
+      meta_description: R&D knowledge-graph platform
