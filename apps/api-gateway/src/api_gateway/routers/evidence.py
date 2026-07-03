@@ -7,11 +7,10 @@ from pydantic import BaseModel
 
 from api_gateway.auth import current_role
 from api_gateway.deps import get_store
+from kg_common.security.clearance import can_view
 
 router = APIRouter(prefix="/api/v1/evidence", tags=["evidence"])
 
-_PRIVILEGED = {"researcher", "analyst", "project_manager", "admin", "curator"}
-_RESTRICTED = {"internal", "restricted", "commercial_secret"}
 _CURATOR = {"curator", "admin"}
 
 
@@ -82,8 +81,10 @@ def get_evidence(evidence_id: str, role: str = Depends(current_role)) -> dict:
     nd = get_store().get_node(evidence_id)
     if nd is None:
         raise HTTPException(status_code=404, detail="evidence not found")
-    # RBAC: non-privileged roles cannot read restricted evidence (finding evidence.py:14)
-    if nd.get("confidentiality_level") in _RESTRICTED and role not in _PRIVILEGED:
+    # RBAC (§17.1): a role may read a source only within its access-level clearance
+    # — external_partner sees public, researcher/analyst up to internal, curator/
+    # project_manager/admin up to restricted (see kg_common.security.clearance).
+    if not can_view(role, nd.get("confidentiality_level")):
         raise HTTPException(status_code=403, detail="restricted evidence — access denied")
     return {
         "evidence_id": nd["id"],

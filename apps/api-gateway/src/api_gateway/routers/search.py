@@ -5,10 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
+from api_gateway.auth import current_role
 from api_gateway.deps import get_store
+from kg_common.security.clearance import filter_by_clearance
 
 router = APIRouter(prefix="/api/v1", tags=["search"])
 
@@ -18,6 +20,7 @@ def entity_search(
     q: str = Query(min_length=1),
     type: str | None = None,
     limit: int = Query(default=20, le=100),
+    role: str = Depends(current_role),
 ) -> dict:
     store = get_store()
     term = q.lower()
@@ -31,9 +34,10 @@ def entity_search(
         params["label"] = type
     cypher += f" RETURN n LIMIT {int(limit)}"
     rows = store.rows(cypher, params)
+    # RBAC (§17.1): drop entities whose source is above the caller's clearance.
+    nodes = filter_by_clearance(role, [store._node_dict(r[0]) for r in rows])
     results = []
-    for r in rows:
-        nd = store._node_dict(r[0])
+    for nd in nodes:
         results.append(
             {
                 "id": nd["id"],
@@ -106,7 +110,7 @@ def entity_detail(entity_id: str) -> dict:
 _TOKEN = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
 
 
-def _entity_rows(store, term: str, limit: int) -> list[dict]:  # type: ignore[no-untyped-def]
+def _entity_rows(store, term: str, limit: int, role: str | None = None) -> list[dict]:  # type: ignore[no-untyped-def]
     rows = store.rows(
         "MATCH (n:Node) WHERE n.name IS NOT NULL AND ("
         "lower(n.name) CONTAINS $t OR lower(coalesce(n.aliases_text,'')) CONTAINS $t "
@@ -115,7 +119,9 @@ def _entity_rows(store, term: str, limit: int) -> list[dict]:  # type: ignore[no
         f"RETURN n LIMIT {int(limit) * 4}",
         {"t": term.lower()},
     )
-    return [store._node_dict(r[0]) for r in rows]
+    nodes = [store._node_dict(r[0]) for r in rows]
+    # RBAC (§17.1): drop nodes whose source is above the caller's clearance.
+    return filter_by_clearance(role, nodes) if role else nodes
 
 
 def _keyword_score(node: dict, tokens: set[str]) -> float:
@@ -182,14 +188,14 @@ def _hit(node: dict, score: float) -> dict[str, Any]:
     }
 
 
-def _run_search(req: SearchRequest, mode: str) -> dict:
+def _run_search(req: SearchRequest, mode: str, role: str | None = None) -> dict:
     from kg_retrievers.scoring import evidence_quality_score, weighted_fuse
 
     store = get_store()
     tokens = {t.lower() for t in _TOKEN.findall(req.query)}
     nodes = {
         n["id"]: n
-        for n in _entity_rows(store, req.query, req.top_k)
+        for n in _entity_rows(store, req.query, req.top_k, role)
         if _passes_filters(n, req.filters)
     }
     kw = {i: _keyword_score(n, tokens) for i, n in nodes.items()}
@@ -207,26 +213,30 @@ def _run_search(req: SearchRequest, mode: str) -> dict:
 
 
 @router.post("/search/hybrid")
-def post_search_hybrid(req: SearchRequest) -> dict:
-    return _run_search(req, "hybrid")
+def post_search_hybrid(req: SearchRequest, role: str = Depends(current_role)) -> dict:
+    return _run_search(req, "hybrid", role)
 
 
 @router.post("/search/vector")
-def post_search_vector(req: SearchRequest) -> dict:
-    return _run_search(req, "vector")
+def post_search_vector(req: SearchRequest, role: str = Depends(current_role)) -> dict:
+    return _run_search(req, "vector", role)
 
 
 @router.post("/search/keyword")
-def post_search_keyword(req: SearchRequest) -> dict:
-    return _run_search(req, "keyword")
+def post_search_keyword(req: SearchRequest, role: str = Depends(current_role)) -> dict:
+    return _run_search(req, "keyword", role)
 
 
 @router.get("/search/keyword")
-def search_keyword(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+def search_keyword(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=10, le=100),
+    role: str = Depends(current_role),
+) -> dict:
     store = get_store()
     tokens = {t.lower() for t in _TOKEN.findall(q)}
     scored = sorted(
-        ((_keyword_score(n, tokens), n) for n in _entity_rows(store, q, limit)),
+        ((_keyword_score(n, tokens), n) for n in _entity_rows(store, q, limit, role)),
         key=lambda x: x[0],
         reverse=True,
     )
@@ -239,12 +249,16 @@ def search_keyword(q: str = Query(min_length=1), limit: int = Query(default=10, 
 
 
 @router.get("/search/hybrid")
-def search_hybrid(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+def search_hybrid(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=10, le=100),
+    role: str = Depends(current_role),
+) -> dict:
     from kg_retrievers.scoring import evidence_quality_score, weighted_fuse
 
     store = get_store()
     tokens = {t.lower() for t in _TOKEN.findall(q)}
-    nodes = {n["id"]: n for n in _entity_rows(store, q, limit)}
+    nodes = {n["id"]: n for n in _entity_rows(store, q, limit, role)}
     comps = {
         "keyword": {i: _keyword_score(n, tokens) for i, n in nodes.items()},
         "evidence_quality": {i: evidence_quality_score(n) for i, n in nodes.items()},
@@ -260,7 +274,11 @@ def search_hybrid(q: str = Query(min_length=1), limit: int = Query(default=10, l
 
 
 @router.get("/search/vector")
-def search_vector(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+def search_vector(
+    q: str = Query(min_length=1),
+    limit: int = Query(default=10, le=100),
+    role: str = Depends(current_role),
+) -> dict:
     # Dense entity search when an index exists; otherwise degrade to keyword.
     store = get_store()
     try:
@@ -269,16 +287,21 @@ def search_vector(q: str = Query(min_length=1), limit: int = Query(default=10, l
         idx = EntityVectorIndex()
         if idx.count() > 0:
             hits = idx.similar_entities(q, k=limit)
+            # RBAC (§17.1): drop hits above the caller's clearance.
+            nodes = filter_by_clearance(
+                role, [store.get_node(h.id) or {"id": h.id, "score": h.score} for h in hits]
+            )
+            by_id = {n["id"]: n for n in nodes}
             return {
                 "query": q,
                 "mode": "vector",
                 "degraded": False,
-                "count": len(hits),
-                "results": [_fmt(store.get_node(h.id) or {"id": h.id}, h.score) for h in hits],
+                "count": len(by_id),
+                "results": [_fmt(by_id[h.id], h.score) for h in hits if h.id in by_id],
             }
     except Exception:
         pass
-    kw = search_keyword(q, limit)
+    kw = search_keyword(q, limit, role)
     kw["mode"] = "vector"
     kw["degraded"] = True
     return kw

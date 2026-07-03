@@ -150,3 +150,33 @@ def test_public_config_shape(oidc_on) -> None:
     assert c["enabled"] is True
     assert c["authorization_endpoint"].endswith("/authorize/")
     assert "groups" in c["scopes"]
+
+
+# -- labs + principal (source-access identity) -----------------------------
+def test_labs_from_claims(oidc_on) -> None:
+    # authentik lab:* groups → lab memberships for lab-restricted sources
+    assert set(oidc.labs_from_claims({"groups": ["curator", "lab:lab_a", "lab:lab_b"]})) == {
+        "lab_a",
+        "lab_b",
+    }
+    # an explicit `labs` claim wins
+    assert oidc.labs_from_claims({"groups": ["lab:x"], "labs": ["lab_z"]}) == ["lab_z"]
+    assert oidc.labs_from_claims({"groups": ["admin"]}) == []
+
+
+def test_current_principal_from_oidc(oidc_on, rsa_key, monkeypatch) -> None:
+    tok = _token(rsa_key, groups=["curator", "lab:lab_a"])
+    monkeypatch.setattr(oidc, "_signing_key", lambda _t: rsa_key.public_key())
+    p = auth.current_principal(authorization=f"Bearer {tok}")
+    assert p.user_id == "alice"
+    assert p.roles == frozenset({"curator"})
+    assert p.labs == frozenset({"lab_a"})
+
+
+def test_current_principal_from_demo_and_headers(oidc_on) -> None:
+    tok = auth.issue_token("dave", "analyst")
+    p = auth.current_principal(authorization=f"Bearer {tok}")
+    assert p.user_id == "dave" and p.roles == frozenset({"analyst"})
+    # no token → dev header fallback
+    p2 = auth.current_principal(authorization=None, x_role="curator", x_user_id="u_x")
+    assert p2.user_id == "u_x" and p2.roles == frozenset({"curator"})

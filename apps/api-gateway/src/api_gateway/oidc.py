@@ -143,16 +143,35 @@ def role_from_groups(groups: list[str]) -> str:
     return str(Role.RESEARCHER)
 
 
+# authentik groups of the form ``lab:<lab_id>`` encode lab membership, used for
+# lab-restricted source ACLs (see kg_common.security.source_access).
+_LAB_GROUP_PREFIX = "lab:"
+
+
+def _groups(claims: dict[str, Any]) -> list[str]:
+    groups = claims.get(get_settings().oidc_groups_claim) or []
+    if isinstance(groups, str):
+        groups = [groups]
+    return [str(g) for g in groups]
+
+
+def labs_from_claims(claims: dict[str, Any]) -> list[str]:
+    """Lab ids the principal belongs to: an explicit ``labs`` claim, else groups
+    named ``lab:<id>`` (so authentik group membership drives lab-restricted access)."""
+    labs = claims.get("labs")
+    if isinstance(labs, str):
+        labs = [labs]
+    if labs:
+        return [str(x) for x in labs]
+    return [g[len(_LAB_GROUP_PREFIX) :] for g in _groups(claims) if g.startswith(_LAB_GROUP_PREFIX)]
+
+
 def claims_to_identity(claims: dict[str, Any]) -> tuple[str, str]:
     """Map verified OIDC claims to ``(user, role)`` for the RBAC layer."""
     user = (
         claims.get("preferred_username") or claims.get("email") or claims.get("sub") or "anonymous"
     )
-    groups_claim = get_settings().oidc_groups_claim
-    groups = claims.get(groups_claim) or []
-    if isinstance(groups, str):
-        groups = [groups]
-    return str(user), role_from_groups(list(groups))
+    return str(user), role_from_groups(_groups(claims))
 
 
 def public_config() -> dict[str, Any]:
