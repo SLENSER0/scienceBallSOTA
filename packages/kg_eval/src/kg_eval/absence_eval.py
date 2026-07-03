@@ -28,6 +28,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from kg_eval import calibration, guardrails, matching
 from kg_eval.datasets.synthetic import build_synthetic
 from kg_eval.schemas import REALITIES, VERDICTS, AbsencePrediction, DatasetManifest
 from kg_retrievers.absence_signals import (
@@ -103,30 +104,24 @@ BASELINES = {
 
 # -- prediction dispatch ---------------------------------------------------
 def _predictions(
-    store: KuzuGraphStore,
     manifest: DatasetManifest,
     method: str,
     *,
-    recall_prior: float,
+    sigs: dict[str, dict[str, Any]],
+    gate_verdicts: dict[str, str],
+    calibrated: bool = False,
     mention_texts: dict[str, str] | None = None,
     aliases: dict[str, list[str]] | None = None,
 ) -> list[AbsencePrediction]:
     """Verdicts for every cell under ``method`` (a baseline, the current layer, or a
-    value method)."""
+    value method), reusing per-cell signals computed once by the caller."""
     preds: list[AbsencePrediction] = []
     for cell in manifest.cells:
-        s = _signals(store, cell.material_id, cell.property_id, recall_prior=recall_prior)
+        s = sigs[cell.key()]
         if method in BASELINES:
             verdict = BASELINES[method](s)
         elif method == "absence_confidence_value_gate":
-            # The real production gate reads value_present off the graph.
-            verdict = classify_cell(
-                store,
-                cell.material_id,
-                cell.property_id,
-                recall_prior=recall_prior,
-                value_gate=True,
-            ).verdict
+            verdict = gate_verdicts[cell.key()]  # the real production gate (graph value_present)
         elif method in VALUE_METHODS:
             verdict = s["verdict"]
             if verdict == POSSIBLE_MISS:
@@ -139,7 +134,7 @@ def _predictions(
                     downgrade = bool(txt) and not value_present_in_text(txt, als)
                 if downgrade:
                     verdict = GENUINE_GAP
-        else:  # "absence_confidence" — the current shipped verdict (gate off)
+        else:  # "absence_confidence" / "absence_confidence_calibrated"
             verdict = s["verdict"]
         preds.append(
             AbsencePrediction(
@@ -150,6 +145,7 @@ def _predictions(
                 p_extractor_missed=s["p_missed"],
                 p_truly_absent=s["p_truly_absent"],
                 true_label=cell.true_label,
+                calibrated=calibrated,
             )
         )
     return preds
@@ -305,33 +301,110 @@ def _value_signal(
     }
 
 
+# -- probability / threshold / bootstrap -----------------------------------
+def _probability(sigs: dict[str, dict[str, Any]], manifest: DatasetManifest) -> dict[str, Any]:
+    """Calibration of ``p_extractor_missed`` vs the miss event, over the probabilistic
+    zone (cells with no active observation and no retraction)."""
+    p: list[float] = []
+    y: list[int] = []
+    for cell in manifest.cells:
+        s = sigs[cell.key()]
+        if s["active"] == 0 and s["retracted"] == 0:
+            p.append(s["p_missed"])
+            y.append(1 if cell.true_label == POSSIBLE_MISS else 0)
+    return calibration.probability_report(p, y)
+
+
+def _threshold_study(sigs: dict[str, dict[str, Any]], manifest: DatasetManifest) -> dict[str, Any]:
+    cells = [
+        {
+            "key": cell.key(),
+            "true_label": cell.true_label,
+            "active": sigs[cell.key()]["active"],
+            "retracted": sigs[cell.key()]["retracted"],
+            "mentioned": sigs[cell.key()]["mentioned"],
+            "p_missed": sigs[cell.key()]["p_missed"],
+        }
+        for cell in manifest.cells
+    ]
+    return calibration.select_thresholds(cells)
+
+
+def _bootstrap_accuracy(methods_out: dict[str, Any]) -> dict[str, Any]:
+    import numpy as np
+
+    out: dict[str, Any] = {}
+    for method, blk in methods_out.items():
+        correct = [1.0 if p["correct"] else 0.0 for p in blk["predictions"]]
+        out[method] = calibration.bootstrap_ci(correct, np.mean)
+    return out
+
+
 # -- orchestration ---------------------------------------------------------
 def evaluate_absence(
     store: KuzuGraphStore,
     manifest: DatasetManifest,
     *,
     recall_prior: float = 0.3,
+    prose_extraction_enabled: bool = False,
+    calibrate: bool = True,
+    bootstrap: bool = True,
 ) -> dict[str, Any]:
-    """Score the whole method ladder over a seeded store + its manifest."""
-    methods_out: dict[str, Any] = {}
-    for method in (*BASELINES, "absence_confidence"):
-        preds = _predictions(store, manifest, method, recall_prior=recall_prior)
-        methods_out[method] = score_method(preds, manifest)
+    """Score the whole method ladder over a seeded store + its manifest, and attach
+    the probability / threshold / Track-A / guardrail / value-signal analyses."""
+    # Compute per-cell signals + the real value-gate verdict ONCE, then reuse.
+    sigs: dict[str, dict[str, Any]] = {}
+    gate_verdicts: dict[str, str] = {}
+    for cell in manifest.cells:
+        sigs[cell.key()] = _signals(
+            store, cell.material_id, cell.property_id, recall_prior=recall_prior
+        )
+        gate_verdicts[cell.key()] = classify_cell(
+            store, cell.material_id, cell.property_id, recall_prior=recall_prior, value_gate=True
+        ).verdict
 
     mention_texts = _mention_texts(store, manifest)
     aliases = _property_aliases(store, manifest)
-    for method in VALUE_METHODS:
+
+    def _score(method: str, *, calibrated: bool = False) -> dict[str, Any]:
         preds = _predictions(
-            store,
             manifest,
             method,
-            recall_prior=recall_prior,
+            sigs=sigs,
+            gate_verdicts=gate_verdicts,
+            calibrated=calibrated,
             mention_texts=mention_texts,
             aliases=aliases,
         )
-        methods_out[method] = score_method(preds, manifest)
+        return score_method(preds, manifest)
 
-    return {
+    methods_out: dict[str, Any] = {}
+    for method in (*BASELINES, "absence_confidence", *VALUE_METHODS):
+        methods_out[method] = _score(method)
+
+    # Probability + cost-threshold study on the current layer.
+    methods_out["absence_confidence"]["probability"] = _probability(sigs, manifest)
+    methods_out["absence_confidence"]["threshold_study"] = _threshold_study(sigs, manifest)
+
+    track_a = matching.evaluate_extraction_semantic(
+        store, manifest.extraction_gold, profile=manifest.profile
+    )
+    guard = guardrails.check_recall_priors(
+        track_a, prose_extraction_enabled=prose_extraction_enabled
+    )
+
+    if calibrate:
+        # SOTA note: classify_cell uses a fixed MENTION_EXISTS_PRIOR for mentioned
+        # cells, so gold-recall calibration leaves the mention-based verdicts here
+        # unchanged — it changes probability quality, NOT the mention-vs-value
+        # confusion (which is structural). Recorded so the report can say so.
+        cal = methods_out["absence_confidence_calibrated"] = _score(
+            "absence_confidence_calibrated", calibrated=True
+        )
+        cal["probability"] = _probability(sigs, manifest)
+        cal["calibrated"] = True
+
+    payload: dict[str, Any] = {
         "dataset": {
             "name": manifest.name,
             "seed": manifest.seed,
@@ -342,8 +415,13 @@ def evaluate_absence(
         },
         "recall_prior": recall_prior,
         "methods": methods_out,
+        "extraction_track_a": track_a,
+        "guardrails": guard,
         "value_signal": _value_signal(manifest, mention_texts, aliases),
     }
+    if bootstrap:
+        payload["bootstrap"] = _bootstrap_accuracy(methods_out)
+    return payload
 
 
 def run(
@@ -352,11 +430,13 @@ def run(
     seed: int = 20260701,
     profile: str = "offline",
     recall_prior: float = 0.3,
+    calibrate: bool = True,
+    bootstrap: bool = True,
 ) -> dict[str, Any]:
     """Generate the synthetic corpus into an isolated store and score Track-C.
 
     Fully offline and deterministic; the store is a throwaway temp dir, never a
-    production graph.
+    production graph. ``profile`` labels the recall regime for the guardrail.
     """
     import tempfile
     from pathlib import Path
@@ -364,6 +444,13 @@ def run(
     store = KuzuGraphStore(str(Path(tempfile.mkdtemp()) / "g"))
     try:
         manifest = build_synthetic(store, n_materials=n_materials, seed=seed, profile=profile)
-        return evaluate_absence(store, manifest, recall_prior=recall_prior)
+        return evaluate_absence(
+            store,
+            manifest,
+            recall_prior=recall_prior,
+            prose_extraction_enabled=profile != "offline",
+            calibrate=calibrate,
+            bootstrap=bootstrap,
+        )
     finally:
         store.close()
