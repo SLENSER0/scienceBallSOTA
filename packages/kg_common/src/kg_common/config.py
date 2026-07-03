@@ -116,6 +116,11 @@ class Settings(BaseSettings):
     )
     jwt_ttl_minutes: int = Field(default=720, alias="JWT_TTL_MINUTES")
 
+    # -- Query hardening (§19.6) ------------------------------------------
+    # Free-form Cypher is OFF by default; the agent uses parameterized templates.
+    allow_raw_cypher: bool = Field(default=False, alias="ALLOW_RAW_CYPHER")
+    cypher_max_rows: int = Field(default=1000, alias="CYPHER_MAX_ROWS")
+
     def require_prod_secret(self) -> None:
         """Fail-fast if a non-local deployment still uses the placeholder secret."""
         secret = self.jwt_secret.get_secret_value()

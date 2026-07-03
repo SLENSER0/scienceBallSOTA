@@ -35,3 +35,18 @@ neo4j-admin database load   neo4j --from-path=/backups --overwrite-destination=t
 ```
 
 Embedded profile: back up the `var/` directory (`scripts/backup.sh`).
+
+## Read-only agent user (§19.6)
+
+The agent/graph read path connects as a dedicated `reader` role; writes go only
+through curation-service as `writer`. Create on first boot:
+
+```cypher
+CREATE USER kg_reader SET PASSWORD 'change-me' CHANGE NOT REQUIRED;
+GRANT ROLE reader TO kg_reader;      -- built-in read-only role
+CREATE USER kg_writer SET PASSWORD 'change-me' CHANGE NOT REQUIRED;
+GRANT ROLE editor TO kg_writer;
+```
+
+Defense-in-depth on top of the app-level `cypher_guard` (static mutating-clause
+rejection + LIMIT + allowlist) and `ALLOW_RAW_CYPHER=false` default.
