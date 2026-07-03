@@ -136,31 +136,35 @@ def mention_value_status(store: KuzuGraphStore, material_id: str, property_id: s
 
     For every prose ``Chunk-[:MENTIONS]->property`` edge in a document that *also*
     mentions ``material_id``, read the ``value_present`` flag stamped at ingest
-    (D1/D2). Three-valued, deliberately conservative — the caller (:func:`~kg_
-    retrievers.absence_signals.classify_cell`, opt-in ``value_gate``) only acts on
-    an explicit ``False``:
+    (D1/D2). Three-valued — the caller (:func:`~kg_retrievers.absence_signals.
+    classify_cell`, opt-in ``value_gate``) only acts on an explicit ``False``:
 
     - ``True``  — some qualifying prose edge states a value (``value_present``
       truthy): a real datum was named, so a bare-mention miss stays a
       ``possible_miss``.
-    - ``False`` — **complete** positive evidence of no value: at least one
-      qualifying prose edge, *every* one carries the flag, and none is truthy →
-      the property is only named, never measured → downgrade toward
-      ``genuine_gap``.
-    - ``None``  — unknown: the material is not mentioned, no prose edge reaches
-      the property node, or some qualifying edge lacks the flag (a structural /
-      catalog / pre-N2 edge, whose ``value_present`` is ``NULL``). "Do not
-      downgrade on absence of evidence."
+    - ``False`` — positive evidence of *no* stated value, in either of two forms:
+      (a) the property is co-mentioned but every qualifying edge carries the flag
+      and none is truthy (property only named, never measured); or (b) the
+      material is discussed yet the property is **never co-mentioned** in its
+      prose at all (not even named → a genuine gap, not a missed extraction).
+      Because SOTA's :func:`is_mentioned_without_observation` is material-level, an
+      un-discussed property reaches ``possible_miss`` here even though it deserves
+      ``genuine_gap`` — this is the property-aware refinement the gate applies.
+    - ``None``  — unknown: the material is not mentioned, the property is
+      unresolvable (bare name, no node), or some qualifying edge lacks the flag (a
+      structural / catalog / pre-N2 edge, whose ``value_present`` is ``NULL``).
+      "Do not downgrade on absence of evidence."
 
-    ``property_id`` must be the ``Property`` **node id** the MENTIONS edge targets;
-    a bare property name (with no node) yields ``None`` (nothing to gate on). The
-    query is wrapped defensively — a store predating the ``value_present`` column
-    returns ``None`` rather than raising.
+    ``property_id`` must be the ``Property`` **node id** the MENTIONS edge targets.
+    The query is wrapped defensively — a store predating the ``value_present``
+    column returns ``None`` rather than raising.
     """
     try:
         docs = documents_mentioning(store, material_id)
         if not docs:
             return None
+        if store.get_node(property_id) is None:
+            return None  # unresolvable property (bare name) → cannot gate on it
         rows = store.rows(
             "MATCH (d:Node)-[r1:Rel]->(c:Node)-[rm:Rel]->(p:Node {id:$pid}) "
             "WHERE d.label='Document' AND r1.type=$has AND c.label='Chunk' "
@@ -171,13 +175,14 @@ def mention_value_status(store: KuzuGraphStore, material_id: str, property_id: s
     except Exception:  # store without the value_present column / other read error
         return None
     vals = [r[0] for r in rows]
-    if not vals:
-        return None  # material mentioned, but no prose edge reaches this property
     if any(v is True for v in vals):
         return True  # a prose doc states a value → keep possible_miss
+    # No stated value: either the property is co-mentioned but flagged valueless
+    # (all non-null, none truthy) OR never co-mentioned at all (empty → vacuously
+    # all non-null). Both are positive evidence of a genuine gap.
     if all(v is not None for v in vals):
-        return False  # every qualifying edge flagged, none states a value
-    return None  # some edge lacks the flag → cannot be sure
+        return False  # flagged-valueless, or never co-mentioned (empty) → genuine gap
+    return None  # some co-mention edge lacks the flag → cannot be sure
 
 
 def is_mentioned_without_observation(

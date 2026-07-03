@@ -95,6 +95,18 @@ def test_gate_on_unknown_flag_does_not_downgrade(store: KuzuGraphStore) -> None:
     assert sig.signals["mention_value_present"] is None
 
 
+def test_gate_on_property_never_co_mentioned_downgrades(store: KuzuGraphStore) -> None:
+    # The material is discussed but this property is never named in its prose (no
+    # MENTIONS edge) — SOTA's material-level mention signal calls it possible_miss,
+    # but with nothing measured and nothing even discussed it is a genuine gap.
+    absent_prop = make_id("Property", "conductivity")
+    store.upsert_node(absent_prop, "Property", property_name="conductivity", name="Conductivity")
+    assert mention_value_status(store, MAT, absent_prop) is False
+    sig = classify_cell(store, MAT, absent_prop, value_gate=True)
+    assert sig.verdict == GENUINE_GAP
+    assert sig.signals["mention_value_present"] is False
+
+
 # -- gate does not touch empty / unmentioned cells -------------------------
 def test_gate_ignores_unmentioned_cell(store: KuzuGraphStore) -> None:
     # a material never mentioned + never measured is decided by the recall prior,
