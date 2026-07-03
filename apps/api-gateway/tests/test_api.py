@@ -331,3 +331,12 @@ def test_readiness_probe(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["ready"] is True and body["checks"]["graph"] == "ok"
+
+
+def test_entity_detail_and_search_ordering(client: TestClient) -> None:
+    # /entities/search must still resolve (not shadowed by /entities/{id})
+    assert client.get("/api/v1/entities/search", params={"q": "осмос"}).json()["count"] >= 1
+    d = client.get("/api/v1/entities/material:nickel").json()
+    assert d["id"] == "material:nickel" and d["type"] == "Material"
+    assert "evidence_count" in d and "neighbor_count" in d
+    assert client.get("/api/v1/entities/no:such").status_code == 404

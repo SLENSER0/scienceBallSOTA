@@ -47,6 +47,38 @@ def entity_search(
     return {"query": q, "count": len(results), "results": results}
 
 
+@router.get("/entities/{entity_id}")
+def entity_detail(entity_id: str) -> dict:
+    """Full entity card: props, aliases, review status, evidence + neighbour counts (§14.5)."""
+    from fastapi import HTTPException
+
+    store = get_store()
+    nd = store.get_node(entity_id)
+    if nd is None:
+        raise HTTPException(status_code=404, detail="entity not found")
+    n_ev = store.rows(
+        "MATCH (:Node {id:$id})-[:Rel {type:'SUPPORTED_BY'}]->(e:Node {label:'Evidence'}) "
+        "RETURN count(e)",
+        {"id": entity_id},
+    )
+    n_neigh = store.rows(
+        "MATCH (:Node {id:$id})-[:Rel]-(m:Node) RETURN count(DISTINCT m)", {"id": entity_id}
+    )
+    return {
+        "id": nd["id"],
+        "type": nd.get("label"),
+        "name": nd.get("name"),
+        "canonical_name": nd.get("canonical_name"),
+        "domain": nd.get("domain"),
+        "aliases": (nd.get("aliases_text") or "").split("|") if nd.get("aliases_text") else [],
+        "review_status": nd.get("review_status"),
+        "verified": nd.get("verified"),
+        "practice_type": nd.get("practice_type"),
+        "evidence_count": int(n_ev[0][0]) if n_ev else 0,
+        "neighbor_count": int(n_neigh[0][0]) if n_neigh else 0,
+    }
+
+
 _TOKEN = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
 
 
