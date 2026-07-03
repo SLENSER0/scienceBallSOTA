@@ -165,3 +165,4 @@ class AnswerPayload(CamelModel):
     confidence: float | None = None
     parsed_query: dict[str, Any] | None = None
     used_models: list[str] = Field(default_factory=list)
+    verifier_report: dict[str, Any] | None = None

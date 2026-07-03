@@ -66,14 +66,22 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
         )
         return {"answer": answer}
 
+    def n_verify(state: AgentState) -> dict[str, Any]:
+        # §13.16: ground citations against real nodes, cap confidence if ungrounded
+        from agent_service.verifier import apply_verification
+
+        return {"answer": apply_verification(store, state["answer"])}
+
     g: StateGraph = StateGraph(AgentState)
     g.add_node("parse", n_parse)
     g.add_node("retrieve", n_retrieve)
     g.add_node("synthesize", n_synthesize)
+    g.add_node("verify", n_verify)
     g.add_edge(START, "parse")
     g.add_edge("parse", "retrieve")
     g.add_edge("retrieve", "synthesize")
-    g.add_edge("synthesize", END)
+    g.add_edge("synthesize", "verify")
+    g.add_edge("verify", END)
     return g.compile()
 
 

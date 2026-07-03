@@ -64,3 +64,37 @@ def test_rbac_external_partner(store: KuzuGraphStore) -> None:
     )
     # external partner must not receive more evidence than researcher
     assert len(partner.citations) <= len(researcher.citations)
+
+
+def test_verifier_report_present_and_grounds_citations() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from agent_service.agent import answer_query
+    from agent_service.verifier import verify_answer
+
+    from kg_common import Citation, EvidenceRef
+    from kg_common.dto import AnswerPayload
+    from kg_retrievers.graph_store import KuzuGraphStore
+    from kg_retrievers.seed import build_seed_graph
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        ans = answer_query("методы обессоливания воды сульфаты 200 мг/л", store, use_llm=False)
+        assert ans.verifier_report is not None
+        assert "coverage" in ans.verifier_report
+
+        # a fabricated citation (no such node) is flagged unsupported
+        fake = AnswerPayload(
+            answer_markdown="x",
+            citations=[
+                Citation(marker="[1]", evidence=EvidenceRef(evidence_id="ev:nope", source_id="s"))
+            ],
+            confidence=0.9,
+        )
+        rep = verify_answer(store, fake)
+        assert rep["verified"] is False and "[1]" in rep["unsupported"]
+    finally:
+        store.close()
