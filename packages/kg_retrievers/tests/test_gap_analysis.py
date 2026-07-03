@@ -132,3 +132,23 @@ def test_missing_source_span_and_low_confidence_er_rules() -> None:
         assert str(GapType.LOW_CONFIDENCE_ENTITY_RESOLUTION) in res.by_type
     finally:
         store.close()
+
+
+def test_unverified_claim_and_missing_equipment_rules() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from kg_schema.enums import GapType
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        store.upsert_node("claim:x", "Claim", name="сомнительное утверждение",
+                          confidence=0.4, review_status="pending", verified=False)
+        store.upsert_node("exp:noeq", "Experiment", name="опыт без оборудования")
+        res = GapScanner(store).scan()
+        assert str(GapType.UNVERIFIED_CLAIM) in res.by_type
+        assert str(GapType.MISSING_EQUIPMENT) in res.by_type
+    finally:
+        store.close()

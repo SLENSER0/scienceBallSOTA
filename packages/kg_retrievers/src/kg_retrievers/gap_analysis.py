@@ -76,6 +76,8 @@ class GapScanner:
         self._scan_missing_unit(res)
         self._scan_missing_source_span(res)
         self._scan_low_confidence_er(res)
+        self._scan_unverified_claim(res)
+        self._scan_missing_equipment(res)
         self._scan_orphans(res)
         self._scan_low_coverage(res)
         self._scan_missing_geography(res)
@@ -117,6 +119,31 @@ class GapScanner:
                 GapType.LOW_CONFIDENCE_ENTITY_RESOLUTION,
                 f"Ненадёжное разрешение сущности: {name}",
                 about=nid,
+            )
+
+    def _scan_unverified_claim(self, res: ScanResult) -> None:
+        # Claims/findings not yet verified by a curator (§15.3): surface for review.
+        rows = self.store.rows(
+            "MATCH (c:Node) WHERE c.label IN ['Claim','Finding','KnowledgeClaim','Recommendation'] "
+            "AND coalesce(c.review_status,'') <> 'accepted' AND coalesce(c.verified,false) = false "
+            "AND coalesce(c.confidence, 1.0) < 0.7 "
+            "RETURN c.id, coalesce(c.name,'') LIMIT 500"
+        )
+        for cid, name in rows:
+            self._gap(
+                res, cid, GapType.UNVERIFIED_CLAIM, f"Непроверенное утверждение: {name}", about=cid
+            )
+
+    def _scan_missing_equipment(self, res: ScanResult) -> None:
+        # Experiments with no equipment recorded (§15.3): reproducibility gap.
+        rows = self.store.rows(
+            "MATCH (e:Node) WHERE e.label='Experiment' "
+            "AND NOT (e)-[:Rel {type:'USED_EQUIPMENT'}]->(:Node {label:'Equipment'}) "
+            "RETURN e.id, coalesce(e.name,'') LIMIT 500"
+        )
+        for eid, name in rows:
+            self._gap(
+                res, eid, GapType.MISSING_EQUIPMENT, f"Нет оборудования у опыта: {name}", about=eid
             )
 
     def _scan_missing_unit(self, res: ScanResult) -> None:
