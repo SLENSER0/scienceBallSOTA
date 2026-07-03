@@ -11,7 +11,8 @@ export type View =
   | 'glossary'
   | 'entities'
   | 'curation'
-  | 'admin';
+  | 'admin'
+  | 'advisor';
 
 interface AppState {
   view: View;

@@ -1,4 +1,5 @@
 import type {
+  AdvisorResult,
   AnswerPayload,
   AuditEntry,
   CoverageDomain,
@@ -278,6 +279,18 @@ export const api = {
       throw new Error(detail.detail || `${res.status} ${res.statusText}`);
     }
     return res.json() as Promise<MultimodalResult>;
+  },
+
+  // -- Agentic Advisor (multi-agent recommendation) -------------------------
+  advise(query: string, geography = 'all', topK = 5): Promise<AdvisorResult> {
+    return req('/api/v1/advise', {
+      method: 'POST',
+      body: JSON.stringify({ query, geography, top_k: topK }),
+    });
+  },
+  adviseStreamUrl(query: string, geography = 'all', topK = 5): string {
+    const g = geography && geography !== 'all' ? `&geography=${encodeURIComponent(geography)}` : '';
+    return `/api/v1/advise/stream?query=${encodeURIComponent(query)}&top_k=${topK}${g}`;
   },
 };
 

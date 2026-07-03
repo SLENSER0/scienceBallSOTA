@@ -116,3 +116,26 @@ export interface SavedView {
   kind: string;
   payload: Record<string, unknown>;
 }
+
+export interface AdvisorCandidate {
+  id: string;
+  name: string;
+  practice_type: string;
+  fit_score: number;
+  verdict: string;
+  supports: string[];
+  limitations: string[];
+  gaps: string[];
+  n_measurements: number;
+  model?: string | null;
+}
+
+export interface AdvisorResult {
+  query: string;
+  geography?: string | null;
+  constraints: Record<string, unknown>[];
+  candidates: AdvisorCandidate[];
+  summary: string;
+  contradictions: Record<string, unknown>[];
+  usedModels: string[];
+}
