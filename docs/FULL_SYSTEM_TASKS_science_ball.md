@@ -2954,12 +2954,12 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.22 Streaming прогресса (SSE / ChatStreamEvent §5.3)
 
-- [ ] Реализовать `streaming/events.py`: маппинг событий LangGraph (`astream_events` / `stream_mode=["updates","messages","custom"]`) в `ChatStreamEvent` (§5.3): `token`, `tool_start`, `tool_end`, `evidence`, `graph`, `table`, `gap`, `error`.
-- [ ] `token` — стрим токенов из `answer_synthesizer` (LLM streaming).
-- [ ] `tool_start`/`tool_end` — по каждому tool-вызову, с `tool`, `args`, `summary`, `dataRef`; формирует tool-call timeline UI (§5.2.2: `resolved entities`, `graph query`, `vector search`, `evidence check`, `gap scan`).
-- [ ] `evidence` — при пополнении `state["evidence"]`; `graph` — при готовности `visualization_payload`; `table` — `TablePayload` экспериментов; `gap` — `GapFinding[]`; `error` — из `state["errors"]`.
-- [ ] Реализовать endpoint `GET /internal/agent/stream` (SSE, `text/event-stream`, `sse-starlette`), который api-gateway проксирует в `GET /api/v1/chat/sessions/{session_id}/stream` (§6.2). Поддержать backpressure и heartbeat/keep-alive.
-- [ ] Гарантировать корректный порядок и завершающее событие (end-of-stream marker).
+- [x] Реализовать `streaming/events.py`: маппинг событий LangGraph (`astream_events` / `stream_mode=["updates","messages","custom"]`) в `ChatStreamEvent` (§5.3): `token`, `tool_start`, `tool_end`, `evidence`, `graph`, `table`, `gap`, `error`.
+- [x] `token` — стрим токенов из `answer_synthesizer` (LLM streaming).
+- [x] `tool_start`/`tool_end` — по каждому tool-вызову, с `tool`, `args`, `summary`, `dataRef`; формирует tool-call timeline UI (§5.2.2: `resolved entities`, `graph query`, `vector search`, `evidence check`, `gap scan`).
+- [x] `evidence` — при пополнении `state["evidence"]`; `graph` — при готовности `visualization_payload`; `table` — `TablePayload` экспериментов; `gap` — `GapFinding[]`; `error` — из `state["errors"]`.
+- [x] Реализовать endpoint `GET /internal/agent/stream` (SSE, `text/event-stream`, `sse-starlette`), который api-gateway проксирует в `GET /api/v1/chat/sessions/{session_id}/stream` (§6.2). Поддержать backpressure и heartbeat/keep-alive.
+- [x] Гарантировать корректный порядок и завершающее событие (end-of-stream marker).
 
 **Критерий приёмки:** e2e-тест: клиент подписывается на SSE и получает последовательность `tool_start`/`tool_end` для entity/graph/vector/evidence/gap, затем `evidence`, `graph`, `table`, `gap`, поток `token` и финальный маркер; каждый эмитируемый объект валиден по union-типу `ChatStreamEvent` (§5.3); при ошибке интеграции приходит событие `error`, поток не виснет.
 
@@ -2980,15 +2980,15 @@ Mode D (§10.1, §4.1 «не писать graph algorithms сами»): similari
 
 ### 13.24 HTTP API сервиса и хранение chat-сессий
 
-- [ ] Реализовать внутренние endpoints `apps/agent-service` (порт 8010), потребляемые api-gateway:
-  - [ ] `POST /internal/agent/sessions` — создать сессию (`session_id`, `user_id`), инициализировать thread.
-  - [ ] `POST /internal/agent/sessions/{session_id}/messages` — принять вопрос, запустить граф (invoke/stream).
-  - [ ] `GET /internal/agent/stream` — SSE (§13.22).
-  - [ ] `POST /internal/agent/resume` — HITL resume (§13.21).
-  - [ ] `GET /internal/agent/trace/{session_id}` — трейс (§13.23).
-- [ ] Реализовать storage chat-сессий и сообщений в Postgres (таблицы `chat_sessions`, `chat_messages`) — либо поверх LangGraph checkpoints, либо отдельные таблицы; согласовать с api-gateway `/api/v1/chat/*` (§6.2).
-- [ ] Валидация запросов (Pydantic), rate limit hook, audit-запись на каждый message.
-- [ ] Определить контракт «agent-service ↔ api-gateway» (OpenAPI): api-gateway маппит публичные `/api/v1/chat/sessions/*` → внутренние `/internal/agent/*`.
+- [x] Реализовать внутренние endpoints `apps/agent-service` (порт 8010), потребляемые api-gateway:
+  - [x] `POST /internal/agent/sessions` — создать сессию (`session_id`, `user_id`), инициализировать thread.
+  - [x] `POST /internal/agent/sessions/{session_id}/messages` — принять вопрос, запустить граф (invoke/stream).
+  - [x] `GET /internal/agent/stream` — SSE (§13.22).
+  - [x] `POST /internal/agent/resume` — HITL resume (§13.21).
+  - [x] `GET /internal/agent/trace/{session_id}` — трейс (§13.23).
+- [x] Реализовать storage chat-сессий и сообщений в Postgres (таблицы `chat_sessions`, `chat_messages`) — либо поверх LangGraph checkpoints, либо отдельные таблицы; согласовать с api-gateway `/api/v1/chat/*` (§6.2).
+- [x] Валидация запросов (Pydantic), rate limit hook, audit-запись на каждый message.
+- [x] Определить контракт «agent-service ↔ api-gateway» (OpenAPI): api-gateway маппит публичные `/api/v1/chat/sessions/*` → внутренние `/internal/agent/*`.
 
 **Критерий приёмки:** через api-gateway (`POST /api/v1/chat/sessions` → `POST …/messages` → `GET …/stream`) проходит полный диалог; сессия и сообщения персистятся в Postgres и доступны при `GET /api/v1/chat/sessions/{session_id}`; OpenAPI-схема сервиса генерируется и валидна.
 
