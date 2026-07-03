@@ -68,6 +68,22 @@ def communities() -> dict:
     return detect_communities(get_store()).as_dict()
 
 
+@router.get("/communities/global-search")
+def community_global_search(q: str, limit: int = 3) -> dict:
+    """GraphRAG global search: map-reduce over community summaries (§11.7/§11.9)."""
+    from kg_retrievers.community_search import global_search
+
+    return global_search(get_store(), q, limit=limit).as_dict()
+
+
+@router.get("/communities/local-search")
+def community_local_search(seed: str, limit: int = 15) -> dict:
+    """GraphRAG local search: an entity's community members + neighbours (§11.7)."""
+    from kg_retrievers.community_search import local_search
+
+    return local_search(get_store(), seed, limit=limit)
+
+
 @router.get("/coverage")
 def coverage() -> dict:
     """Per-domain coverage metrics (§24.15): sources, facts, gaps, contradictions."""

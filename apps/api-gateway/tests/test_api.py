@@ -200,3 +200,14 @@ def test_search_vector_degrades_without_index(client: TestClient) -> None:
     assert v["mode"] == "vector"
     # no prebuilt entity index in the test store → graceful keyword fallback
     assert v.get("degraded") is True
+
+
+def test_community_global_and_local_search(client: TestClient) -> None:
+    client.post("/api/v1/admin/communities")  # detect first
+    g = client.get("/api/v1/admin/communities/global-search", params={"q": "осмос вода"}).json()
+    assert "answer" in g and "communities" in g
+    l = client.get(
+        "/api/v1/admin/communities/local-search",
+        params={"seed": "reverse osmosis desalination"},
+    ).json()
+    assert "neighbors" in l
