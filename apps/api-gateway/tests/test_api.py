@@ -361,7 +361,7 @@ def test_health_aggregated_and_prometheus_metrics(client: TestClient) -> None:
     assert h["status"] == "ok" and h["checks"]["graph"] == "ok"  # aggregated readiness
     prom = client.get("/api/v1/admin/metrics", params={"format": "prometheus"})
     assert prom.status_code == 200 and "text/plain" in prom.headers["content-type"]
-    assert "http_requests_total{" in prom.text and "quantile=\"0.95\"" in prom.text
+    assert "http_requests_total{" in prom.text and 'quantile="0.95"' in prom.text
 
 
 def test_admin_absence_map_and_coverage_matrix(client: TestClient) -> None:
@@ -454,8 +454,15 @@ def test_evidence_assemble(client: TestClient) -> None:
 
     store = deps.get_store()
     store.upsert_node("meas:asm", "Measurement", name="твёрдость")
-    store.upsert_node("ev:asm", "Evidence", text="145 HV", doc_id="doc:a", page=2,
-                      evidence_strength="peer_reviewed", confidence=0.9)
+    store.upsert_node(
+        "ev:asm",
+        "Evidence",
+        text="145 HV",
+        doc_id="doc:a",
+        page=2,
+        evidence_strength="peer_reviewed",
+        confidence=0.9,
+    )
     store.upsert_edge("meas:asm", "ev:asm", "SUPPORTED_BY")
     r = client.post("/api/v1/evidence/assemble", json={"node_ids": ["meas:asm"]}).json()
     assert r["count"] >= 1 and "citations" in r
@@ -467,3 +474,36 @@ def test_admin_distribution_analysis(client: TestClient) -> None:
     # the seed has a Cu matte/slag coefficient ~25
     coeffs = r.get("coefficients", [])
     assert any(abs((c.get("value") or 0) - 25.0) < 0.1 for c in coeffs)
+
+
+def test_graph_validate(client: TestClient) -> None:
+    # §3.16: valid payload passes; dangling edge flagged
+    ok = client.post(
+        "/api/v1/graph/validate",
+        json={
+            "nodes": [
+                {"id": "a", "label": "Nickel", "type": "Material"},
+                {"id": "b", "label": "RO", "type": "TechnologySolution"},
+            ],
+            "edges": [
+                {
+                    "id": "e1",
+                    "source": "a",
+                    "target": "b",
+                    "label": "TREATS_WATER",
+                    "type": "TREATS_WATER",
+                }
+            ],
+        },
+    ).json()
+    assert ok["valid"] is True
+    bad = client.post(
+        "/api/v1/graph/validate",
+        json={
+            "nodes": [{"id": "a", "label": "x", "type": "Material"}],
+            "edges": [
+                {"id": "e", "source": "a", "target": "ZZZ", "label": "R", "type": "TREATS_WATER"}
+            ],
+        },
+    ).json()
+    assert bad["valid"] is False and bad["errors"]

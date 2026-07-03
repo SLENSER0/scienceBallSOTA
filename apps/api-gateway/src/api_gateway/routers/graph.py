@@ -44,6 +44,19 @@ def neighbors(entity_id: str, depth: int = Query(default=1, ge=1, le=4)) -> Grap
     return get_store().neighbors(entity_id, depth=depth)
 
 
+class GraphValidateRequest(BaseModel):
+    nodes: list[dict] = []
+    edges: list[dict] = []
+
+
+@router.post("/validate")
+def validate_graph(req: GraphValidateRequest) -> dict:
+    """Validate a graph payload against the ontology DTOs (§3.16)."""
+    from graph_service.schema_api import validate_graph_response
+
+    return validate_graph_response({"nodes": req.nodes, "edges": req.edges})
+
+
 @router.get("/nodes")
 def nodes(
     label: str | None = None,
