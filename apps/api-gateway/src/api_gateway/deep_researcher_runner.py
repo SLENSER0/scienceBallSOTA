@@ -32,22 +32,41 @@ def deep_research_available() -> bool:
     return True
 
 
-def _install_free_search() -> None:
-    """Monkeypatch open_deep_research to use our free DuckDuckGo ``web_search`` tool.
+# OpenRouter provider routing: prefer high-throughput (paid) providers so the
+# strong OSS tool-callers don't fall back to congested free endpoints (429).
+_OR_PROVIDER = {"provider": {"sort": "throughput", "allow_fallbacks": True}}
 
-    ODR ships Tavily(paid)/native/none. We swap ``get_search_tool`` for a DuckDuckGo
-    backend (``deep_search_tool.ddg_search_tool``) so real deep research runs with
-    real source URLs under the OSS-only policy — without editing the vendored repo.
+
+def _install_free_search() -> None:
+    """Patch open_deep_research: free DuckDuckGo search + OpenRouter paid-provider routing.
+
+    ODR ships Tavily(paid)/native/none search — we swap ``get_search_tool`` for a free
+    DuckDuckGo backend so real deep research cites real URLs. We also rebuild ODR's
+    ``configurable_model`` (and patch ``init_chat_model``) with an OpenRouter
+    ``provider: {sort: throughput}`` routing so requests land on reliable paid
+    providers instead of rate-limited free ones — all without editing the vendored repo.
     """
+    import langchain.chat_models.base as lc_base
     from open_deep_research import deep_researcher as dr
     from open_deep_research import utils as odr_utils
 
     from api_gateway.deep_search_tool import ddg_search_tool
 
     odr_utils.get_search_tool = ddg_search_tool  # type: ignore[assignment]
-    # deep_researcher imported the symbol by name — patch its module binding too.
     if hasattr(dr, "get_search_tool"):
         dr.get_search_tool = ddg_search_tool  # type: ignore[assignment]
+
+    # Inject OpenRouter provider routing at the lowest level so EVERY model ODR
+    # builds (incl. the configurable_model at runtime) lands on a paid provider.
+    if not getattr(lc_base, "_sb_routed", False):
+        _real_helper = lc_base._init_chat_model_helper
+
+        def _routed_helper(model: str, *, model_provider=None, **kwargs):  # type: ignore[no-untyped-def]
+            kwargs.setdefault("extra_body", dict(_OR_PROVIDER))
+            return _real_helper(model, model_provider=model_provider, **kwargs)
+
+        lc_base._init_chat_model_helper = _routed_helper  # type: ignore[assignment]
+        lc_base._sb_routed = True  # type: ignore[attr-defined]
 
 
 def _configurable() -> dict[str, Any]:
