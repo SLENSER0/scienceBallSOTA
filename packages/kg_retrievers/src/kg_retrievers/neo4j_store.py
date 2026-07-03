@@ -56,6 +56,9 @@ class Neo4jGraphStore:
     def __init__(self, uri: str, user: str, password: str) -> None:
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
         self._driver.verify_connectivity()
+        # Stable connection identifier — mirrors KuzuGraphStore.db_path so callers
+        # that key caches on ``store.db_path`` work for either backend (§2 drop-in).
+        self.db_path = uri
         self.ensure_schema()
 
     # -- schema ----------------------------------------------------------
