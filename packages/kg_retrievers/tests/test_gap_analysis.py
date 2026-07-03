@@ -144,8 +144,14 @@ def test_unverified_claim_and_missing_equipment_rules() -> None:
     store = KuzuGraphStore(str(Path(d) / "g"))
     try:
         build_seed_graph(store)
-        store.upsert_node("claim:x", "Claim", name="сомнительное утверждение",
-                          confidence=0.4, review_status="pending", verified=False)
+        store.upsert_node(
+            "claim:x",
+            "Claim",
+            name="сомнительное утверждение",
+            confidence=0.4,
+            review_status="pending",
+            verified=False,
+        )
         store.upsert_node("exp:noeq", "Experiment", name="опыт без оборудования")
         res = GapScanner(store).scan()
         assert str(GapType.UNVERIFIED_CLAIM) in res.by_type

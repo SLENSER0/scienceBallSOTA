@@ -93,8 +93,12 @@ def chunk_pages(pages: list[tuple[int, str]], size: int = 2200, overlap: int = 1
             for piece in _pack(body, size, overlap):
                 chunks.append(
                     Chunk(
-                        index=idx, page=page_no, text=piece, char_start=offset,
-                        section_path=list(path), chunk_type="text",
+                        index=idx,
+                        page=page_no,
+                        text=piece,
+                        char_start=offset,
+                        section_path=list(path),
+                        chunk_type="text",
                     )
                 )
                 idx += 1

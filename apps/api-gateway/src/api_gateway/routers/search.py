@@ -296,11 +296,13 @@ def search_global(req: GlobalSearchRequest) -> dict:
 
     ans = global_search(get_store(), req.query, limit=req.top_k)
     store = get_store()
-    doc_ids = sorted({
-        (store.get_node(e) or {}).get("doc_id")
-        for e in ans.evidence_ids
-        if (store.get_node(e) or {}).get("doc_id")
-    })
+    doc_ids = sorted(
+        {
+            (store.get_node(e) or {}).get("doc_id")
+            for e in ans.evidence_ids
+            if (store.get_node(e) or {}).get("doc_id")
+        }
+    )
     return {
         "query": ans.query,
         "answer": ans.answer,

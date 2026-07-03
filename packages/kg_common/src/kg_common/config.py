@@ -150,9 +150,7 @@ class Settings(BaseSettings):
         if self.app_env != "local" and (
             secret.startswith("dev-insecure") or len(secret.encode()) < 32
         ):
-            raise RuntimeError(
-                "JWT_SECRET must be set to a real ≥32-byte secret outside local env"
-            )
+            raise RuntimeError("JWT_SECRET must be set to a real ≥32-byte secret outside local env")
 
     def validate_required(self) -> None:
         """Fail-fast on a misconfigured server profile (§2.2 required-var check).

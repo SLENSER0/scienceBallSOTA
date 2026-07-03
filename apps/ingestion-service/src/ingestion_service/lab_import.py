@@ -68,9 +68,7 @@ def _to_float(value: Any) -> float | None:
         return float(value)
     # Fold every Unicode space separator (NBSP U+00A0, narrow NBSP, thin space)
     # to ASCII space so RU thousands grouping is handled regardless of glyph.
-    text = "".join(
-        " " if unicodedata.category(ch) == "Zs" else ch for ch in str(value)
-    ).strip()
+    text = "".join(" " if unicodedata.category(ch) == "Zs" else ch for ch in str(value)).strip()
     # drop whitespace grouping between digits: "1 250" -> "1250"
     text = re.sub(r"(?<=\d)\s(?=\d)", "", text).replace(",", ".")
     try:
@@ -99,9 +97,7 @@ def _normalize(value: float | None, unit: str | None) -> tuple[float | None, str
     return norm.value, norm.unit
 
 
-def import_experiment_catalog(
-    store: KuzuGraphStore, rows: list[dict[str, Any]]
-) -> dict[str, int]:
+def import_experiment_catalog(store: KuzuGraphStore, rows: list[dict[str, Any]]) -> dict[str, int]:
     """Import experiment/measurement catalog rows into the graph (evidence-first).
 
     Each ``row`` is a flat dict with keys ``material, regime, equipment, property,
@@ -303,9 +299,7 @@ def import_experiment_catalog(
 
         store.upsert_edge(exp_id, meas_id, "MEASURED", **_prov(now, confidence=0.9))
         store.upsert_edge(meas_id, prop_id, "OF_PROPERTY", **_prov(now, confidence=0.9))
-        store.upsert_edge(
-            meas_id, material_id, "ABOUT_MATERIAL", **_prov(now, confidence=0.8)
-        )
+        store.upsert_edge(meas_id, material_id, "ABOUT_MATERIAL", **_prov(now, confidence=0.8))
         store.upsert_edge(
             meas_id,
             ev_id,
@@ -321,9 +315,7 @@ def import_experiment_catalog(
     return result
 
 
-def import_materials_reference(
-    store: KuzuGraphStore, rows: list[dict[str, Any]]
-) -> dict[str, int]:
+def import_materials_reference(store: KuzuGraphStore, rows: list[dict[str, Any]]) -> dict[str, int]:
     """Upsert Material reference rows (``material_class``/``formula``) into the graph.
 
     Each ``row`` is a dict with ``material`` (or ``name``), and optional

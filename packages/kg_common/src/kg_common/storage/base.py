@@ -75,5 +75,4 @@ class MetaStore(Protocol):
 
     def get_recall_priors(
         self, *, extractor: str | None = None, target_type: str | None = None
-    ) -> list[RecallPrior]:
-        ...
+    ) -> list[RecallPrior]: ...

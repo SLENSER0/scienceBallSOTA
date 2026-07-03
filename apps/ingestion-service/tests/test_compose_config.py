@@ -55,9 +55,9 @@ def test_app_services_wait_for_dependency_health(compose: dict) -> None:
     for app in ("api-gateway", "ingestion-service", "agent-service", "frontend"):
         deps = compose["services"][app].get("depends_on", {})
         assert deps, f"{app} declares no dependencies"
-        assert all(
-            d.get("condition") == "service_healthy" for d in deps.values()
-        ), f"{app} must gate on dependency health"
+        assert all(d.get("condition") == "service_healthy" for d in deps.values()), (
+            f"{app} must gate on dependency health"
+        )
 
 
 def test_all_referenced_volumes_declared(compose: dict) -> None:

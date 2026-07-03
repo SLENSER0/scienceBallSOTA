@@ -15,16 +15,12 @@ from kg_retrievers.graph_store import KuzuGraphStore
 
 
 def verify_answer(store: KuzuGraphStore, answer: AnswerPayload) -> dict[str, Any]:
-    """Ground each citation against a real node; return a verifier report."""
+    """Two guardrails (§13.16/§7.5): every citation must ground to a real node, and
+    every numeric claim in the prose must carry an inline ``[n]`` citation.
+    """
+    from agent_service.answer_validator import validate_answer
+
     cites = answer.citations
-    if not cites:
-        return {
-            "verified": True,
-            "coverage": 1.0,
-            "n_citations": 0,
-            "unsupported": [],
-            "notes": ["answer carries no citations"],
-        }
     grounded: list[str] = []
     unsupported: list[str] = []
     for c in cites:
@@ -33,25 +29,36 @@ def verify_answer(store: KuzuGraphStore, answer: AnswerPayload) -> dict[str, Any
             grounded.append(eid)
         else:
             unsupported.append(c.marker)
-    coverage = len(grounded) / len(cites)
-    notes = []
+    coverage = len(grounded) / len(cites) if cites else 1.0
+
+    # §13.12/§13.16: flag numbers stated in the answer without evidence backing.
+    nv = validate_answer(answer.answer_markdown, list(cites))
+
+    notes: list[str] = []
     if unsupported:
         notes.append(f"{len(unsupported)} citation(s) not grounded in the graph")
+    if not nv.ok:
+        n = len(nv.numeric_claims_without_evidence)
+        notes.append(f"{n} numeric claim(s) without evidence")
     return {
-        "verified": not unsupported,
+        "verified": (not unsupported) and nv.ok,
         "coverage": round(coverage, 4),
         "n_citations": len(cites),
         "n_grounded": len(grounded),
         "unsupported": unsupported,
+        "numeric_validation": nv.as_dict(),
         "notes": notes,
     }
 
 
 def apply_verification(store: KuzuGraphStore, answer: AnswerPayload) -> AnswerPayload:
-    """Attach the verifier report + cap confidence when citations are ungrounded."""
+    """Attach the verifier report + cap confidence when a guardrail fails (§13.16)."""
     report = verify_answer(store, answer)
     answer.verifier_report = report
     if not report["verified"] and answer.confidence is not None:
-        # ungrounded citations → confidence cannot exceed the grounded coverage
-        answer.confidence = round(min(answer.confidence, report["coverage"]), 4)
+        cap = report["coverage"]
+        if not report["numeric_validation"]["ok"]:
+            # numbers without evidence → confidence cannot read as high/trustworthy
+            cap = min(cap, 0.5)
+        answer.confidence = round(min(answer.confidence, cap), 4)
     return answer
