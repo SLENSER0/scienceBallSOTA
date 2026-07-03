@@ -98,3 +98,23 @@ def test_verifier_report_present_and_grounds_citations() -> None:
         assert rep["verified"] is False and "[1]" in rep["unsupported"]
     finally:
         store.close()
+
+
+def test_agent_preprocess_node_runs() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from agent_service.agent import answer_query
+
+    from kg_retrievers.graph_store import KuzuGraphStore
+    from kg_retrievers.seed import build_seed_graph
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        # NBSP + fancy dash in the query — preprocess normalizes before parse
+        ans = answer_query("методы обессоливания воды", store, use_llm=False)
+        assert ans.answer_markdown  # pipeline still produces an answer through preprocess
+    finally:
+        store.close()

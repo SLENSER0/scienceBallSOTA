@@ -25,6 +25,7 @@ class AgentState(TypedDict, total=False):
     query: str
     role: str
     use_llm: bool
+    preprocess: dict[str, Any]
     intent: Any
     retrieval: Any
     answer: AnswerPayload
@@ -32,6 +33,13 @@ class AgentState(TypedDict, total=False):
 
 def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
     retriever = GraphRetriever(store)
+
+    def n_preprocess(state: AgentState) -> dict[str, Any]:
+        # §13.7 Node 1: language detect + unicode/whitespace normalization + intent flags
+        from agent_service.preprocess import preprocess_query
+
+        pp = preprocess_query(state["query"])
+        return {"query": pp.text, "preprocess": pp.as_dict()}
 
     def n_parse(state: AgentState) -> dict[str, Any]:
         intent = parse_query(state["query"])
@@ -73,11 +81,13 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
         return {"answer": apply_verification(store, state["answer"])}
 
     g: StateGraph = StateGraph(AgentState)
+    g.add_node("preprocess", n_preprocess)
     g.add_node("parse", n_parse)
     g.add_node("retrieve", n_retrieve)
     g.add_node("synthesize", n_synthesize)
     g.add_node("verify", n_verify)
-    g.add_edge(START, "parse")
+    g.add_edge(START, "preprocess")
+    g.add_edge("preprocess", "parse")
     g.add_edge("parse", "retrieve")
     g.add_edge("retrieve", "synthesize")
     g.add_edge("synthesize", "verify")
