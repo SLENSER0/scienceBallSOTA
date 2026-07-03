@@ -1,0 +1,149 @@
+# Controlled measurement-method vocabulary (§6.7).
+#
+# Canonical ``method_id`` -> {canonical_ru, canonical_en, synonyms, measurand}.
+# Each entry names an experimental measurement / characterization method together
+# with the property or measurand it determines (``measurand``). ``synonyms`` carry
+# both RU and EN surfaces (lowercased); RU stems are matched declension-insensitively
+# by :func:`kg_extractors.method_vocab.detect_method`, so a stem such as ``виккерс``
+# also matches ``Виккерсу`` / ``Виккерса``. Short acronyms (SEM/TEM/XRD/EDS/AAS) are
+# matched on word boundaries only, never as substrings of a larger token.
+#
+# measurand groups: hardness | tensile_strength | phase_composition | microstructure
+# | elemental_composition | concentration.
+
+"method:vickers":
+  canonical_ru: твёрдость по Виккерсу
+  canonical_en: Vickers hardness
+  synonyms:
+    - виккерс
+    - по виккерсу
+    - твёрдость по виккерсу
+    - vickers
+    - vickers hardness
+    - hv
+  measurand: hardness
+
+"method:brinell":
+  canonical_ru: твёрдость по Бринеллю
+  canonical_en: Brinell hardness
+  synonyms:
+    - бринелл
+    - по бринеллю
+    - твёрдость по бринеллю
+    - brinell
+    - brinell hardness
+    - hb
+  measurand: hardness
+
+"method:rockwell":
+  canonical_ru: твёрдость по Роквеллу
+  canonical_en: Rockwell hardness
+  synonyms:
+    - роквелл
+    - по роквеллу
+    - твёрдость по роквеллу
+    - rockwell
+    - rockwell hardness
+    - hrc
+    - hrb
+  measurand: hardness
+
+"method:tensile_test":
+  canonical_ru: испытание на растяжение
+  canonical_en: tensile test
+  synonyms:
+    - испытание на растяжение
+    - на растяжение
+    - растяжение
+    - на разрыв
+    - tensile test
+    - tensile
+    - tension test
+  measurand: tensile_strength
+
+"method:xrd":
+  canonical_ru: рентгенофазовый анализ
+  canonical_en: X-ray diffraction
+  synonyms:
+    - xrd
+    - рфа
+    - рентгенофазовый анализ
+    - рентгеноструктурный анализ
+    - рентгеновская дифракция
+    - x-ray diffraction
+  measurand: phase_composition
+
+"method:sem":
+  canonical_ru: сканирующая электронная микроскопия
+  canonical_en: scanning electron microscopy
+  synonyms:
+    - sem
+    - сэм
+    - рэм
+    - scanning electron microscopy
+    - сканирующая электронная микроскопия
+    - растровая электронная микроскопия
+  measurand: microstructure
+
+"method:tem":
+  canonical_ru: просвечивающая электронная микроскопия
+  canonical_en: transmission electron microscopy
+  synonyms:
+    - tem
+    - пэм
+    - transmission electron microscopy
+    - просвечивающая электронная микроскопия
+  measurand: microstructure
+
+"method:hrtem":
+  canonical_ru: просвечивающая электронная микроскопия высокого разрешения
+  canonical_en: high-resolution transmission electron microscopy
+  synonyms:
+    - hrtem
+    - high-resolution tem
+    - высокоразрешающая электронная микроскопия
+  measurand: microstructure
+
+"method:eds":
+  canonical_ru: энергодисперсионная рентгеновская спектроскопия
+  canonical_en: energy-dispersive X-ray spectroscopy
+  synonyms:
+    - eds
+    - edx
+    - энергодисперсионный анализ
+    - энергодисперсионная спектроскопия
+    - energy-dispersive x-ray spectroscopy
+  measurand: elemental_composition
+
+"method:icp_oes":
+  canonical_ru: атомно-эмиссионная спектрометрия с индуктивно-связанной плазмой
+  canonical_en: inductively coupled plasma optical emission spectrometry
+  synonyms:
+    - icp-oes
+    - icp oes
+    - icp-aes
+    - исп-аэс
+    - исп-оэс
+  measurand: concentration
+
+"method:aas":
+  canonical_ru: атомно-абсорбционная спектрометрия
+  canonical_en: atomic absorption spectrometry
+  synonyms:
+    - aas
+    - аас
+    - atomic absorption spectrometry
+    - атомно-абсорбционная спектрометрия
+    - атомно-абсорбционный анализ
+  measurand: concentration
+
+"method:titration":
+  canonical_ru: титрование
+  canonical_en: titration
+  synonyms:
+    - титрование
+    - титриметрия
+    - объёмный анализ
+    - titration
+    - volumetric analysis
+  measurand: concentration
