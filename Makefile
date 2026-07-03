@@ -84,6 +84,9 @@ gap-scan: ## Scan the graph for gaps + contradictions
 demo: ## Run the 4 acceptance queries end-to-end
 	$(PY) python -m kg_eval.runner --suite domain_science_ball
 
+demo-up: ## One-command demo bootstrap: seed graph + start API (§19.11)
+	bash infra/demo/up.sh
+
 pre-commit: ## Run all pre-commit hooks
 	$(PY) pre-commit run --all-files
 
