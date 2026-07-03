@@ -1,0 +1,103 @@
+# Controlled property vocabulary (§6.6).
+#
+# Canonical ``property_id`` -> {canonical_ru, canonical_en, synonyms, allowed_units,
+# property_class}. Externalizes the vocabulary that was hardcoded in
+# ``kg_extractors.property_extractor.PROPERTY_VOCAB`` (synonyms, lowercased for
+# case/declension-insensitive matching) and ``kg_common.units.policy.PROPERTY_UNIT_POLICY``
+# (allowed_units). Where a property has no unit policy (yield_strength, elongation,
+# conductivity, density, grade) the allowed_units follow the ER vocab / domain usage.
+# property_class groups properties for UI/analytics: mechanical | electrical | physical
+# | electrochemical | process | water_quality.
+
+"prop:hardness":
+  canonical_ru: твёрдость
+  canonical_en: hardness
+  synonyms: [твердость, твёрдость, hardness, микротвердость, hv, hrc, hb]
+  allowed_units: [HV, HB, HRC]
+  property_class: mechanical
+
+"prop:tensile_strength":
+  canonical_ru: предел прочности
+  canonical_en: tensile strength
+  synonyms:
+    - предел прочности
+    - прочность на разрыв
+    - tensile strength
+    - uts
+    - временное сопротивление
+  allowed_units: [MPa, GPa, N/mm2, kgf/mm2]
+  property_class: mechanical
+
+"prop:yield_strength":
+  canonical_ru: предел текучести
+  canonical_en: yield strength
+  synonyms: [предел текучести, yield strength, proof stress]
+  allowed_units: [MPa, GPa, N/mm2]
+  property_class: mechanical
+
+"prop:elongation":
+  canonical_ru: относительное удлинение
+  canonical_en: elongation
+  synonyms: [относительное удлинение, удлинение, elongation, ductility]
+  allowed_units: ["%"]
+  property_class: mechanical
+
+"prop:conductivity":
+  canonical_ru: электропроводность
+  canonical_en: electrical conductivity
+  synonyms: [электропроводность, проводимость, conductivity]
+  allowed_units: [S/m, MS/m, "%IACS"]
+  property_class: electrical
+
+"prop:density":
+  canonical_ru: плотность
+  canonical_en: density
+  synonyms: [плотность, density]
+  allowed_units: [g/cm3, kg/m3]
+  property_class: physical
+
+"prop:current_density":
+  canonical_ru: плотность тока
+  canonical_en: current density
+  synonyms: [плотность тока, current density]
+  allowed_units: [A/m^2, mA/cm^2]
+  property_class: electrochemical
+
+"prop:recovery":
+  canonical_ru: извлечение
+  canonical_en: recovery
+  synonyms: [извлечение, степень извлечения, recovery, выход]
+  allowed_units: ["%", percent]
+  property_class: process
+
+"prop:grade":
+  canonical_ru: содержание
+  canonical_en: grade
+  synonyms: [содержание, grade, концентрация металла]
+  allowed_units: ["%", g/t]
+  property_class: process
+
+"prop:flow_velocity":
+  canonical_ru: скорость потока
+  canonical_en: flow velocity
+  synonyms: [скорость циркуляции, скорость потока, flow velocity]
+  allowed_units: [m/s, cm/s]
+  property_class: process
+
+"prop:removal_efficiency":
+  canonical_ru: степень очистки
+  canonical_en: removal efficiency
+  synonyms:
+    - степень очистки
+    - эффективность улавливания
+    - removal efficiency
+    - степень удаления
+  allowed_units: ["%", percent]
+  property_class: process
+
+"prop:tds":
+  canonical_ru: минерализация
+  canonical_en: total dissolved solids
+  synonyms: [сухой остаток, минерализация, tds, total dissolved solids]
+  allowed_units: [mg/L, g/L]
+  property_class: water_quality
