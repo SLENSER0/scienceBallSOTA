@@ -180,3 +180,23 @@ def test_audit_log_records(client: TestClient) -> None:
         "/api/v1/admin/audit", headers={"Authorization": f"Bearer {admin_tok}"}
     ).json()["entries"]
     assert any(e["action"] == "query" for e in entries)
+
+
+def test_search_keyword_and_hybrid(client: TestClient) -> None:
+    r = client.get("/api/v1/search/keyword", params={"q": "осмос вода"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["mode"] == "keyword"
+    assert all("score" in x for x in body["results"])
+    h = client.get("/api/v1/search/hybrid", params={"q": "осмос"}).json()
+    assert h["mode"] == "hybrid"
+    # hybrid results are score-sorted desc
+    scores = [x["score"] for x in h["results"]]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_search_vector_degrades_without_index(client: TestClient) -> None:
+    v = client.get("/api/v1/search/vector", params={"q": "никель"}).json()
+    assert v["mode"] == "vector"
+    # no prebuilt entity index in the test store → graceful keyword fallback
+    assert v.get("degraded") is True

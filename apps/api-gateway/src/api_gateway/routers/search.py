@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Query
 
 from api_gateway.deps import get_store
@@ -41,6 +43,107 @@ def entity_search(
             }
         )
     return {"query": q, "count": len(results), "results": results}
+
+
+_TOKEN = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
+
+
+def _entity_rows(store, term: str, limit: int) -> list[dict]:  # type: ignore[no-untyped-def]
+    rows = store.rows(
+        "MATCH (n:Node) WHERE n.name IS NOT NULL AND ("
+        "lower(n.name) CONTAINS $t OR lower(coalesce(n.aliases_text,'')) CONTAINS $t "
+        "OR lower(coalesce(n.canonical_name,'')) CONTAINS $t "
+        "OR lower(coalesce(n.text,'')) CONTAINS $t) "
+        f"RETURN n LIMIT {int(limit) * 4}",
+        {"t": term.lower()},
+    )
+    return [store._node_dict(r[0]) for r in rows]
+
+
+def _keyword_score(node: dict, tokens: set[str]) -> float:
+    hay = _TOKEN.findall(
+        " ".join(
+            str(node.get(k) or "") for k in ("name", "aliases_text", "canonical_name", "text")
+        ).lower()
+    )
+    hayset = set(hay)
+    return len(tokens & hayset) / (len(tokens) or 1)
+
+
+def _fmt(node: dict, score: float | None = None) -> dict:
+    out = {
+        "id": node["id"],
+        "type": node.get("label"),
+        "name": node.get("name"),
+        "domain": node.get("domain"),
+        "aliases": node.get("aliases_text"),
+    }
+    if score is not None:
+        out["score"] = round(score, 4)
+    return out
+
+
+@router.get("/search/keyword")
+def search_keyword(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+    store = get_store()
+    tokens = {t.lower() for t in _TOKEN.findall(q)}
+    scored = sorted(
+        ((_keyword_score(n, tokens), n) for n in _entity_rows(store, q, limit)),
+        key=lambda x: x[0],
+        reverse=True,
+    )
+    return {
+        "query": q,
+        "mode": "keyword",
+        "count": len(scored[:limit]),
+        "results": [_fmt(n, s) for s, n in scored[:limit]],
+    }
+
+
+@router.get("/search/hybrid")
+def search_hybrid(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+    from kg_retrievers.scoring import evidence_quality_score, weighted_fuse
+
+    store = get_store()
+    tokens = {t.lower() for t in _TOKEN.findall(q)}
+    nodes = {n["id"]: n for n in _entity_rows(store, q, limit)}
+    comps = {
+        "keyword": {i: _keyword_score(n, tokens) for i, n in nodes.items()},
+        "evidence_quality": {i: evidence_quality_score(n) for i, n in nodes.items()},
+    }
+    fused = weighted_fuse(comps, {"keyword": 0.7, "evidence_quality": 0.3})
+    top = fused[:limit]
+    return {
+        "query": q,
+        "mode": "hybrid",
+        "count": len(top),
+        "results": [_fmt(nodes[f.id], f.score) for f in top],
+    }
+
+
+@router.get("/search/vector")
+def search_vector(q: str = Query(min_length=1), limit: int = Query(default=10, le=100)) -> dict:
+    # Dense entity search when an index exists; otherwise degrade to keyword.
+    store = get_store()
+    try:
+        from kg_retrievers.entity_index import EntityVectorIndex
+
+        idx = EntityVectorIndex()
+        if idx.count() > 0:
+            hits = idx.similar_entities(q, k=limit)
+            return {
+                "query": q,
+                "mode": "vector",
+                "degraded": False,
+                "count": len(hits),
+                "results": [_fmt(store.get_node(h.id) or {"id": h.id}, h.score) for h in hits],
+            }
+    except Exception:
+        pass
+    kw = search_keyword(q, limit)
+    kw["mode"] = "vector"
+    kw["degraded"] = True
+    return kw
 
 
 @router.get("/domain/glossary")
