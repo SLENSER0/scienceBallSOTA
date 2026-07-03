@@ -27,6 +27,7 @@ class AgentState(TypedDict, total=False):
     use_llm: bool
     preprocess: dict[str, Any]
     intent: Any
+    intent_class: dict[str, Any]
     retrieval: Any
     answer: AnswerPayload
 
@@ -42,17 +43,31 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
         return {"query": pp.text, "preprocess": pp.as_dict()}
 
     def n_parse(state: AgentState) -> dict[str, Any]:
+        from agent_service.intent_classifier import classify_intent
+
         intent = parse_query(state["query"])
+        ic = classify_intent(state["query"])  # §13.8 explicit intent + routing
         _log.info(
             "agent.parsed",
             entities=len(intent.entities),
             type=intent.query_type,
+            intent_class=ic.query_type,
             constraints=len(intent.numeric_constraints),
         )
-        return {"intent": intent}
+        return {"intent": intent, "intent_class": ic.as_dict()}
 
     def n_retrieve(state: AgentState) -> dict[str, Any]:
         retrieval = retriever.retrieve(state["intent"])
+        # §13.13: thematic/global questions also map-reduce community summaries
+        if (state.get("intent_class") or {}).get("query_type") == "global":
+            try:
+                from kg_retrievers.community_search import global_search
+
+                ga = global_search(store, state["query"], limit=3)
+                for c in ga.communities:
+                    retrieval.passages.append({"text": c.summary, "score": round(c.score, 4)})
+            except Exception:  # global enrichment is best-effort
+                pass
         # Hybrid fallback (§12): add corpus passages when a search index exists.
         hybrid = _get_hybrid()
         if hybrid is not None and hybrid.available():

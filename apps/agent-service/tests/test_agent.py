@@ -118,3 +118,28 @@ def test_agent_preprocess_node_runs() -> None:
         assert ans.answer_markdown  # pipeline still produces an answer through preprocess
     finally:
         store.close()
+
+
+def test_agent_classifies_intent_and_global_enrichment() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from agent_service.agent import build_agent
+
+    from kg_retrievers.community import detect_communities
+    from kg_retrievers.graph_store import KuzuGraphStore
+    from kg_retrievers.seed import build_seed_graph
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        detect_communities(store)
+        agent = build_agent(store)
+        out = agent.invoke(
+            {"query": "основные кластеры технологий обессоливания", "use_llm": False}
+        )
+        assert out["intent_class"]["query_type"]  # §13.8 classification present
+        assert out["answer"].answer_markdown
+    finally:
+        store.close()
