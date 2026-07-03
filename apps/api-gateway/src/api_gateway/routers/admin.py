@@ -100,6 +100,31 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/absence-map")
+def absence_map(domain: str | None = None) -> dict:
+    """Map of the unknown: material×property absence-confidence grid (§25.11)."""
+    from kg_retrievers.absence_map import build_absence_map
+
+    return build_absence_map(get_store(), domain=domain).as_dict()
+
+
+@router.get("/coverage-matrix")
+def coverage_matrix() -> dict:
+    """Coverage matrix + by-owner + timeline (§15.5)."""
+    from kg_retrievers.coverage_matrix import (
+        aggregate_gaps_by_owner,
+        build_coverage_matrix,
+        build_coverage_timeline,
+    )
+
+    store = get_store()
+    return {
+        "matrix": build_coverage_matrix(store).as_dict(),
+        "by_owner": [g.as_dict() for g in aggregate_gaps_by_owner(store)],
+        "timeline": [p.as_dict() for p in build_coverage_timeline(store)],
+    }
+
+
 @router.get("/coverage")
 def coverage() -> dict:
     """Per-domain coverage metrics (§24.15): sources, facts, gaps, contradictions."""

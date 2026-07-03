@@ -362,3 +362,10 @@ def test_health_aggregated_and_prometheus_metrics(client: TestClient) -> None:
     prom = client.get("/api/v1/admin/metrics", params={"format": "prometheus"})
     assert prom.status_code == 200 and "text/plain" in prom.headers["content-type"]
     assert "http_requests_total{" in prom.text and "quantile=\"0.95\"" in prom.text
+
+
+def test_admin_absence_map_and_coverage_matrix(client: TestClient) -> None:
+    am = client.get("/api/v1/admin/absence-map").json()
+    assert "summary" in am or "cells" in am or "by_status" in am
+    cm = client.get("/api/v1/admin/coverage-matrix").json()
+    assert "matrix" in cm and "by_owner" in cm and "timeline" in cm
