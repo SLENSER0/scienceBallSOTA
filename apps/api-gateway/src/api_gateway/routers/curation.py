@@ -78,3 +78,32 @@ def merge(body: MergeBody, x_user: str = Header(default="curator")) -> dict:
         return _svc().merge_entities(body.keep_id, body.drop_id, actor=x_user, reason=body.reason)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+class InferredBody(BaseModel):
+    inferred: bool = True
+    reason: str = ""
+
+
+class AnnotateBody(BaseModel):
+    note: str
+
+
+@router.post("/entities/{entity_id}/mark-inferred")
+def mark_inferred(
+    entity_id: str, body: InferredBody, x_user: str = Header(default="curator")
+) -> dict:
+    try:
+        return _svc().mark_inferred(
+            entity_id, inferred=body.inferred, actor=x_user, reason=body.reason
+        )
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post("/entities/{entity_id}/annotate")
+def annotate(entity_id: str, body: AnnotateBody, x_user: str = Header(default="curator")) -> dict:
+    try:
+        return _svc().annotate(entity_id, body.note, actor=x_user)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e

@@ -67,6 +67,9 @@ class CurationAction(StrEnum):
     MERGE = "merge"
     SPLIT = "split"
     ALIAS_ADD = "alias_add"
+    MARK_INFERRED = "mark_inferred"
+    MANUAL_EVIDENCE = "manual_evidence"
+    ANNOTATE = "annotate"
     SCHEMA_CHANGE = "schema_change"
     # domain actions (§24.20)
     MARK_AS_DOMESTIC_PRACTICE = "mark_as_domestic_practice"

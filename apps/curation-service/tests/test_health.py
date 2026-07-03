@@ -53,3 +53,27 @@ def test_merge_entities(svc: CurationService) -> None:
     svc.merge_entities("material:nickel", "material:dup-nickel", actor="expert1")
     assert svc.store.get_node("material:dup-nickel") is None
     assert svc.store.counts()["nodes"] < before + 2  # dup removed (curation event added)
+
+
+def test_mark_inferred_and_annotate() -> None:
+    import tempfile
+    from pathlib import Path
+
+    from curation_service.curation import CurationService
+
+    from kg_retrievers.graph_store import KuzuGraphStore
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        store.upsert_node("mat:x", "Material", name="сплав X")
+        svc = CurationService(store)
+        svc.mark_inferred("mat:x", inferred=True, actor="cur", reason="derived")
+        assert store.get_node("mat:x")["inferred"] is True
+        svc.annotate("mat:x", "проверить состав", actor="cur")
+        assert "проверить состав" in store.get_node("mat:x")["curator_notes"]
+        # both actions are in decision history
+        actions = {h["action"] for h in svc.history("mat:x")}
+        assert {"mark_inferred", "annotate"} <= actions
+    finally:
+        store.close()

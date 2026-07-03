@@ -99,6 +99,33 @@ class CurationService:
         action = CurationAction.ACCEPT if status == "accepted" else CurationAction.REJECT
         return self._record(action, node_id, before, self.store.get_node(node_id), actor, reason)
 
+    def mark_inferred(
+        self, node_id: str, *, inferred: bool = True, actor: str, reason: str = ""
+    ) -> dict[str, Any]:
+        """Flag a node/edge fact as human-marked inferred (dashed in UI, §5.2.3)."""
+        before = self.store.get_node(node_id)
+        if before is None:
+            raise KeyError(node_id)
+        self.store.upsert_node(
+            node_id, before["label"], inferred=inferred, updated_at=self._now(), created_by=actor
+        )
+        return self._record(
+            CurationAction.MARK_INFERRED, node_id, before, self.store.get_node(node_id), actor,
+            reason or f"inferred={inferred}",
+        )
+
+    def annotate(self, node_id: str, note: str, *, actor: str) -> dict[str, Any]:
+        """Attach a curator note (annotate a gap/entity/contradiction)."""
+        before = self.store.get_node(node_id)
+        if before is None:
+            raise KeyError(node_id)
+        notes = before.get("curator_notes") or ""
+        merged = f"{notes}\n{actor}: {note}".strip()
+        self.store.upsert_node(node_id, before["label"], curator_notes=merged[:4000])
+        return self._record(
+            CurationAction.ANNOTATE, node_id, before, self.store.get_node(node_id), actor, note
+        )
+
     def add_alias(self, node_id: str, alias: str, *, actor: str) -> dict[str, Any]:
         before = self.store.get_node(node_id)
         if before is None:
