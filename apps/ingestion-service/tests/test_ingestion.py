@@ -140,3 +140,23 @@ def test_section_aware_chunking() -> None:
     # no chunk mixes the two sections' bodies
     intro = next(c for c in chunks if c.section_path == ["Введение"])
     assert "Электролиз" not in intro.text
+
+
+def test_pipeline_registers_source() -> None:
+    # §5.4: with a SourceRegistry, ingesting a doc records its provenance.
+    from kg_common import make_id
+    from kg_common.storage.source_registry import SourceRegistry
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    reg = SourceRegistry("sqlite:///:memory:")
+    reg.migrate()
+    doc = ParsedDoc(path="/data/a.pdf", title="Src", doc_type="article", file_hash="sh1",
+                    lang="ru", pages=[(1, SAMPLE)], country="russia", year=2023)
+    try:
+        IngestionPipeline(store, source_registry=reg).ingest(doc)
+        s = reg.by_hash("sh1")
+        assert s is not None and s.status == "ingested" and s.title == "Src"
+        assert reg.exists("sh1")
+    finally:
+        store.close()

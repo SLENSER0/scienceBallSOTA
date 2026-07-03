@@ -15,6 +15,7 @@ from ingestion_service.chunker import chunk_pages
 from ingestion_service.parsers import ParsedDoc
 from kg_common import evidence_id, get_logger, make_id
 from kg_common.storage.base import CoverageEvent, MetaStore
+from kg_common.storage.source_registry import Source, SourceRegistry
 from kg_extractors.composition_extractor import extract_compositions
 from kg_extractors.processing_extractor import extract_processing
 from kg_extractors.rule_extractor import extract_rules
@@ -73,12 +74,15 @@ class IngestionPipeline:
         use_llm: bool = False,
         llm_max_chunks: int = 0,
         metastore: MetaStore | None = None,
+        source_registry: SourceRegistry | None = None,
     ) -> None:
         self.store = store
         self.use_llm = use_llm
         self.llm_max_chunks = llm_max_chunks
         # Optional coverage telemetry sink (§25.5). None → no logging (default, hot path unchanged).
         self.metastore = metastore
+        # Optional source registry (§5.4). None → no registration.
+        self.source_registry = source_registry
         self.tax = load_taxonomy()
         self.run_id = make_id("ExtractorRun", f"ingest-{datetime.now(UTC).date()}")
         self._now = datetime.now(UTC).isoformat()
@@ -186,6 +190,21 @@ class IngestionPipeline:
         )
         self.stats.docs += 1
         self.stats.by_label["Document"] += 1
+
+        if self.source_registry is not None:  # §5.4: record provenance + license
+            self.source_registry.register(
+                Source(
+                    source_id=make_id("Paper", doc.file_hash),
+                    uri=doc.path,
+                    title=doc.title,
+                    doc_type=doc.doc_type,
+                    license=getattr(doc, "license", "unknown") or "unknown",
+                    sha256=doc.file_hash,
+                    country=doc.country or "",
+                    status="ingested",
+                    n_chunks=len(chunks),
+                )
+            )
 
         # batch all of a document's writes into one Kuzu transaction (faster bulk load)
         with self.store.batch():
