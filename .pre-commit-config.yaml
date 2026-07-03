@@ -24,3 +24,25 @@ repos:
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
+  # Static typing (§2.1) — scoped to package sources, permissive on 3rd-party stubs.
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^packages/.*/src/.*\.py$
+        additional_dependencies: [pydantic, types-PyYAML]
+        args: [--ignore-missing-imports]
+  # Secret scanning (§2.1/§19.9) — belt-and-braces with gitleaks above.
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+  # Frontend lint (§2.1) — runs the app's eslint on changed TS/TSX.
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: bash -c 'cd apps/frontend && pnpm -s lint'
+        language: system
+        files: ^apps/frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
