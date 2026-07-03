@@ -47,6 +47,30 @@ def entity_search(
     return {"query": q, "count": len(results), "results": results}
 
 
+_alias_cache: dict[str, Any] = {}
+
+
+@router.get("/entities/resolve")
+def entity_resolve(mention: str) -> dict:
+    """Resolve a surface mention to a canonical entity id via the alias index (§3.12)."""
+    from kg_retrievers.alias_index import AliasIndex
+
+    store = get_store()
+    key = store.db_path
+    idx = _alias_cache.get(key)
+    if idx is None:
+        idx = AliasIndex.build_from_store(store)
+        _alias_cache[key] = idx
+    resolved = idx.resolve(mention)
+    node = store.get_node(resolved) if resolved else None
+    return {
+        "mention": mention,
+        "resolved_id": resolved,
+        "name": (node or {}).get("name") if node else None,
+        "matched": resolved is not None,
+    }
+
+
 @router.get("/entities/{entity_id}")
 def entity_detail(entity_id: str) -> dict:
     """Full entity card: props, aliases, review status, evidence + neighbour counts (§14.5)."""

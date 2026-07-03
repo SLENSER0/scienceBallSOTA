@@ -416,3 +416,13 @@ def test_validation_error_returns_errorresponse(client: TestClient) -> None:
     body = r.json()
     assert body["errorCode"] == "validation_error"
     assert body["detail"]["errors"]  # field paths + messages
+
+
+def test_entity_resolve_alias(client: TestClient) -> None:
+    # §3.12: a surface mention resolves to the canonical entity id
+    r = client.get("/api/v1/entities/resolve", params={"mention": "обратный осмос"}).json()
+    assert r["matched"] is True and r["resolved_id"]
+    miss = client.get("/api/v1/entities/resolve", params={"mention": "квантовый чайник zzz"}).json()
+    assert miss["matched"] is False
+    # /entities/search still resolves (route ordering intact)
+    assert client.get("/api/v1/entities/search", params={"q": "осмос"}).json()["count"] >= 1
