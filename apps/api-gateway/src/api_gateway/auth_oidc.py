@@ -14,6 +14,7 @@ never silently grants elevated access.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import urllib.request
 from functools import lru_cache
@@ -122,10 +123,8 @@ def public_oidc_config() -> dict[str, Any]:
     # Prefer the issuer's real authorization_endpoint (from discovery); fall back
     # to the conventional authentik path if discovery is briefly unreachable.
     authorize = s.oidc_issuer.rstrip("/") + "/authorize/"
-    try:
+    with contextlib.suppress(Exception):  # descriptor is best-effort
         authorize = _discovery(s.oidc_issuer).get("authorization_endpoint", authorize)
-    except Exception:
-        pass
     return {
         "enabled": True,
         "issuer": s.oidc_issuer,
