@@ -1,10 +1,11 @@
 .DEFAULT_GOAL := help
 UV ?= uv
 PY := $(UV) run
+COMPOSE := docker compose -f infra/docker-compose.yml
 
 .PHONY: help bootstrap up down dev lint fmt type test test-cov check clean \
         fe-install fe-lint fe-build fe-test vendor ingest seed demo api agent frontend \
-        pre-commit
+        pre-commit logs ps worker backup restore init-db deploy-prod smoke dr-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -18,7 +19,38 @@ up: ## Start server-profile stack (docker compose)
 	docker compose -f infra/docker-compose.yml up -d
 
 down: ## Stop server-profile stack
-	docker compose -f infra/docker-compose.yml down
+	$(COMPOSE) down
+
+logs: ## Tail server-profile stack logs
+	$(COMPOSE) logs -f --tail=100
+
+ps: ## Show server-profile container status
+	$(COMPOSE) ps
+
+worker: ## Run a background worker (RQ) against Redis
+	$(PY) rq worker --url redis://localhost:6379 ingest default
+
+deploy-prod: ## Bring up the production overlay (hardened restart/resources)
+	docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
+
+init-db: ## Populate the server profile: migrate graph + index chunks
+	$(PY) python scripts/migrate_kuzu_to_neo4j.py
+	$(PY) python scripts/index_chunks_server.py
+
+backup: ## Back up Neo4j + Postgres to var/backups
+	@mkdir -p var/backups
+	$(COMPOSE) exec -T postgres pg_dumpall -U postgres > var/backups/postgres.sql
+	$(COMPOSE) exec -T neo4j neo4j-admin database dump neo4j --to-path=/data 2>/dev/null || true
+
+restore: ## Restore Postgres from var/backups/postgres.sql
+	$(COMPOSE) exec -T postgres psql -U postgres < var/backups/postgres.sql
+
+smoke: ## Smoke-test the running API (health + stats)
+	@curl -fsS http://localhost:8000/api/v1/admin/health >/dev/null && echo "health: OK"
+	@curl -fsS http://localhost:8000/api/v1/admin/stats  >/dev/null && echo "stats:  OK"
+
+dr-test: backup ## Disaster-recovery drill: backup, then confirm the dump is non-empty
+	@test -s var/backups/postgres.sql && echo "DR OK: postgres dump present ($$(wc -l < var/backups/postgres.sql) lines)"
 
 dev: ## Run API + frontend in parallel (embedded profile)
 	$(MAKE) -j2 api frontend

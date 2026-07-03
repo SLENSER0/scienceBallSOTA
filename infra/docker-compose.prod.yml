@@ -1,0 +1,28 @@
+# Production overlay (§2.2). Includes the base stack + hardened restart/resource
+# policies. Usage:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d
+include:
+  - docker-compose.yml
+
+services:
+  neo4j:
+    restart: always
+    environment:
+      NEO4J_server_memory_heap_max__size: 4G
+      NEO4J_server_memory_pagecache_size: 2G
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+  opensearch:
+    restart: always
+    environment:
+      OPENSEARCH_JAVA_OPTS: -Xms2g -Xmx2g
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  qdrant:
+    restart: always
+  postgres:
+    restart: always

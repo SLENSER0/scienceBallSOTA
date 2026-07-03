@@ -1,0 +1,14 @@
+# Local-dev overlay (§2.2). Includes the base stack and trims JVM heaps so the
+# whole thing fits a laptop. Usage:
+#   docker compose -f infra/docker-compose.local.yml up -d
+include:
+  - docker-compose.yml
+
+services:
+  neo4j:
+    environment:
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512m
+  opensearch:
+    environment:
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
