@@ -9,6 +9,7 @@ def attach_routers(app: FastAPI) -> None:
     from api_gateway.routers import (
         admin,
         auth,
+        chat,
         comparison,
         curation,
         evidence,
@@ -36,3 +37,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(curation.router)
     app.include_router(ingest.router)
     app.include_router(views.router)
+    app.include_router(chat.router)
