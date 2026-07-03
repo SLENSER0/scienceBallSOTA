@@ -129,9 +129,20 @@ def _material_name(i: int) -> str:
 
 
 def _seed_measurement(
-    store: KuzuGraphStore, i: int, pidx: int, mid: str, pid: str, value: float, unit: str
+    store: KuzuGraphStore,
+    i: int,
+    pidx: int,
+    mid: str,
+    pid: str,
+    value: float,
+    unit: str,
+    *,
+    direction: str,
+    evidence_doc_id: str,
+    source_type: str,
 ) -> str:
-    """A Measurement carrying a numeric value, attached to the material (→ present)."""
+    """A Measurement carrying a numeric value, attached to the material (→ present),
+    backed by an Evidence span (doc + source_type) for Track-A semantic matching (D8)."""
     meas_id = f"meas_syn_{i:03d}_{pidx}"
     store.upsert_node(
         meas_id,
@@ -140,8 +151,12 @@ def _seed_measurement(
         property_name=pid,
         value_normalized=value,
         unit=unit,
+        direction=direction,
     )
     store.upsert_edge(meas_id, mid, "ABOUT_MATERIAL")
+    ev_id = f"ev_syn_{i:03d}_{pidx}"
+    store.upsert_node(ev_id, "Evidence", doc_id=evidence_doc_id, source_type=source_type)
+    store.upsert_edge(meas_id, ev_id, "SUPPORTED_BY")
     return meas_id
 
 
@@ -207,7 +222,18 @@ def build_synthetic(
 
             if arch == "PRESENT_TABLE":
                 modality, stated, mentioned, measurable = "table_row", value, True, True
-                _seed_measurement(store, i, pidx, mid, pid, value, unit)
+                _seed_measurement(
+                    store,
+                    i,
+                    pidx,
+                    mid,
+                    pid,
+                    value,
+                    unit,
+                    direction=direction,
+                    evidence_doc_id=doc_id,
+                    source_type="document_table_row",
+                )
                 gold.append(
                     GoldExtractionFact(
                         doc_id,
@@ -225,7 +251,18 @@ def build_synthetic(
                 )
             elif arch == "PRESENT_CATALOG":
                 modality, stated, mentioned, measurable = "catalog_row", value, False, True
-                _seed_measurement(store, i, pidx, mid, pid, value, unit)
+                _seed_measurement(
+                    store,
+                    i,
+                    pidx,
+                    mid,
+                    pid,
+                    value,
+                    unit,
+                    direction=direction,
+                    evidence_doc_id="doc_experiment_catalog",
+                    source_type="catalog_row",
+                )
                 gold.append(
                     GoldExtractionFact(
                         "doc_experiment_catalog",
@@ -273,7 +310,18 @@ def build_synthetic(
                 prose_props.append((pid, False))
             elif arch == "RETRACTED":
                 modality, stated, mentioned, measurable = "catalog_row", value, False, True
-                meas_id = _seed_measurement(store, i, pidx, mid, pid, value, unit)
+                meas_id = _seed_measurement(
+                    store,
+                    i,
+                    pidx,
+                    mid,
+                    pid,
+                    value,
+                    unit,
+                    direction=direction,
+                    evidence_doc_id="doc_experiment_catalog",
+                    source_type="catalog_row",
+                )
                 retract(
                     store,
                     meas_id,
