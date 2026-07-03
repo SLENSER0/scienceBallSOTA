@@ -74,7 +74,21 @@ def _seed_elements(n) -> None:  # type: ignore[no-untyped-def]
 def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     """Build/refresh the demo graph. Returns node/rel counts."""
     n = store.upsert_node
-    e = store.upsert_edge
+    _e = store.upsert_edge
+
+    def e(src: str, dst: str, rtype: str, **kw: object) -> object:
+        # §3.7: every edge carries provenance (extractor_run_id/schema_version/created_at)
+        return _e(
+            src,
+            dst,
+            rtype,
+            **{
+                "extractor_run_id": RUN_ID,
+                "schema_version": SCHEMA_VERSION,
+                "created_at": "2026-07-02T00:00:00Z",
+                **kw,
+            },
+        )
 
     # provenance run + periodic table (§3.2)
     n(RUN_ID, "ExtractorRun", name="seed", **_prov())

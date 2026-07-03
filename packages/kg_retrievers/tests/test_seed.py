@@ -112,3 +112,29 @@ def test_domain_ontology_24_2() -> None:
         assert {"water_treatment", "electrometallurgy", "environment", "pyrometallurgy"} <= domains
     finally:
         store.close()
+
+
+def test_seed_provenance_coverage_100pct() -> None:
+    # §3.7: every factual node AND every edge in the seed carries provenance
+    from kg_schema.provenance import provenance_report
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        ids = store.rows(
+            "MATCH (n:Node) WHERE n.label IN "
+            "['Measurement','Claim','Finding','Recommendation','KnowledgeClaim','Contradiction'] "
+            "RETURN n.id"
+        )
+        rep = provenance_report([store.get_node(r[0]) for r in ids])
+        assert rep["total"] >= 1 and rep["incomplete"] == 0  # 100% node coverage
+        # every edge carries created_at + schema_version + extractor_run_id
+        total = store.rows("MATCH ()-[r:Rel]->() RETURN count(r)")[0][0]
+        cov = store.rows(
+            "MATCH ()-[r:Rel]->() WHERE r.created_at IS NOT NULL AND r.schema_version IS NOT NULL "
+            "AND r.extractor_run_id IS NOT NULL RETURN count(r)"
+        )[0][0]
+        assert cov == total  # 100% edge coverage
+    finally:
+        store.close()
