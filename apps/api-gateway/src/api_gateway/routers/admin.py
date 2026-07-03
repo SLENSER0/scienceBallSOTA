@@ -24,6 +24,7 @@ def ready() -> JSONResponse:
     status = 200 if ok else 503
     return JSONResponse({"ready": ok, "checks": checks}, status_code=status)
 
+
 _DOMAINS = [
     "hydrometallurgy",
     "pyrometallurgy",

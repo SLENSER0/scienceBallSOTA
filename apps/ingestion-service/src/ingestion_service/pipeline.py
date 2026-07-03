@@ -342,7 +342,10 @@ class IngestionPipeline:
         for cm in extract_compositions(text):
             comp_id = make_id("Composition", f"{chunk_id}:{'-'.join(cm.element_symbols())}")
             self.store.upsert_node(
-                comp_id, "Composition", name=cm.text, base_element=cm.base_element or "",
+                comp_id,
+                "Composition",
+                name=cm.text,
+                base_element=cm.base_element or "",
                 **self._prov(source_type="paragraph"),
             )
             if material_id:
@@ -351,7 +354,9 @@ class IngestionPipeline:
                 el_id = make_id("ChemicalElement", sym)
                 self.store.upsert_node(el_id, "ChemicalElement", name=sym, symbol=sym)
                 self.store.upsert_edge(
-                    comp_id, el_id, "CONTAINS_ELEMENT",
+                    comp_id,
+                    el_id,
+                    "CONTAINS_ELEMENT",
                     **self._prov(fraction=frac if frac is not None else -1.0),
                 )
 

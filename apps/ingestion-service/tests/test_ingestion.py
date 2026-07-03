@@ -105,8 +105,16 @@ def test_pipeline_materializes_composition_and_processing() -> None:
         "Сплав Al-4Cu-1Mg подвергали старению. Электроэкстракция никеля велась "
         "при 60 °C, плотность тока 250 А/м²."
     )
-    doc = ParsedDoc(path="x.txt", title="Состав", doc_type="article", file_hash="cp1",
-                    lang="ru", pages=[(1, text)], country="russia", year=2023)
+    doc = ParsedDoc(
+        path="x.txt",
+        title="Состав",
+        doc_type="article",
+        file_hash="cp1",
+        lang="ru",
+        pages=[(1, text)],
+        country="russia",
+        year=2023,
+    )
     try:
         IngestionPipeline(store).ingest(doc)
         by = store.counts_by_label()
@@ -150,8 +158,16 @@ def test_pipeline_registers_source() -> None:
     store = KuzuGraphStore(str(Path(d) / "g"))
     reg = SourceRegistry("sqlite:///:memory:")
     reg.migrate()
-    doc = ParsedDoc(path="/data/a.pdf", title="Src", doc_type="article", file_hash="sh1",
-                    lang="ru", pages=[(1, SAMPLE)], country="russia", year=2023)
+    doc = ParsedDoc(
+        path="/data/a.pdf",
+        title="Src",
+        doc_type="article",
+        file_hash="sh1",
+        lang="ru",
+        pages=[(1, SAMPLE)],
+        country="russia",
+        year=2023,
+    )
     try:
         IngestionPipeline(store, source_registry=reg).ingest(doc)
         s = reg.by_hash("sh1")
@@ -168,15 +184,21 @@ def test_pipeline_flags_out_of_range_measurement() -> None:
     d = tempfile.mkdtemp()
     store = KuzuGraphStore(str(Path(d) / "g"))
     text = "Твёрдость сплава составила 5000 HV, что аномально высоко."
-    doc = ParsedDoc(path="x.txt", title="Range", doc_type="article", file_hash="rng1",
-                    lang="ru", pages=[(1, text)], country="russia", year=2023)
+    doc = ParsedDoc(
+        path="x.txt",
+        title="Range",
+        doc_type="article",
+        file_hash="rng1",
+        lang="ru",
+        pages=[(1, text)],
+        country="russia",
+        year=2023,
+    )
     try:
         IngestionPipeline(store).ingest(doc)
         ids = store.rows("MATCH (m:Node {label:'Measurement'}) RETURN m.id")
         flagged = [
-            store.get_node(r[0])
-            for r in ids
-            if (store.get_node(r[0]) or {}).get("review_needed")
+            store.get_node(r[0]) for r in ids if (store.get_node(r[0]) or {}).get("review_needed")
         ]
         # if the extractor caught the hardness value, it must be flagged out_of_range
         if flagged:
@@ -191,8 +213,16 @@ def test_pipeline_normal_measurement_in_range() -> None:
 
     d = tempfile.mkdtemp()
     store = KuzuGraphStore(str(Path(d) / "g"))
-    doc = ParsedDoc(path="x.txt", title="Norm", doc_type="article", file_hash="rng2",
-                    lang="ru", pages=[(1, SAMPLE)], country="russia", year=2023)
+    doc = ParsedDoc(
+        path="x.txt",
+        title="Norm",
+        doc_type="article",
+        file_hash="rng2",
+        lang="ru",
+        pages=[(1, SAMPLE)],
+        country="russia",
+        year=2023,
+    )
     try:
         IngestionPipeline(store).ingest(doc)
         cd = store.rows(

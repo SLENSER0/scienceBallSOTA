@@ -43,9 +43,7 @@ extraction_coverage = Table(
     Column("attempted", Boolean, nullable=False, default=True),
     Column("found_count", Integer, nullable=False, default=0),
     Column("run_id", String, nullable=False, default="unspecified"),
-    UniqueConstraint(
-        "doc_id", "chunk_id", "extractor", "target_type", name="uq_coverage_key"
-    ),
+    UniqueConstraint("doc_id", "chunk_id", "extractor", "target_type", name="uq_coverage_key"),
 )
 
 extractor_recall = Table(

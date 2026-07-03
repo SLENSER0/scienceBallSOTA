@@ -39,8 +39,14 @@ def evidence_by_node(node_id: str, role: str = Depends(current_role)) -> dict:
         {"id": node_id},
     )
     items = [
-        {"evidence_id": r[0], "doc_id": r[1], "page": r[2], "text": r[3],
-         "evidence_strength": r[4], "confidence": r[5]}
+        {
+            "evidence_id": r[0],
+            "doc_id": r[1],
+            "page": r[2],
+            "text": r[3],
+            "evidence_strength": r[4],
+            "confidence": r[5],
+        }
         for r in rows
     ]
     return {"node_id": node_id, "count": len(items), "evidence": items}
@@ -53,7 +59,9 @@ class ReviewBody(BaseModel):
 
 @router.post("/{evidence_id}/review")
 def review_evidence(
-    evidence_id: str, body: ReviewBody, role: str = Depends(current_role),
+    evidence_id: str,
+    body: ReviewBody,
+    role: str = Depends(current_role),
     x_user: str = Header(default="curator"),
 ) -> dict:
     """Curator verifies/rejects an evidence span (§12.2/§5.2.6)."""
