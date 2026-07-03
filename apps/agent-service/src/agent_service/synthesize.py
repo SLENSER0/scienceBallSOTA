@@ -176,14 +176,16 @@ def build_answer(
     used_models: list[str] = []
 
     markdown = ""
+    reasoning = ""
     if use_llm:
         try:
             from kg_extractors.llm import get_llm
 
             llm = get_llm()
             user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
-            markdown = llm.complete(
-                user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1500
+            # Reasoning-capable synth models expose their chain-of-thought → surface it.
+            markdown, reasoning = llm.complete_with_reasoning(
+                user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=2400
             )
             used_models = list(llm.used_models[-1:])
         except Exception as exc:
@@ -212,4 +214,5 @@ def build_answer(
         confidence=round(base, 2),
         parsed_query=intent.to_dict(),
         used_models=used_models,
+        reasoning=reasoning,
     )

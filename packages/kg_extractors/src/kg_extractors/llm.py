@@ -90,6 +90,41 @@ class LLMClient:
         self.used_models.append(mdl)
         return (resp.choices[0].message.content or "").strip()
 
+    def complete_with_reasoning(
+        self,
+        user: str,
+        *,
+        system: str | None = None,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int = 2000,
+    ) -> tuple[str, str]:
+        """Like :meth:`complete` but also returns the model's reasoning trace.
+
+        Reasoning-capable OSS models (DeepSeek-V4-Flash, GLM-5.2) expose their
+        chain-of-thought in ``message.reasoning`` — we surface it so the UI can
+        show a «thinking» panel. Non-reasoning models simply return an empty trace.
+        """
+        mdl = model or self._settings.llm_model_synth
+        if not is_oss_model(mdl):
+            raise ValueError(f"Model '{mdl}' is not on the OSS allowlist (ADR-0006).")
+        messages: list[dict[str, str]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": user})
+        resp = self._client.chat.completions.create(
+            model=mdl,
+            messages=messages,  # type: ignore[arg-type]
+            temperature=self._settings.llm_temperature if temperature is None else temperature,
+            max_tokens=max_tokens,
+            extra_body={"provider": {"sort": "throughput", "allow_fallbacks": True}},
+        )
+        self.used_models.append(mdl)
+        msg = resp.choices[0].message
+        content = (getattr(msg, "content", "") or "").strip()
+        reasoning = (getattr(msg, "reasoning", "") or "").strip()
+        return content, reasoning
+
     def complete_json(
         self,
         user: str,

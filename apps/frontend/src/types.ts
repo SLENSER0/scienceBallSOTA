@@ -63,6 +63,7 @@ export interface AnswerPayload {
   confidence?: number | null;
   parsedQuery?: Record<string, unknown> | null;
   usedModels: string[];
+  reasoning?: string;
 }
 
 export interface CoverageDomain {

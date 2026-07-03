@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { AlertTriangle, Download, FileText, SearchX } from 'lucide-react';
+import { AlertTriangle, Brain, ChevronDown, ChevronRight, Download, FileText, SearchX } from 'lucide-react';
 import type { AnswerPayload } from '../types';
 import { useStore } from '../store';
 
@@ -10,6 +11,9 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
 
   return (
     <div className="mt-6 animate-rise">
+      {/* Reasoning trace (reasoning-capable OSS models) — collapsible «thinking». */}
+      {answer.reasoning && <ReasoningPanel text={answer.reasoning} />}
+
       {/* Confidence + models */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <ConfidenceMeter value={conf} />
@@ -116,6 +120,28 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
               </li>
             ))}
           </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReasoningPanel({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-4 rounded-md border border-line bg-graphite/40">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs text-faint transition hover:text-nickel"
+      >
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        <Brain size={13} className="text-copper" />
+        Рассуждение модели
+        <span className="ml-auto font-mono text-[10px] text-faint">{text.length} симв.</span>
+      </button>
+      {open && (
+        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-line px-3 py-2 font-mono text-[11px] leading-relaxed text-muted">
+          {text}
         </div>
       )}
     </div>

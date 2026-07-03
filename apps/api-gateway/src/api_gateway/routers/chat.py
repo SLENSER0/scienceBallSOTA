@@ -198,6 +198,10 @@ def stream(
     payload = _load_answer(sid, message_id)
 
     def gen() -> Iterator[bytes]:
+        # Reasoning-capable models expose their chain-of-thought — stream it first
+        # so the UI shows a «thinking» panel before the answer (§5.3, open-webui style).
+        if payload.reasoning:
+            yield _sse("reasoning", {"text": payload.reasoning})
         for chunk in _chunks(payload.answer_markdown):
             yield _sse("token", {"text": chunk})
         yield _sse(

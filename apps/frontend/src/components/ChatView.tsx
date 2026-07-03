@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Loader2, MessageSquarePlus, Network, Send } from 'lucide-react';
+import { Brain, Loader2, MessageSquarePlus, Network, Send } from 'lucide-react';
 import { api, type ChatMessage, type ChatSession } from '../api';
 import type { AnswerPayload } from '../types';
 import { AnswerView } from './AnswerView';
@@ -15,7 +15,7 @@ import { GraphView } from './GraphView';
 type ThreadItem =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; payload: AnswerPayload }
-  | { kind: 'streaming'; id: string; text: string; thinking: boolean };
+  | { kind: 'streaming'; id: string; text: string; reasoning: string; thinking: boolean };
 
 function toThread(msgs: ChatMessage[]): ThreadItem[] {
   const out: ThreadItem[] = [];
@@ -33,14 +33,25 @@ function toThread(msgs: ChatMessage[]): ThreadItem[] {
   return out;
 }
 
-// Open the SSE stream and feed token chunks to `onToken`; resolves at `done`.
-function streamAnswer(url: string, onToken: (t: string) => void): Promise<void> {
+// Open the SSE stream; feed reasoning + token chunks to callbacks; resolve at `done`.
+function streamAnswer(
+  url: string,
+  onToken: (t: string) => void,
+  onReasoning: (t: string) => void,
+): Promise<void> {
   return new Promise((resolve) => {
     const es = new EventSource(url);
     const stop = () => {
       es.close();
       resolve();
     };
+    es.addEventListener('reasoning', (e) => {
+      try {
+        onReasoning(JSON.parse((e as MessageEvent).data).text ?? '');
+      } catch {
+        /* ignore */
+      }
+    });
     es.addEventListener('token', (e) => {
       try {
         onToken(JSON.parse((e as MessageEvent).data).text ?? '');
@@ -101,18 +112,26 @@ export function ChatView() {
     setThread((t) => [
       ...t,
       { kind: 'user', id: `u${streamId}`, text },
-      { kind: 'streaming', id: streamId, text: '', thinking: true },
+      { kind: 'streaming', id: streamId, text: '', reasoning: '', thinking: true },
     ]);
     try {
       const { stream_url } = await api.postMessage(cur, text);
-      await streamAnswer(stream_url, (chunk) =>
-        setThread((t) =>
-          t.map((m) =>
-            m.id === streamId && m.kind === 'streaming'
-              ? { ...m, text: m.text + chunk, thinking: false }
-              : m,
+      await streamAnswer(
+        stream_url,
+        (chunk) =>
+          setThread((t) =>
+            t.map((m) =>
+              m.id === streamId && m.kind === 'streaming'
+                ? { ...m, text: m.text + chunk, thinking: false }
+                : m,
+            ),
           ),
-        ),
+        (r) =>
+          setThread((t) =>
+            t.map((m) =>
+              m.id === streamId && m.kind === 'streaming' ? { ...m, reasoning: r } : m,
+            ),
+          ),
       );
       // swap the streamed text for the authoritative rich payloads
       setThread(toThread((await api.getSession(cur)).messages));
@@ -183,7 +202,7 @@ export function ChatView() {
               m.kind === 'user' ? (
                 <UserBubble key={m.id} text={m.text} />
               ) : m.kind === 'streaming' ? (
-                <StreamingBubble key={m.id} text={m.text} thinking={m.thinking} />
+                <StreamingBubble key={m.id} text={m.text} reasoning={m.reasoning} thinking={m.thinking} />
               ) : (
                 <AssistantTurn key={m.id} payload={m.payload} />
               ),
@@ -227,9 +246,27 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function StreamingBubble({ text, thinking }: { text: string; thinking: boolean }) {
+function StreamingBubble({
+  text,
+  reasoning,
+  thinking,
+}: {
+  text: string;
+  reasoning: string;
+  thinking: boolean;
+}) {
   return (
     <div className="panel px-4 py-3">
+      {reasoning && (
+        <div className="mb-2 rounded border border-line bg-graphite/40 px-3 py-2">
+          <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-copper">
+            <Brain size={11} /> рассуждение
+          </div>
+          <div className="max-h-40 overflow-y-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted">
+            {reasoning}
+          </div>
+        </div>
+      )}
       {thinking && !text ? (
         <div className="flex items-center gap-2 font-mono text-xs text-faint">
           <Loader2 size={14} className="animate-spin text-copper" /> ассистент рассуждает по графу…
