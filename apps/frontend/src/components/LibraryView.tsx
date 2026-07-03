@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { useStore } from '../store';
+import { DocumentUpload } from './DocumentUpload';
 
 // «Библиотека» — add scientific articles to the graph. Two flows:
 // (1) deep-research: decompose a question into sub-questions × ready-to-open
@@ -163,6 +164,9 @@ export function LibraryView() {
             </div>
           )}
         </div>
+
+        {/* Upload document → graph + viewer (§17.19) */}
+        <DocumentUpload />
 
         {/* Two columns: manual add + recent */}
         <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">

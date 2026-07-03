@@ -176,4 +176,58 @@ export const api = {
   }> {
     return req('/api/v1/research/deep', { method: 'POST', body: JSON.stringify({ question }) });
   },
+
+  // -- Document upload → graph + viewer (§17.19) --
+  async uploadDocument(file: File, useLlm = false): Promise<UploadResult> {
+    const form = new FormData();
+    form.append('file', file);
+    // NB: do NOT set Content-Type — the browser adds the multipart boundary itself.
+    const res = await fetch(`/api/v1/documents/upload?use_llm=${useLlm}`, {
+      method: 'POST',
+      headers: { ...authHeaders() },
+      body: form,
+    });
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      throw new Error(detail.detail || `${res.status} ${res.statusText}`);
+    }
+    return res.json() as Promise<UploadResult>;
+  },
+  listDocuments(): Promise<{ documents: DocumentMeta[]; count: number }> {
+    return req('/api/v1/documents');
+  },
+  documentParsed(docId: string): Promise<{
+    doc_id: string;
+    title: string;
+    page_count: number;
+    pages: { page: number; text: string }[];
+    tables: { page: number; rows: string[][] }[];
+  }> {
+    return req(`/api/v1/documents/${encodeURIComponent(docId)}/parsed`);
+  },
+  reindexDocument(docId: string, useLlm = false): Promise<{ status: string; node_count: number; graph: GraphResponse }> {
+    return req(`/api/v1/documents/${encodeURIComponent(docId)}/reindex`, {
+      method: 'POST',
+      body: JSON.stringify({ use_llm: useLlm }),
+    });
+  },
 };
+
+export interface DocumentMeta {
+  doc_id: string;
+  title: string;
+  doc_type: string;
+  page_count: number;
+  year: number | null;
+  status: string;
+}
+
+export interface UploadResult {
+  doc_id: string;
+  title: string;
+  status: string;
+  page_count: number;
+  chunks: number;
+  graph: GraphResponse;
+  node_count: number;
+}

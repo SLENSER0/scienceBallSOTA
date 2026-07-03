@@ -1,0 +1,236 @@
+"""Document upload → граф → viewer (§17.19 / §5.2.1 Document mode).
+
+A researcher drops a PDF/DOCX/PPTX/XLSX into «Библиотека»; this router runs the
+**real** ingestion pipeline in-process — :func:`ingestion_service.parsers.parse_document`
+to parse pages/tables, then :class:`ingestion_service.pipeline.IngestionPipeline` to
+extract entities/measurements/evidence and write them into the live graph store
+(embedded Kuzu or server Neo4j, whichever ``get_store()`` returns). The freshly
+ingested document's neighbourhood is returned as a :class:`GraphResponse` so the UI
+can render the graph immediately (§23: «добавление документа обновляет граф»).
+
+Parsed page text + tables are persisted as one JSON sidecar per document under
+``runtime_dir/uploads/`` so the Document Viewer can page through the parsed content
+(``/parsed``, ``/pages/{n}``) and offer a ``/reindex``. Writes are RBAC-gated to the
+curator-and-up roles (same set as manual article add, §19).
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from api_gateway import audit
+from api_gateway.auth import current_role, current_user
+from api_gateway.deps import get_store
+from kg_common import GraphResponse, get_settings, make_id
+
+router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+
+# Same write-capable roles as manual article add (§19).
+_CAN_UPLOAD = {"admin", "curator", "researcher", "analyst", "project_manager"}
+_MAX_BYTES = 64 * 1024 * 1024  # 64 MB upload cap
+_ALLOWED_SUFFIX = {".pdf", ".docx", ".pptx", ".xlsx", ".txt", ".md"}
+
+
+def _uploads_dir() -> Path:
+    d = Path(get_settings().runtime_dir) / "uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _sidecar(doc_id: str) -> Path:
+    # doc_id is "Document:<hash>" — keep the hash only for a filesystem-safe name.
+    safe = doc_id.replace(":", "_")
+    return _uploads_dir() / f"{safe}.json"
+
+
+def _load_sidecar(doc_id: str) -> dict[str, Any]:
+    p = _sidecar(doc_id)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="document not found")
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _require_upload(role: str) -> None:
+    if role not in _CAN_UPLOAD:
+        raise HTTPException(status_code=403, detail="role may not upload documents")
+
+
+def _ingest_file(path: Path, *, use_llm: bool) -> dict[str, Any]:
+    """Parse + ingest one file; return {doc_id, meta, stats}. Raises 422 if unparsable."""
+    from ingestion_service.parsers import parse_document
+    from ingestion_service.pipeline import IngestionPipeline
+
+    parsed = parse_document(path)
+    if parsed is None:
+        raise HTTPException(status_code=422, detail="could not parse document")
+
+    doc_id = make_id("Document", parsed.file_hash)
+    # 3 LLM chunks/doc matches the ingestion CLI default (bounded cost per upload).
+    pipe = IngestionPipeline(get_store(), use_llm=use_llm, llm_max_chunks=3)
+    res = pipe.ingest(parsed)
+
+    # Persist parsed content for the viewer (pages + tables + metadata).
+    sidecar = {
+        "doc_id": doc_id,
+        "title": parsed.title,
+        "doc_type": parsed.doc_type,
+        "lang": parsed.lang,
+        "country": parsed.country,
+        "year": parsed.year,
+        "file_hash": parsed.file_hash,
+        "source_path": str(path),
+        "page_count": len(parsed.pages),
+        "status": res.get("status", "ok"),
+        "chunks": res.get("chunks", 0),
+        "extractor": "rule+llm" if use_llm else "rule",
+        "pages": [{"page": p, "text": t} for p, t in parsed.pages],
+        "tables": [{"page": t.page, "rows": t.rows} for t in parsed.tables],
+    }
+    _sidecar(doc_id).write_text(json.dumps(sidecar, ensure_ascii=False), encoding="utf-8")
+    return {"doc_id": doc_id, "meta": sidecar, "stats": res}
+
+
+def _doc_graph(doc_id: str) -> GraphResponse:
+    """The ingested document's 2-hop neighbourhood as a §5.2.3 graph payload."""
+    return get_store().neighbors(doc_id, depth=2, limit=300)
+
+
+# -- request bodies --------------------------------------------------------
+class ReindexBody(BaseModel):
+    use_llm: bool = True
+
+
+# -- endpoints -------------------------------------------------------------
+@router.post("/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    use_llm: bool = True,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """Accept a document, run ingestion, and return the resulting subgraph (§17.19)."""
+    _require_upload(role)
+    name = Path(file.filename or "document").name
+    suffix = Path(name).suffix.lower()
+    if suffix not in _ALLOWED_SUFFIX:
+        raise HTTPException(status_code=415, detail=f"unsupported file type: {suffix or 'none'}")
+
+    dest = _uploads_dir() / name
+    size = 0
+    with dest.open("wb") as out:
+        while chunk := await file.read(1 << 20):
+            size += len(chunk)
+            if size > _MAX_BYTES:
+                out.close()
+                dest.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="file too large (max 64 MB)")
+            out.write(chunk)
+
+    result = _ingest_file(dest, use_llm=use_llm)
+    graph = _doc_graph(result["doc_id"])
+    audit.record(
+        "upload_document",
+        user=user,
+        role=role,
+        detail={"doc_id": result["doc_id"], "status": result["stats"].get("status")},
+    )
+    return {
+        "doc_id": result["doc_id"],
+        "title": result["meta"]["title"],
+        "status": result["stats"].get("status", "ok"),
+        "page_count": result["meta"]["page_count"],
+        "chunks": result["meta"]["chunks"],
+        "graph": graph.model_dump(by_alias=True),
+        "node_count": len(graph.nodes),
+    }
+
+
+@router.get("")
+def list_documents(limit: int = 30) -> dict:
+    """List recently uploaded documents (newest sidecars first)."""
+    items: list[dict[str, Any]] = []
+    # sidecars are named "<doc_id with ':'→'_'>.json"; make_id('Document', …) → "doc:…".
+    files = sorted(_uploads_dir().glob("doc_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in files[: max(1, min(limit, 200))]:
+        try:
+            d = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        items.append(
+            {
+                "doc_id": d.get("doc_id"),
+                "title": d.get("title"),
+                "doc_type": d.get("doc_type"),
+                "page_count": d.get("page_count"),
+                "year": d.get("year"),
+                "status": d.get("status"),
+            }
+        )
+    return {"documents": items, "count": len(items)}
+
+
+@router.get("/{doc_id:path}/parsed")
+def document_parsed(doc_id: str) -> dict:
+    """Full parsed content — pages + tables (§17.19 postраничный parsed-просмотр)."""
+    d = _load_sidecar(doc_id)
+    return {
+        "doc_id": d["doc_id"],
+        "title": d["title"],
+        "page_count": d["page_count"],
+        "pages": d["pages"],
+        "tables": d["tables"],
+    }
+
+
+@router.get("/{doc_id:path}/pages/{page}")
+def document_page(doc_id: str, page: int) -> dict:
+    """One parsed page by 1-based number (§17.19)."""
+    d = _load_sidecar(doc_id)
+    for pg in d["pages"]:
+        if pg["page"] == page:
+            tables = [t for t in d["tables"] if t["page"] == page]
+            return {"doc_id": d["doc_id"], "page": page, "text": pg["text"], "tables": tables}
+    raise HTTPException(status_code=404, detail="page not found")
+
+
+@router.get("/{doc_id:path}/graph", response_model=GraphResponse)
+def document_graph(doc_id: str) -> GraphResponse:
+    """The document's neighbourhood subgraph (§5.2.3)."""
+    _load_sidecar(doc_id)  # 404 if unknown
+    return _doc_graph(doc_id)
+
+
+@router.post("/{doc_id:path}/reindex")
+def reindex_document(
+    doc_id: str,
+    body: ReindexBody,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """Re-run ingestion for a previously uploaded document from its saved file (§17.19)."""
+    _require_upload(role)
+    d = _load_sidecar(doc_id)
+    src = Path(d["source_path"])
+    if not src.exists():
+        raise HTTPException(status_code=410, detail="source file no longer available")
+    result = _ingest_file(src, use_llm=body.use_llm)
+    graph = _doc_graph(result["doc_id"])
+    audit.record("reindex_document", user=user, role=role, detail={"doc_id": doc_id})
+    return {
+        "doc_id": result["doc_id"],
+        "status": result["stats"].get("status", "ok"),
+        "graph": graph.model_dump(by_alias=True),
+        "node_count": len(graph.nodes),
+    }
+
+
+@router.get("/{doc_id:path}")
+def document_meta(doc_id: str) -> dict:
+    """Document metadata — source, pages, parse status, extractor version (§17.19)."""
+    d = _load_sidecar(doc_id)
+    return {k: v for k, v in d.items() if k not in {"pages", "tables"}}
