@@ -4,7 +4,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import { api } from '../api';
 import { useStore } from '../store';
 import { AnswerView } from './AnswerView';
-import { GraphView } from './GraphView';
+import { GraphPanel } from './GraphPanel';
 
 const EXAMPLES = [
   'Какие методы обессоливания воды подходят для обогатительной фабрики, если сульфаты, хлориды, Ca, Mg, Na по 200–300 мг/л, а сухой остаток ≤1000 мг/дм³?',
@@ -108,7 +108,7 @@ export function AskView() {
         </div>
         <div className="min-h-0 flex-1">
           {answer?.graph ? (
-            <GraphView data={answer.graph} onSelect={setSelectedNode} selectedId={useStore.getState().selectedNode?.id} />
+            <GraphPanel data={answer.graph} onSelect={setSelectedNode} selectedId={useStore.getState().selectedNode?.id} />
           ) : (
             <div className="flex h-full items-center justify-center text-faint font-mono text-sm">
               граф появится после запроса

@@ -5,7 +5,7 @@ import { Brain, Loader2, MessageSquarePlus, Network, Send } from 'lucide-react';
 import { api, type ChatMessage, type ChatSession } from '../api';
 import type { AnswerPayload } from '../types';
 import { AnswerView } from './AnswerView';
-import { GraphView } from './GraphView';
+import { GraphPanel } from './GraphPanel';
 
 // «Диалог с клубком» — chat over the live §14.4 backend: sessions, streaming SSE
 // answers, and each assistant turn rendered as the full evidence-first AnswerView
@@ -297,7 +297,7 @@ function AssistantTurn({ payload }: { payload: AnswerPayload }) {
           </button>
           {showGraph && (
             <div className="mt-2 h-[420px] overflow-hidden rounded-md border border-line">
-              <GraphView data={payload.graph!} />
+              <GraphPanel data={payload.graph!} />
             </div>
           )}
         </div>
