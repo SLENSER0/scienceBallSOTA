@@ -77,6 +77,58 @@ def review_evidence(
     return {"evidence_id": evidence_id, "review_status": body.status, "actor": x_user}
 
 
+_CONTEXT_CYPHER = (
+    "MATCH (e:Node {id:$id}) "
+    "OPTIONAL MATCH (e)-[:Rel]-(c:Node {label:'Chunk'}) "
+    "OPTIONAL MATCH (d:Node {label:'Document'})-[:Rel]-(c) "
+    "RETURN c.text AS chunk_text, c.page AS chunk_page, d.name AS doc_title, "
+    "d.country AS country, d.year AS doc_year LIMIT 1"
+)
+
+
+@router.get("/{evidence_id}/context")
+def evidence_context(evidence_id: str, role: str = Depends(current_role)) -> dict:
+    """Evidence span + its surrounding source chunk (with a highlight offset) + doc meta.
+
+    Powers the Evidence Inspector (§17.13): the researcher sees the cited span
+    highlighted in the actual paragraph it came from, with source provenance.
+    """
+    store = get_store()
+    nd = store.get_node(evidence_id)
+    if nd is None:
+        raise HTTPException(status_code=404, detail="evidence not found")
+    if nd.get("confidentiality_level") in _RESTRICTED and role not in _PRIVILEGED:
+        raise HTTPException(status_code=403, detail="restricted evidence — access denied")
+
+    span = (nd.get("text") or "").strip()
+    chunk_text = ""
+    title = country = None
+    year = nd.get("source_year") or nd.get("year")
+    rows = store.rows(_CONTEXT_CYPHER, {"id": evidence_id})
+    if rows:
+        chunk_text = rows[0][0] or ""
+        title = rows[0][2]
+        country = rows[0][3] or nd.get("country")
+        year = year or rows[0][4]
+    # Offset of the span within its chunk (for client-side highlighting); -1 if absent.
+    offset = chunk_text.find(span[:60]) if span and chunk_text else -1
+    return {
+        "evidence_id": nd["id"],
+        "span": span,
+        "chunk_text": chunk_text or span,
+        "highlight_offset": offset,
+        "highlight_len": len(span) if offset >= 0 else 0,
+        "doc_id": nd.get("doc_id"),
+        "doc_title": title,
+        "page": nd.get("page"),
+        "practice_type": nd.get("practice_type"),
+        "country": country,
+        "year": year,
+        "evidence_strength": nd.get("evidence_strength"),
+        "confidence": nd.get("confidence"),
+    }
+
+
 @router.get("/{evidence_id}")
 def get_evidence(evidence_id: str, role: str = Depends(current_role)) -> dict:
     nd = get_store().get_node(evidence_id)

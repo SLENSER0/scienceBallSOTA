@@ -30,6 +30,22 @@ export interface GraphResponse {
   edges: GraphEdge[];
 }
 
+export interface EvidenceContext {
+  evidence_id: string;
+  span: string;
+  chunk_text: string;
+  highlight_offset: number;
+  highlight_len: number;
+  doc_id?: string | null;
+  doc_title?: string | null;
+  page?: number | null;
+  practice_type?: string | null;
+  country?: string | null;
+  year?: number | null;
+  evidence_strength?: string | null;
+  confidence?: number | null;
+}
+
 export interface EvidenceRef {
   evidenceId: string;
   sourceId: string;

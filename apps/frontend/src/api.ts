@@ -6,6 +6,7 @@ import type {
   ContradictionAnalysis,
   ContradictionSummary,
   CoverageDomain,
+  EvidenceContext,
   GlossaryTerm,
   GraphResponse,
   LineageRun,
@@ -98,6 +99,9 @@ export const api = {
   },
   neighbors(id: string, depth = 1): Promise<GraphResponse> {
     return req(`/api/v1/entities/${encodeURIComponent(id)}/neighbors?depth=${depth}`);
+  },
+  evidenceContext(id: string): Promise<EvidenceContext> {
+    return req(`/api/v1/evidence/${encodeURIComponent(id)}/context`);
   },
   evidence(id: string): Promise<Record<string, unknown>> {
     return req(`/api/v1/evidence/${encodeURIComponent(id)}`);
