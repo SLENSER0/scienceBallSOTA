@@ -99,3 +99,36 @@ def test_idempotent_on_seed(store: KuzuGraphStore) -> None:
     # second scan adds only a new GapScanRun node, not duplicate gaps
     assert n2 - n1 <= 2
     assert r1.gaps_created + r1.contradictions_created >= 0
+
+
+def test_missing_source_span_and_low_confidence_er_rules() -> None:
+    # §15.3: two gap rules — a factual node whose Evidence has no text span, and
+    # a low-confidence entity-resolution node.
+    import tempfile
+    from pathlib import Path
+
+    from kg_schema.enums import GapType
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        # measurement backed by a spanless Evidence
+        store.upsert_node(
+            "meas:spanless",
+            "Measurement",
+            name="плотность без цитаты",
+            value_normalized=1.0,
+            normalized_unit="A/m^2",
+        )
+        store.upsert_node("ev:spanless", "Evidence", text="", doc_id="d")
+        store.upsert_edge("meas:spanless", "ev:spanless", "SUPPORTED_BY")
+        # low-confidence ad-hoc entity
+        store.upsert_node("material:adhoc", "Material", name="какой-то сплав", confidence=0.5)
+        store.upsert_edge("material:adhoc", "meas:spanless", "MEASURED")
+
+        res = GapScanner(store).scan()
+        assert str(GapType.MISSING_SOURCE_SPAN) in res.by_type
+        assert str(GapType.LOW_CONFIDENCE_ENTITY_RESOLUTION) in res.by_type
+    finally:
+        store.close()

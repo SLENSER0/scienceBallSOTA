@@ -10,16 +10,18 @@ from enum import StrEnum
 
 
 class GapType(StrEnum):
-    """The 9 canonical gap types (§11.1), reconciled with §7.4 (§3.5)."""
+    """The 11 canonical gap types (§11.1/§15.1), reconciled with §7.4 (§3.5)."""
 
     MISSING_PROPERTY_VALUE = "missing_property_value"
     MISSING_BASELINE = "missing_baseline"
     MISSING_PROCESSING_PARAMETER = "missing_processing_parameter"
     MISSING_EQUIPMENT = "missing_equipment"
     MISSING_UNIT = "missing_unit"
+    MISSING_SOURCE_SPAN = "missing_source_span"
     UNVERIFIED_CLAIM = "unverified_claim"
     CONTRADICTORY_MEASUREMENTS = "contradictory_measurements"
     LOW_COVERAGE_MATERIAL = "low_coverage_material"
+    LOW_CONFIDENCE_ENTITY_RESOLUTION = "low_confidence_entity_resolution"
     ORPHAN_ENTITY = "orphan_entity"
     # domain gaps (§24.10 / §24.7)
     MISSING_GEOGRAPHY = "missing_geography"

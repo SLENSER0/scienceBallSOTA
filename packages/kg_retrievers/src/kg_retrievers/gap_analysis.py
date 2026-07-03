@@ -74,12 +74,50 @@ class GapScanner:
     def scan(self) -> ScanResult:
         res = ScanResult(run_id=self.run_id)
         self._scan_missing_unit(res)
+        self._scan_missing_source_span(res)
+        self._scan_low_confidence_er(res)
         self._scan_orphans(res)
         self._scan_low_coverage(res)
         self._scan_missing_geography(res)
         self._scan_contradictions(res)
         _log.info("gap_scan.done", **res.as_dict())
         return res
+
+    def _scan_missing_source_span(self, res: ScanResult) -> None:
+        # A factual node backed by Evidence that carries no quotable text span —
+        # the claim exists but can't be verified against a source (§15.3).
+        rows = self.store.rows(
+            "MATCH (f:Node)-[:Rel]->(e:Node) "
+            "WHERE f.label IN ['Measurement','Claim','Finding','KnowledgeClaim'] "
+            "AND e.label='Evidence' AND (e.text IS NULL OR e.text='') "
+            "RETURN DISTINCT f.id, coalesce(f.name,'') LIMIT 500"
+        )
+        for fid, name in rows:
+            self._gap(
+                res,
+                fid,
+                GapType.MISSING_SOURCE_SPAN,
+                f"Утверждение без цитаты-источника: {name}",
+                about=fid,
+            )
+
+    def _scan_low_confidence_er(self, res: ScanResult) -> None:
+        # Ad-hoc surface-form entities resolved with low confidence — candidates
+        # for entity-resolution review, surfaced as a gap (§15.3 / §8.7).
+        rows = self.store.rows(
+            "MATCH (n:Node) WHERE n.label IN "
+            "['Material','TechnologySolution','Equipment','Person','Lab','Method'] "
+            "AND n.confidence IS NOT NULL AND n.confidence < 0.6 "
+            "RETURN n.id, coalesce(n.name,'') LIMIT 500"
+        )
+        for nid, name in rows:
+            self._gap(
+                res,
+                nid,
+                GapType.LOW_CONFIDENCE_ENTITY_RESOLUTION,
+                f"Ненадёжное разрешение сущности: {name}",
+                about=nid,
+            )
 
     def _scan_missing_unit(self, res: ScanResult) -> None:
         rows = self.store.rows(
