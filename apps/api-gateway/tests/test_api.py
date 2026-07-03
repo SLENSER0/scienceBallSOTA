@@ -459,3 +459,11 @@ def test_evidence_assemble(client: TestClient) -> None:
     store.upsert_edge("meas:asm", "ev:asm", "SUPPORTED_BY")
     r = client.post("/api/v1/evidence/assemble", json={"node_ids": ["meas:asm"]}).json()
     assert r["count"] >= 1 and "citations" in r
+
+
+def test_admin_distribution_analysis(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/distribution-analysis").json()
+    assert "coefficients" in r or "by_phase_pair" in r
+    # the seed has a Cu matte/slag coefficient ~25
+    coeffs = r.get("coefficients", [])
+    assert any(abs((c.get("value") or 0) - 25.0) < 0.1 for c in coeffs)

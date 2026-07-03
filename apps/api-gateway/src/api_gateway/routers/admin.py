@@ -100,6 +100,14 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/distribution-analysis")
+def distribution_analysis(domain: str | None = None) -> dict:
+    """Metal distribution-coefficient analysis across phases (matte/slag/gas) (§24.7)."""
+    from kg_retrievers.distribution_analysis import analyze_distribution
+
+    return analyze_distribution(get_store(), domain=domain).as_dict()
+
+
 @router.get("/graph-algos")
 def graph_algos(top: int = 10) -> dict:
     """GDS-lite: degree + betweenness centrality over the entity graph (§12.8)."""
