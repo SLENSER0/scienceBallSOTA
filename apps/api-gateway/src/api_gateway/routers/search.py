@@ -228,6 +228,50 @@ def search_vector(q: str = Query(min_length=1), limit: int = Query(default=10, l
     return kw
 
 
+class GlobalSearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=3, ge=1, le=20)
+
+
+@router.post("/search/global")
+def search_global(req: GlobalSearchRequest) -> dict:
+    """GraphRAG global search over community summaries (§11.7/§11.9)."""
+    from kg_retrievers.community_search import global_search
+
+    ans = global_search(get_store(), req.query, limit=req.top_k)
+    store = get_store()
+    doc_ids = sorted({
+        (store.get_node(e) or {}).get("doc_id")
+        for e in ans.evidence_ids
+        if (store.get_node(e) or {}).get("doc_id")
+    })
+    return {
+        "query": ans.query,
+        "answer": ans.answer,
+        "used_community_ids": [c.community_id for c in ans.communities],
+        "sources": ans.evidence_ids,
+        "cited_doc_ids": doc_ids,
+    }
+
+
+@router.get("/graphrag/status")
+def graphrag_status() -> dict:
+    """Active GraphRAG index status + build version (§11.9/§11.10)."""
+    store = get_store()
+    rows = store.rows(
+        "MATCH (f:Node) WHERE f.label='Finding' AND f.community_id IS NOT NULL RETURN count(f)"
+    )
+    n_summaries = int(rows[0][0]) if rows else 0
+    assigned = store.rows("MATCH (n:Node) WHERE n.community_id IS NOT NULL RETURN count(n)")
+    n_assigned = int(assigned[0][0]) if assigned else 0
+    return {
+        "build_version": f"cg-{n_summaries}",
+        "communities": n_summaries,
+        "nodes_assigned": n_assigned,
+        "active": n_summaries > 0,
+    }
+
+
 @router.get("/domain/glossary")
 def glossary(q: str | None = None, lang: str | None = None, type: str | None = None) -> dict:
     from kg_schema.taxonomy import load_taxonomy

@@ -315,3 +315,12 @@ def test_metrics_has_latency_percentiles(client: TestClient) -> None:
     m = client.get("/api/v1/admin/metrics").json()["routes"]
     row = next(v for v in m.values() if v["count"] >= 1)
     assert "p50_ms" in row and "p95_ms" in row and row["p95_ms"] >= 0.0
+
+
+def test_graphrag_global_search_and_status(client: TestClient) -> None:
+    client.post("/api/v1/admin/communities")  # build the index
+    st = client.get("/api/v1/graphrag/status").json()
+    assert st["active"] is True and st["build_version"].startswith("cg-")
+    g = client.post("/api/v1/search/global", json={"query": "осмос ионный обмен вода"}).json()
+    assert "answer" in g and "used_community_ids" in g and "sources" in g
+    assert g["used_community_ids"]  # ≥1 relevant community on seed

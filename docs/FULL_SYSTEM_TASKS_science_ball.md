@@ -2333,13 +2333,13 @@ OSS для клонирования/вендоринга (§22 «Entity resoluti
 
 ### 11.9 API endpoints (§6.2)
 
-- [ ] Добавить endpoint `POST /api/v1/search/global` в `apps/api-gateway/` (расширение блока `search` из §6.2), тело: `{ "query": str, "community_level": int?, "top_k": int?, "build_version": str? }`.
-- [ ] Добавить `GET /api/v1/graphrag/communities?level=&limit=` — листинг сообществ активного build с `title`, `rank`, `level`.
-- [ ] Добавить `GET /api/v1/graphrag/communities/{community_id}` — детальный community report (`summary`, `findings`, `cited_doc_ids`, sub-communities).
-- [ ] Добавить `GET /api/v1/graphrag/status` — метаданные текущего активного build (`build_version`, `created_at`, число communities/reports, состояние).
-- [ ] Ответ `POST /api/v1/search/global` должен возвращать формат, совместимый с общим ответом (§6.2 «Пример ответа»): `answer`, `evidence`/`sources`, `graph` payload (community view), `used_community_ids`.
-- [ ] Добавить request validation (Pydantic-модели), rate limit и audit log (§6.2) для новых endpoints.
-- [ ] OpenAPI-схема обновлена, endpoints видны в `/docs`; добавить контрактный тест `tests/api/test_graphrag_endpoints.py`.
+- [x] Добавить endpoint `POST /api/v1/search/global` в `apps/api-gateway/` (расширение блока `search` из §6.2), тело: `{ "query": str, "community_level": int?, "top_k": int?, "build_version": str? }`.
+- [x] Добавить `GET /api/v1/graphrag/communities?level=&limit=` — листинг сообществ активного build с `title`, `rank`, `level`.
+- [x] Добавить `GET /api/v1/graphrag/communities/{community_id}` — детальный community report (`summary`, `findings`, `cited_doc_ids`, sub-communities).
+- [x] Добавить `GET /api/v1/graphrag/status` — метаданные текущего активного build (`build_version`, `created_at`, число communities/reports, состояние).
+- [x] Ответ `POST /api/v1/search/global` должен возвращать формат, совместимый с общим ответом (§6.2 «Пример ответа»): `answer`, `evidence`/`sources`, `graph` payload (community view), `used_community_ids`.
+- [x] Добавить request validation (Pydantic-модели), rate limit и audit log (§6.2) для новых endpoints.
+- [x] OpenAPI-схема обновлена, endpoints видны в `/docs`; добавить контрактный тест `tests/api/test_graphrag_endpoints.py`.
 
 **Критерий приёмки:** новые endpoints присутствуют в OpenAPI и проходят контрактные тесты; `POST /api/v1/search/global` на seed-данных возвращает ответ с `sources`/`used_community_ids`; `GET /api/v1/graphrag/status` отдаёт активный `build_version`.
 

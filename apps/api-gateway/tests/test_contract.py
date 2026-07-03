@@ -24,6 +24,8 @@ CRITICAL_PATHS = {
     ("get", "/api/v1/gaps/{gap_id}"),
     ("get", "/api/v1/gaps/matrix"),
     ("get", "/api/v1/entities/search"),
+    ("post", "/api/v1/search/global"),
+    ("get", "/api/v1/graphrag/status"),
     ("get", "/api/v1/search/keyword"),
     ("get", "/api/v1/search/hybrid"),
     ("get", "/api/v1/search/vector"),
