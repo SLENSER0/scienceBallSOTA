@@ -447,3 +447,15 @@ def test_gaps_ranked(client: TestClient) -> None:
     scores = [g["score"] for g in r["gaps"]]
     assert scores == sorted(scores, reverse=True)  # ranked desc
     assert all("next_experiment" in g for g in r["gaps"])
+
+
+def test_evidence_assemble(client: TestClient) -> None:
+    import api_gateway.deps as deps
+
+    store = deps.get_store()
+    store.upsert_node("meas:asm", "Measurement", name="твёрдость")
+    store.upsert_node("ev:asm", "Evidence", text="145 HV", doc_id="doc:a", page=2,
+                      evidence_strength="peer_reviewed", confidence=0.9)
+    store.upsert_edge("meas:asm", "ev:asm", "SUPPORTED_BY")
+    r = client.post("/api/v1/evidence/assemble", json={"node_ids": ["meas:asm"]}).json()
+    assert r["count"] >= 1 and "citations" in r

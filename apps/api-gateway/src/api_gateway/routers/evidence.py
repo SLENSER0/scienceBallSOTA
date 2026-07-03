@@ -15,6 +15,20 @@ _RESTRICTED = {"internal", "restricted", "commercial_secret"}
 _CURATOR = {"curator", "admin"}
 
 
+class AssembleBody(BaseModel):
+    node_ids: list[str]
+    max_per_claim: int = 5
+
+
+@router.post("/assemble")
+def assemble(body: AssembleBody, role: str = Depends(current_role)) -> dict:
+    """Assemble numbered, deduplicated citations for a set of fact nodes (§13.14)."""
+    from agent_service.evidence_assembler import assemble_evidence
+
+    result = assemble_evidence(get_store(), body.node_ids, max_per_claim=body.max_per_claim)
+    return result.as_dict()
+
+
 @router.get("/by-node/{node_id}")
 def evidence_by_node(node_id: str, role: str = Depends(current_role)) -> dict:
     """All evidence supporting a fact node — the Evidence Inspector source list (§5.2.6)."""
