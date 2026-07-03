@@ -407,3 +407,12 @@ def test_audit_redacts_secrets(client: TestClient) -> None:
     rec = next(e for e in entries if e["action"] == "test")
     assert rec["detail"]["q"] == "ok"
     assert "sk-abcdef1234567890" not in str(rec["detail"])  # secret masked
+
+
+def test_validation_error_returns_errorresponse(client: TestClient) -> None:
+    # invalid top_k triggers RequestValidationError -> uniform ErrorResponse 422 (§14.2)
+    r = client.post("/api/v1/search/hybrid", json={"query": "x", "top_k": 0})
+    assert r.status_code == 422
+    body = r.json()
+    assert body["errorCode"] == "validation_error"
+    assert body["detail"]["errors"]  # field paths + messages

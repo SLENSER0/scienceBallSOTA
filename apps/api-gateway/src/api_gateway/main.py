@@ -84,6 +84,31 @@ def create_app() -> FastAPI:
         body["message"] = redact(str(body.get("message", "")))
         return JSONResponse(body, status_code=http_status_for(exc))
 
+    from fastapi.exceptions import RequestValidationError
+
+    from kg_common.errors import ErrorResponse
+
+    @app.exception_handler(RequestValidationError)
+    def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        rid = request.headers.get("X-Request-ID")
+        body = ErrorResponse(
+            error_code="validation_error",
+            message="request validation failed",
+            detail={"errors": [{"loc": e.get("loc"), "msg": e.get("msg")} for e in exc.errors()]},
+            request_id=rid,
+        ).model_dump(by_alias=True)
+        return JSONResponse(body, status_code=422)
+
+    @app.exception_handler(Exception)
+    def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
+        # never leak an internal stack trace to the client (§14.2)
+        rid = request.headers.get("X-Request-ID")
+        _log.error("unhandled", error=redact(str(exc))[:200], path=request.url.path)
+        body = ErrorResponse(
+            error_code="internal_error", message="internal server error", request_id=rid
+        ).model_dump(by_alias=True)
+        return JSONResponse(body, status_code=500)
+
     @app.get("/api/v1/admin/health")
     def health() -> Any:
         # Aggregated readiness: 503 if a critical dependency (the graph) is down,
