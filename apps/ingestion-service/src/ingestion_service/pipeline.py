@@ -15,6 +15,8 @@ from ingestion_service.chunker import chunk_pages
 from ingestion_service.parsers import ParsedDoc
 from kg_common import evidence_id, get_logger, make_id
 from kg_common.storage.base import CoverageEvent, MetaStore
+from kg_extractors.composition_extractor import extract_compositions
+from kg_extractors.processing_extractor import extract_processing
 from kg_extractors.rule_extractor import extract_rules
 from kg_retrievers.graph_store import KuzuGraphStore
 from kg_schema.extraction import DocumentExtraction
@@ -209,7 +211,7 @@ class IngestionPipeline:
                     llm_used += 1
                     self.stats.llm_chunks += 1
 
-                self._apply_extraction(ex, doc_id, chunk_id, ch.page)
+                self._apply_extraction(ex, doc_id, chunk_id, ch.page, ch.text)
 
         return {"status": "ok", "title": doc.title, "chunks": len(chunks)}
 
@@ -236,7 +238,7 @@ class IngestionPipeline:
             )
 
     def _apply_extraction(
-        self, ex: DocumentExtraction, doc_id: str, chunk_id: str, page: int
+        self, ex: DocumentExtraction, doc_id: str, chunk_id: str, page: int, text: str = ""
     ) -> None:
         self._log_coverage(ex, doc_id, chunk_id)
         material_id: str | None = None
@@ -300,6 +302,43 @@ class IngestionPipeline:
                     **self._prov(confidence=m.confidence),
                 )
             self.stats.measurements += 1
+
+        if text:
+            self._apply_composition(text, chunk_id, material_id)
+            self._apply_processing(text, chunk_id)
+
+    def _apply_composition(self, text: str, chunk_id: str, material_id: str | None) -> None:
+        """Materialize Composition→CONTAINS_ELEMENT→ChemicalElement from prose (§6.4)."""
+        for cm in extract_compositions(text):
+            comp_id = make_id("Composition", f"{chunk_id}:{'-'.join(cm.element_symbols())}")
+            self.store.upsert_node(
+                comp_id, "Composition", name=cm.text, base_element=cm.base_element or "",
+                **self._prov(source_type="paragraph"),
+            )
+            if material_id:
+                self.store.upsert_edge(material_id, comp_id, "HAS_COMPOSITION", **self._prov())
+            for sym, frac in cm.elements.items():
+                el_id = make_id("ChemicalElement", sym)
+                self.store.upsert_node(el_id, "ChemicalElement", name=sym, symbol=sym)
+                self.store.upsert_edge(
+                    comp_id, el_id, "CONTAINS_ELEMENT",
+                    **self._prov(fraction=frac if frac is not None else -1.0),
+                )
+
+    def _apply_processing(self, text: str, chunk_id: str) -> None:
+        """Materialize ProcessingRegime→HAS_PARAMETER→Parameter from prose (§6.5)."""
+        for pm in extract_processing(text):
+            reg_id = make_id("ProcessingRegime", pm.method)
+            self.store.upsert_node(
+                reg_id, "ProcessingRegime", name=pm.method, **self._prov(source_type="paragraph")
+            )
+            self.store.upsert_edge(chunk_id, reg_id, "MENTIONS", **self._prov())
+            for pname, pval in pm.parameters.items():
+                par_id = make_id("Parameter", f"{pm.method}:{pname}:{pval}")
+                self.store.upsert_node(
+                    par_id, "Parameter", name=pname, value_normalized=pval, **self._prov()
+                )
+                self.store.upsert_edge(reg_id, par_id, "HAS_PARAMETER", **self._prov())
             self.stats.by_label["Measurement"] += 1
 
 

@@ -94,3 +94,31 @@ def test_pipeline_logs_coverage_to_metastore() -> None:
         assert "Material" in stats
     finally:
         store.close()
+
+
+def test_pipeline_materializes_composition_and_processing() -> None:
+    # §6.4/§6.5 integration: prose with an alloy + a process yields Composition/
+    # ChemicalElement and ProcessingRegime/Parameter nodes.
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    text = (
+        "Сплав Al-4Cu-1Mg подвергали старению. Электроэкстракция никеля велась "
+        "при 60 °C, плотность тока 250 А/м²."
+    )
+    doc = ParsedDoc(path="x.txt", title="Состав", doc_type="article", file_hash="cp1",
+                    lang="ru", pages=[(1, text)], country="russia", year=2023)
+    try:
+        IngestionPipeline(store).ingest(doc)
+        by = store.counts_by_label()
+        assert by.get("ChemicalElement", 0) >= 2
+        assert by.get("Composition", 0) >= 1
+        assert by.get("ProcessingRegime", 0) >= 1
+        assert by.get("Parameter", 0) >= 1
+        # CONTAINS_ELEMENT wiring exists
+        n = store.rows(
+            "MATCH (c:Node {label:'Composition'})-[:Rel {type:'CONTAINS_ELEMENT'}]->"
+            "(e:Node {label:'ChemicalElement'}) RETURN count(*)"
+        )
+        assert n[0][0] >= 2
+    finally:
+        store.close()
