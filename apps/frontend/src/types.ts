@@ -127,6 +127,7 @@ export interface AdvisorCandidate {
   limitations: string[];
   gaps: string[];
   n_measurements: number;
+  relevance: number; // 2=on-topic, 1=same domain, 0=off-topic
   model?: string | null;
 }
 
@@ -138,4 +139,34 @@ export interface AdvisorResult {
   summary: string;
   contradictions: Record<string, unknown>[];
   usedModels: string[];
+}
+
+export interface ContradictionSummary {
+  id: string;
+  name: string;
+  status?: string | null;
+  values: number[];
+  unit?: string | null;
+  material?: string | null;
+  spread: number;
+}
+
+export interface ContradictionSide {
+  value: number | null;
+  unit: string | null;
+  property: string | null;
+  practice: string | null;
+  year: number | null;
+  country: string | null;
+  evidence: string | null;
+}
+
+export interface ContradictionAnalysis {
+  id: string;
+  name: string;
+  verdict: string;
+  explanation: string;
+  sides: ContradictionSide[];
+  recommendation: string;
+  model?: string | null;
 }

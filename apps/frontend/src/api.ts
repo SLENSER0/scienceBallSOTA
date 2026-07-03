@@ -2,6 +2,8 @@ import type {
   AdvisorResult,
   AnswerPayload,
   AuditEntry,
+  ContradictionAnalysis,
+  ContradictionSummary,
   CoverageDomain,
   GlossaryTerm,
   GraphResponse,
@@ -291,6 +293,14 @@ export const api = {
   adviseStreamUrl(query: string, geography = 'all', topK = 5): string {
     const g = geography && geography !== 'all' ? `&geography=${encodeURIComponent(geography)}` : '';
     return `/api/v1/advise/stream?query=${encodeURIComponent(query)}&top_k=${topK}${g}`;
+  },
+
+  // -- Agentic contradiction arbiter ----------------------------------------
+  contradictionsList(limit = 40): Promise<{ contradictions: ContradictionSummary[] }> {
+    return req(`/api/v1/arbiter/contradictions?limit=${limit}`);
+  },
+  analyzeContradiction(cid: string): Promise<ContradictionAnalysis> {
+    return req(`/api/v1/arbiter/${encodeURIComponent(cid)}/analyze`, { method: 'POST' });
   },
 };
 

@@ -12,6 +12,7 @@ def attach_routers(app: FastAPI) -> None:
         auth,
         chat,
         comparison,
+        contradictions,
         curation,
         documents,
         evidence,
@@ -48,3 +49,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(research.router)
     app.include_router(documents.router)
     app.include_router(advise.router)
+    app.include_router(contradictions.router)

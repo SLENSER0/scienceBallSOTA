@@ -70,7 +70,10 @@ export function AdvisorView() {
     });
     es.addEventListener('candidate', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as AdvisorCandidate;
-      setCards((prev) => [...prev, c].sort((a, b) => b.fit_score - a.fit_score));
+      // On-topic candidates always rank above off-topic ones, then by fit.
+      setCards((prev) =>
+        [...prev, c].sort((a, b) => b.relevance - a.relevance || b.fit_score - a.fit_score),
+      );
     });
     es.addEventListener('summary', (e) => {
       setSummary(JSON.parse((e as MessageEvent).data).text ?? '');
@@ -228,6 +231,8 @@ function CandidateCard({ c, rank }: { c: AdvisorCandidate; rank: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-ink">{c.name}</span>
             <span className="chip text-faint">{PRACTICE[c.practice_type] ?? c.practice_type}</span>
+            {c.relevance === 1 && <span className="chip text-gap border-gap/40">смежная</span>}
+            {c.relevance === 0 && <span className="chip text-faint border-line">вне темы</span>}
             {c.model && (
               <span className="font-mono text-[10px] text-faint" title="агент-оценщик">
                 {c.model}

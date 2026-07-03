@@ -39,6 +39,7 @@ class AdvisorCandidate:
     limitations: list[str] = field(default_factory=list)
     gaps: list[str] = field(default_factory=list)
     n_measurements: int = 0
+    relevance: int = 0  # 2=on-topic (name match), 1=same domain, 0=off-topic
     model: str | None = None
 
 
@@ -62,6 +63,61 @@ class AdvisorResult:
             "contradictions": self.contradictions,
             "usedModels": self.used_models,
         }
+
+
+_STOP = {
+    "методы",
+    "метод",
+    "способы",
+    "способ",
+    "технологии",
+    "для",
+    "при",
+    "из",
+    "как",
+    "какие",
+    "и",
+    "в",
+    "на",
+    "с",
+    "по",
+    "воды",
+    "вода",
+    "практика",
+    "практике",
+}
+
+
+def _terms(text: str) -> set[str]:
+    import re
+
+    return {t for t in re.findall(r"[а-яёa-z0-9]+", text.lower()) if len(t) >= 4 and t not in _STOP}
+
+
+def _query_terms(intent: Any, query: str) -> set[str]:
+    """Significant surface terms the query is *about* (entities + content words)."""
+    terms: set[str] = _terms(query)
+    for e in intent.entities:
+        for attr in ("canonical_ru", "canonical_en", "id", "name"):
+            v = getattr(e, attr, None)
+            if v:
+                terms |= _terms(str(v))
+    return terms
+
+
+def _relevance_tier(sol: dict[str, Any], q_terms: set[str], intent: Any) -> int:
+    """2 = candidate name matches a query term (on-topic); 1 = same domain; 0 = off-topic.
+
+    Prevents the adversarial failure where an off-topic technology the agent itself rates
+    ~10% outranks the on-topic one it can't score for lack of data (which sorted to 0).
+    """
+    name = f"{sol.get('name', '')} {sol.get('id', '')}"
+    if _terms(name) & q_terms:
+        return 2
+    dom = sol.get("domain")
+    if dom and dom in set(intent.domains):
+        return 1
+    return 0
 
 
 # -- prompt building --------------------------------------------------------
@@ -95,24 +151,33 @@ def _constraints_text(intent: Any) -> str:
 
 _EVAL_SYSTEM = (
     "Ты — инженер-технолог по горному делу и металлургии. Оцени, насколько технология "
-    "подходит под условия пользователя, СТРОГО опираясь на приведённые данные. Не выдумывай "
-    'чисел. Верни JSON: {"fit_score": 0-100, "verdict": "1 фраза", '
-    '"supports": ["аргументы за, с числами"], "limitations": ["ограничения"], '
+    "подходит под условия пользователя, СТРОГО опираясь на приведённые данные. Правила: "
+    "(1) НЕ выдумывай чисел; называй число «подтверждённым» только если оно явно есть в "
+    "«измерениях из графа». (2) Если это generic-значение без опоры на граф — не считай его "
+    "доказательством. (3) Если данных по технологии почти нет — fit_score НЕ выше 40. "
+    "(4) Если технология вне темы запроса (relevance=вне темы) — fit_score НЕ выше 15. "
+    'Верни JSON: {"fit_score": 0-100, "verdict": "1 фраза", '
+    '"supports": ["аргументы за, только с числами из графа"], "limitations": ["ограничения"], '
     '"gaps": ["чего не хватает в данных"]}.'
 )
 
+_REL_LABEL = {2: "прямо на тему запроса", 1: "смежная область", 0: "вне темы запроса"}
 
-def _evaluate_candidate(sol: dict[str, Any], query: str, constraints: str) -> AdvisorCandidate:
+
+def _evaluate_candidate(
+    sol: dict[str, Any], query: str, constraints: str, q_terms: set[str], intent: Any
+) -> AdvisorCandidate:
     """One reasoning agent per candidate technology (grounded in its graph facts)."""
     from kg_extractors.llm import get_llm
 
     name = sol.get("name") or sol.get("id")
+    tier = _relevance_tier(sol, q_terms, intent)
     limitations = [x for x in sol.get("limitations", []) if x][:6]
     applic = [x for x in sol.get("applicability", []) if x][:6]
     meas = _measurements_text(sol)
     user = (
         f"Запрос: {query}\n{constraints}\n\n"
-        f"Технология: {name}\n"
+        f"Технология: {name}  (relevance: {_REL_LABEL[tier]})\n"
         f"Измерения из графа: {meas}\n"
         f"Область применимости: {'; '.join(applic) or 'н/д'}\n"
         f"Известные ограничения: {'; '.join(limitations) or 'н/д'}\n\n"
@@ -145,6 +210,7 @@ def _evaluate_candidate(sol: dict[str, Any], query: str, constraints: str) -> Ad
         limitations=lim,
         gaps=gaps,
         n_measurements=len(sol.get("measurements", [])),
+        relevance=tier,
         model=model,
     )
 
@@ -179,6 +245,11 @@ def _synthesize(
 
 
 # -- orchestration ----------------------------------------------------------
+def _rank_key(c: AdvisorCandidate) -> tuple[int, int]:
+    # On-topic candidates ALWAYS outrank off-topic ones; then by fit (adversarial fix #1).
+    return (c.relevance, c.fit_score)
+
+
 def _prepare(query: str, store: Any, geography: str | None, top_k: int):  # type: ignore[no-untyped-def]
     intent = parse_query(query)
     if geography and geography != "all":
@@ -186,20 +257,26 @@ def _prepare(query: str, store: Any, geography: str | None, top_k: int):  # type
     retrieval = GraphRetriever(store).retrieve(intent)
     candidates = retrieval.solutions[: max(1, min(top_k, _MAX_CANDIDATES))]
     constraints = _constraints_text(intent)
-    return intent, retrieval, candidates, constraints
+    q_terms = _query_terms(intent, query)
+    return intent, retrieval, candidates, constraints, q_terms
 
 
 def advise(
     query: str, store: Any, *, geography: str | None = None, top_k: int = 5
 ) -> AdvisorResult:
     """Run the full multi-agent advisory synchronously and return the ranked result."""
-    intent, retrieval, candidates, constraints = _prepare(query, store, geography, top_k)
+    intent, retrieval, candidates, constraints, q_terms = _prepare(query, store, geography, top_k)
 
     evals: list[AdvisorCandidate] = []
     if candidates:
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-            evals = list(pool.map(lambda c: _evaluate_candidate(c, query, constraints), candidates))
-    evals.sort(key=lambda c: c.fit_score, reverse=True)
+            evals = list(
+                pool.map(
+                    lambda c: _evaluate_candidate(c, query, constraints, q_terms, intent),
+                    candidates,
+                )
+            )
+    evals.sort(key=_rank_key, reverse=True)
 
     summary, sum_model = _synthesize(query, evals, retrieval.contradictions)
     used = sorted({m for c in evals if (m := c.model)} | ({sum_model} if sum_model else set()))
@@ -216,18 +293,21 @@ def advise(
 
 def stream_advise(query: str, store: Any, *, geography: str | None = None, top_k: int = 5):  # type: ignore[no-untyped-def]
     """Generator yielding (event, data) as each candidate agent finishes — live agentic feel."""
-    _intent, retrieval, candidates, constraints = _prepare(query, store, geography, top_k)
+    intent, retrieval, candidates, constraints, q_terms = _prepare(query, store, geography, top_k)
     yield "constraints", {"text": constraints, "candidates": len(candidates)}
 
     evals: list[AdvisorCandidate] = []
     if candidates:
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-            futures = [pool.submit(_evaluate_candidate, c, query, constraints) for c in candidates]
+            futures = [
+                pool.submit(_evaluate_candidate, c, query, constraints, q_terms, intent)
+                for c in candidates
+            ]
             for fut in as_completed(futures):  # stream each card the instant its agent finishes
                 cand = fut.result()
                 evals.append(cand)
                 yield "candidate", asdict(cand)
-    evals.sort(key=lambda c: c.fit_score, reverse=True)
+    evals.sort(key=_rank_key, reverse=True)
 
     summary, sum_model = _synthesize(query, evals, retrieval.contradictions)
     yield "summary", {"text": summary}

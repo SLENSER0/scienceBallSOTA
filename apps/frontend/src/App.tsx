@@ -13,6 +13,7 @@ import {
   ClipboardList,
   ShieldCheck,
   Bot,
+  GitCompareArrows,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -25,6 +26,7 @@ import { CoverageView } from './components/CoverageView';
 import { GapsView } from './components/GapsView';
 import { GlossaryView } from './components/GlossaryView';
 import { AdvisorView } from './components/AdvisorView';
+import { ContradictionsView } from './components/ContradictionsView';
 import { EntityDetailView } from './components/EntityDetailView';
 import { CurationView } from './components/CurationView';
 import { AdminView } from './components/AdminView';
@@ -40,6 +42,7 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
   // External partners get a restricted view — no internal gap/risk analytics.
   { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'contradictions', label: 'Противоречия', icon: GitCompareArrows, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'entities', label: 'Сущности', icon: Boxes },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
   // Curation + governance are internal-team surfaces.
@@ -134,6 +137,7 @@ export function App() {
           {view === 'compare' && <CompareView />}
           {view === 'coverage' && <CoverageView />}
           {view === 'gaps' && <GapsView />}
+          {view === 'contradictions' && <ContradictionsView />}
           {view === 'entities' && <EntityDetailView />}
           {view === 'glossary' && <GlossaryView />}
           {view === 'curation' && <CurationView />}

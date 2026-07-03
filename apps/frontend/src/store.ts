@@ -12,7 +12,8 @@ export type View =
   | 'entities'
   | 'curation'
   | 'admin'
-  | 'advisor';
+  | 'advisor'
+  | 'contradictions';
 
 interface AppState {
   view: View;
