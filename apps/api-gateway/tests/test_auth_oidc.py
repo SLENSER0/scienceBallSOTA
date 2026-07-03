@@ -62,7 +62,11 @@ def test_public_config_enabled(monkeypatch) -> None:
         oidc_audience = "science-ball"
 
     monkeypatch.setattr(auth_oidc, "get_settings", lambda: _S())
+    # Discovery is unreachable in the test env → falls back to the issuer-root path.
+    monkeypatch.setattr(
+        auth_oidc, "_discovery", lambda _i: (_ for _ in ()).throw(RuntimeError("offline"))
+    )
     cfg = public_oidc_config()
     assert cfg["enabled"] is True
     assert cfg["client_id"] == "science-ball"
-    assert cfg["authorize_url"].endswith("/application/o/authorize/")
+    assert cfg["authorize_url"].endswith("/authorize/")

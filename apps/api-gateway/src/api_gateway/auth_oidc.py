@@ -68,12 +68,17 @@ def role_for_groups(groups: list[str]) -> str:
 
 
 @lru_cache(maxsize=4)
-def _jwks_client(issuer: str) -> PyJWKClient:
-    """Cached JWKS client for the issuer's OIDC discovery document."""
+def _discovery(issuer: str) -> dict[str, Any]:
+    """Cached OIDC discovery document for the issuer."""
     disc = issuer.rstrip("/") + "/.well-known/openid-configuration"
     with urllib.request.urlopen(disc, timeout=5) as resp:
-        meta = json.loads(resp.read().decode())
-    return PyJWKClient(meta["jwks_uri"])
+        return json.loads(resp.read().decode())
+
+
+@lru_cache(maxsize=4)
+def _jwks_client(issuer: str) -> PyJWKClient:
+    """Cached JWKS client from the issuer's discovery document."""
+    return PyJWKClient(_discovery(issuer)["jwks_uri"])
 
 
 def verify_oidc_token(token: str) -> dict[str, Any] | None:
@@ -114,10 +119,17 @@ def public_oidc_config() -> dict[str, Any]:
     s = get_settings()
     if not s.oidc_issuer:
         return {"enabled": False}
+    # Prefer the issuer's real authorization_endpoint (from discovery); fall back
+    # to the conventional authentik path if discovery is briefly unreachable.
+    authorize = s.oidc_issuer.rstrip("/") + "/authorize/"
+    try:
+        authorize = _discovery(s.oidc_issuer).get("authorization_endpoint", authorize)
+    except Exception:
+        pass
     return {
         "enabled": True,
         "issuer": s.oidc_issuer,
         "client_id": s.oidc_client_id,
-        "authorize_url": s.oidc_issuer.rstrip("/") + "/application/o/authorize/",
+        "authorize_url": authorize,
         "scopes": "openid profile email groups",
     }
