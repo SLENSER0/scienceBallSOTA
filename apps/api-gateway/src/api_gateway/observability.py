@@ -47,7 +47,8 @@ METRICS = Metrics()
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
-        rid = uuid.uuid4().hex[:12]
+        # honor an inbound request id so a trace is continuous across services (§18.2)
+        rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
         structlog.contextvars.bind_contextvars(request_id=rid)
         route = f"{request.method} {request.url.path}"
         t0 = time.perf_counter()
@@ -55,6 +56,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             error = response.status_code >= 500
+            response.headers["X-Request-ID"] = rid  # propagate downstream + to client
             return response
         except Exception:
             error = True
