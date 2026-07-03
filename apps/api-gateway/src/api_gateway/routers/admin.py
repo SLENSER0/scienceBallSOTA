@@ -100,6 +100,17 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/validate-shapes")
+def validate_shapes(limit: int = 500) -> dict:
+    """SHACL-style conformance report over graph nodes — FAIR/evidence-first (§24.19)."""
+    from kg_schema.shapes import validate_nodes
+
+    store = get_store()
+    rows = store.rows(f"MATCH (n:Node) RETURN n LIMIT {int(limit)}")
+    nodes = [store._node_dict(r[0]) for r in rows]
+    return validate_nodes(nodes)
+
+
 @router.get("/absence-map")
 def absence_map(domain: str | None = None) -> dict:
     """Map of the unknown: material×property absence-confidence grid (§25.11)."""

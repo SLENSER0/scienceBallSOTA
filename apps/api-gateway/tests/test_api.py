@@ -369,3 +369,9 @@ def test_admin_absence_map_and_coverage_matrix(client: TestClient) -> None:
     assert "summary" in am or "cells" in am or "by_status" in am
     cm = client.get("/api/v1/admin/coverage-matrix").json()
     assert "matrix" in cm and "by_owner" in cm and "timeline" in cm
+
+
+def test_admin_validate_shapes(client: TestClient) -> None:
+    r = client.get("/api/v1/admin/validate-shapes").json()
+    assert "conforms" in r and "total" in r and "by_severity" in r
+    assert r["total"] >= 1
