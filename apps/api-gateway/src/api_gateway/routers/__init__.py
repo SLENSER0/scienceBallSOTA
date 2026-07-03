@@ -17,6 +17,7 @@ def attach_routers(app: FastAPI) -> None:
         documents,
         evidence,
         experiments,
+        insights,
         export,
         gaps,
         graph,
@@ -50,3 +51,4 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(documents.router)
     app.include_router(advise.router)
     app.include_router(contradictions.router)
+    app.include_router(insights.router)

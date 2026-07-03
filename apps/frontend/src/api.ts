@@ -2,6 +2,7 @@ import type {
   AdvisorResult,
   AnswerPayload,
   AuditEntry,
+  Briefing,
   ContradictionAnalysis,
   ContradictionSummary,
   CoverageDomain,
@@ -9,6 +10,7 @@ import type {
   GraphResponse,
   LineageRun,
   NodeRow,
+  PrioritizedGap,
   SavedView,
 } from './types';
 
@@ -301,6 +303,14 @@ export const api = {
   },
   analyzeContradiction(cid: string): Promise<ContradictionAnalysis> {
     return req(`/api/v1/arbiter/${encodeURIComponent(cid)}/analyze`, { method: 'POST' });
+  },
+
+  // -- Agentic insights (командный центр + карта пробелов) ------------------
+  briefing(): Promise<Briefing> {
+    return req('/api/v1/insights/briefing');
+  },
+  gapsPrioritized(limit = 12): Promise<{ gaps: PrioritizedGap[]; count: number; usedModels: string[] }> {
+    return req(`/api/v1/insights/gaps-prioritized?limit=${limit}`);
   },
 };
 

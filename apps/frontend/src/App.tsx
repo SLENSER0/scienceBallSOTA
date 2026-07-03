@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Bot,
   GitCompareArrows,
+  Radar,
+  Target,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -26,6 +28,8 @@ import { CoverageView } from './components/CoverageView';
 import { GapsView } from './components/GapsView';
 import { GlossaryView } from './components/GlossaryView';
 import { AdvisorView } from './components/AdvisorView';
+import { DashboardView } from './components/DashboardView';
+import { GapMapView } from './components/GapMapView';
 import { ContradictionsView } from './components/ContradictionsView';
 import { EntityDetailView } from './components/EntityDetailView';
 import { CurationView } from './components/CurationView';
@@ -33,6 +37,7 @@ import { AdminView } from './components/AdminView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
 
 const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
+  { id: 'dashboard', label: 'Обзор', icon: Radar },
   { id: 'chat', label: 'Диалог', icon: MessagesSquare },
   { id: 'advisor', label: 'Советник', icon: Bot },
   { id: 'ask', label: 'Запрос', icon: Network },
@@ -42,6 +47,7 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
   // External partners get a restricted view — no internal gap/risk analytics.
   { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'gapmap', label: 'Карта пробелов', icon: Target, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'contradictions', label: 'Противоречия', icon: GitCompareArrows, roles: ['researcher', 'analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'entities', label: 'Сущности', icon: Boxes },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
@@ -130,6 +136,7 @@ export function App() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">
+          {view === 'dashboard' && <DashboardView />}
           {view === 'chat' && <ChatView />}
           {view === 'advisor' && <AdvisorView />}
           {view === 'ask' && <AskView />}
@@ -137,6 +144,7 @@ export function App() {
           {view === 'compare' && <CompareView />}
           {view === 'coverage' && <CoverageView />}
           {view === 'gaps' && <GapsView />}
+          {view === 'gapmap' && <GapMapView />}
           {view === 'contradictions' && <ContradictionsView />}
           {view === 'entities' && <EntityDetailView />}
           {view === 'glossary' && <GlossaryView />}

@@ -13,7 +13,9 @@ export type View =
   | 'curation'
   | 'admin'
   | 'advisor'
-  | 'contradictions';
+  | 'contradictions'
+  | 'dashboard'
+  | 'gapmap';
 
 interface AppState {
   view: View;
@@ -75,7 +77,7 @@ function loadSession(): { user: string; role: string; token: string | null } | n
 const saved = loadSession();
 
 export const useStore = create<AppState>((set) => ({
-  view: 'chat',
+  view: 'dashboard',
   setView: (view) => set({ view }),
   role: saved?.role ?? 'researcher',
   setRole: (role) => set({ role }),

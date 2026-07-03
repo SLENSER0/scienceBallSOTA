@@ -170,3 +170,40 @@ export interface ContradictionAnalysis {
   recommendation: string;
   model?: string | null;
 }
+
+export interface DomainCoverageRow {
+  domain: string;
+  sources: number;
+  measurements: number;
+  gaps: number;
+  contradictions: number;
+  risk: string;
+}
+
+export interface KnowledgeSnapshot {
+  counts: { nodes: number; rels: number };
+  byLabel: Record<string, number>;
+  coverage: { by_domain: DomainCoverageRow[]; risk_domains: string[]; totals: Record<string, number> };
+  gaps: { name: string; type?: string; domain?: string }[];
+  contradictions: ContradictionSummary[];
+  topTechnologies: { id: string; name: string; degree: number }[];
+}
+
+export interface Briefing {
+  snapshot: KnowledgeSnapshot;
+  briefing: string;
+  model?: string | null;
+}
+
+export interface PrioritizedGap {
+  id: string;
+  name: string;
+  type?: string | null;
+  domain?: string | null;
+  priority: number;
+  impact: number;
+  feasibility: number;
+  rationale: string;
+  action: string;
+  model?: string | null;
+}
