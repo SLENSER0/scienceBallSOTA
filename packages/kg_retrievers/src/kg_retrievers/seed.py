@@ -549,6 +549,113 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     e(gap, heap, "ABOUT_REGIME", confidence=0.9)
     e(heap, ni, "APPLIES_TO", confidence=0.6)
 
+    # =====================================================================
+    # 7) Flash smelting (ПВП) — Cu distribution between matte and slag (pyrometallurgy)
+    # =====================================================================
+    conc = make_id("Material", "copper concentrate flash")
+    n(
+        conc,
+        "Material",
+        name="Медный концентрат",
+        canonical_name="copper concentrate",
+        material_class="concentrate",
+        aliases_text="copper concentrate|медный концентрат",
+        domain="pyrometallurgy",
+        **_prov(),
+    )
+    matte = make_id("Material", "copper matte")
+    n(
+        matte,
+        "Material",
+        name="Медный штейн",
+        canonical_name="copper matte",
+        material_class="matte",
+        aliases_text="matte|штейн|медный штейн",
+        domain="pyrometallurgy",
+        **_prov(),
+    )
+    slag = make_id("Material", "flash smelting slag")
+    n(
+        slag,
+        "Material",
+        name="Шлак взвешенной плавки",
+        canonical_name="smelting slag",
+        material_class="slag",
+        aliases_text="slag|шлак",
+        domain="pyrometallurgy",
+        **_prov(),
+    )
+    fs_regime = make_id("ProcessingRegime", "flash smelting copper")
+    n(
+        fs_regime,
+        "ProcessingRegime",
+        name="Взвешенная плавка медного концентрата",
+        canonical_name="flash smelting",
+        operation="flash_smelting",
+        aliases_text="flash smelting|взвешенная плавка|ПВП",
+        domain="pyrometallurgy",
+        **_prov(),
+    )
+    fs_sol = make_id("TechnologySolution", "flash smelting furnace scheme")
+    n(
+        fs_sol,
+        "TechnologySolution",
+        name="Печь взвешенной плавки (ПВП)",
+        canonical_name="flash smelting furnace",
+        operation="flash_smelting",
+        aliases_text="flash smelting furnace|ПВП|печь взвешенной плавки|Outokumpu",
+        domain="pyrometallurgy",
+        practice_type="russia",
+        **_prov(),
+    )
+    fs_furnace = make_id("Equipment", "flash smelting furnace")
+    n(
+        fs_furnace,
+        "Equipment",
+        name="Печь взвешенной плавки",
+        canonical_name="flash smelting furnace",
+        equipment_class="furnace",
+        domain="pyrometallurgy",
+        **_prov(),
+    )
+    l_cu = make_id("Measurement", "cu distribution matte slag")
+    n(
+        l_cu,
+        "Measurement",
+        name="Коэффициент распределения Cu штейн/шлак",
+        property_name="distribution_coefficient",
+        value_normalized=25.0,
+        normalized_unit="ratio",
+        domain="pyrometallurgy",
+        confidence=0.85,
+        **_prov(),
+    )
+    ev_fs = evidence(
+        "fs-cu",
+        "Коэффициент распределения меди между штейном и шлаком L(Cu) ≈ 25 при ПВП.",
+        "paper:flash-2021",
+        4,
+        "peer_reviewed",
+    )
+    p_fs = paper(
+        "flash-2021",
+        "Распределение меди при взвешенной плавке медного концентрата",
+        2021,
+        "russia",
+        "peer_reviewed",
+        "russia",
+    )
+    e(fs_sol, fs_regime, "APPLIES_TO", confidence=0.9)
+    e(fs_regime, conc, "HAS_MATERIAL", confidence=0.85)
+    e(fs_regime, fs_furnace, "USED_EQUIPMENT", confidence=0.8)
+    e(matte, slag, "PARTITIONED_TO_PHASE", confidence=0.8)
+    e(l_cu, matte, "DISTRIBUTES_BETWEEN", confidence=0.85, evidence_ids=[ev_fs])
+    e(l_cu, slag, "DISTRIBUTES_BETWEEN", confidence=0.85, evidence_ids=[ev_fs])
+    e(l_cu, matte, "ABOUT_MATERIAL", confidence=0.85)
+    e(l_cu, ev_fs, "SUPPORTED_BY", confidence=0.85, evidence_ids=[ev_fs])
+    # link the measurement to its dated Paper so year-window filtering applies
+    e(l_cu, p_fs, "SUPPORTED_BY", confidence=0.85, evidence_ids=[ev_fs])
+
     # Experts / labs
     lab = make_id("Lab", "hydrometallurgy lab")
     n(

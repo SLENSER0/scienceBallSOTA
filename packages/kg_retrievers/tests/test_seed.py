@@ -68,3 +68,47 @@ def test_seed_measurement_units_are_canonical() -> None:
             assert canon == unit, f"seed unit {unit!r} is not canonical (→ {canon!r})"
     finally:
         store.close()
+
+
+def test_domain_ontology_24_2() -> None:
+    # §24.2 acceptance: enums valid; seed covers the 6 scenarios incl. flash
+    # smelting (ПВП) with metal-distribution edges.
+    from kg_schema.enums import (
+        EvidenceStrength,
+        MaterialClass,
+        MetallurgicalDomain,
+        PracticeGeography,
+    )
+
+    assert {"hydrometallurgy", "pyrometallurgy", "electrometallurgy"} <= {
+        d.value for d in MetallurgicalDomain
+    }
+    assert {"russia", "cis", "foreign", "global", "unknown"} == {p.value for p in PracticeGeography}
+    assert "peer_reviewed" in {e.value for e in EvidenceStrength}
+    assert {"matte", "slag", "catholyte", "anolyte", "mine_water"} <= {
+        m.value for m in MaterialClass
+    }
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        build_seed_graph(store)
+        # flash smelting (ПВП) scenario present
+        fs = store.rows("MATCH (n:Node) WHERE n.operation='flash_smelting' RETURN count(n)")
+        assert fs[0][0] >= 2
+        # metal-distribution relationship (matte/slag) exercised
+        dist = store.rows(
+            "MATCH (m:Node {property_name:'distribution_coefficient'})"
+            "-[:Rel {type:'DISTRIBUTES_BETWEEN'}]->(x:Node) RETURN count(x)"
+        )
+        assert dist[0][0] >= 2
+        # all six scenario domains represented
+        domains = {
+            r[0]
+            for r in store.rows(
+                "MATCH (n:Node) WHERE n.domain IS NOT NULL RETURN DISTINCT n.domain"
+            )
+        }
+        assert {"water_treatment", "electrometallurgy", "environment", "pyrometallurgy"} <= domains
+    finally:
+        store.close()

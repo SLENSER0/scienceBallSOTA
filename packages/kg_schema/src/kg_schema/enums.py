@@ -89,6 +89,8 @@ class CurationTargetType(StrEnum):
 
 class MaterialClass(StrEnum):
     ORE = "ore"
+    ORE_BODY = "ore_body"
+    DEPOSIT = "deposit"
     CONCENTRATE = "concentrate"
     MATTE = "matte"
     SLAG = "slag"
@@ -97,9 +99,19 @@ class MaterialClass(StrEnum):
     ALLOY = "alloy"
     SOLUTION = "solution"
     ELECTROLYTE = "electrolyte"
+    CATHOLYTE = "catholyte"
+    ANOLYTE = "anolyte"
+    LEACH_SOLUTION = "leach_solution"
+    PREGNANT_LEACH_SOLUTION = "pregnant_leach_solution"
+    RAFFINATE = "raffinate"
     GAS = "gas"
+    FLUE_GAS = "flue_gas"
     WATER = "water"
+    MINE_WATER = "mine_water"
+    PROCESS_WATER = "process_water"
     WASTE = "waste"
+    TECHNOGENIC_GYPSUM = "technogenic_gypsum"
+    COAL_WASTE = "coal_waste"
     REAGENT = "reagent"
     OTHER = "other"
 
