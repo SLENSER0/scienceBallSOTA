@@ -19,6 +19,20 @@ export interface QueryOptions {
   useLlm?: boolean;
 }
 
+export interface ChatSession {
+  session_id: string;
+  title: string;
+  created_at: string;
+  last_message_at: string;
+}
+
+export interface ChatMessage {
+  message_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}
+
 export const api = {
   query(query: string, opts: QueryOptions = {}): Promise<AnswerPayload> {
     return req<AnswerPayload>('/api/v1/query', {
@@ -60,4 +74,24 @@ export const api = {
     return req('/api/v1/comparison', { method: 'POST', body: JSON.stringify({ query }) });
   },
   exportUrl: '/api/v1/export',
+
+  // -- Chat sessions (§14.4) ------------------------------------------------
+  createSession(title = ''): Promise<{ session_id: string; created_at: string; user_id: string }> {
+    return req('/api/v1/chat/sessions', { method: 'POST', body: JSON.stringify({ title }) });
+  },
+  listSessions(): Promise<{ sessions: ChatSession[]; count: number }> {
+    return req('/api/v1/chat/sessions');
+  },
+  getSession(sid: string): Promise<{ session_id: string; messages: ChatMessage[] }> {
+    return req(`/api/v1/chat/sessions/${encodeURIComponent(sid)}`);
+  },
+  postMessage(sid: string, content: string): Promise<{ message_id: string; stream_url: string }> {
+    return req(`/api/v1/chat/sessions/${encodeURIComponent(sid)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  },
+  chatExportUrl(sid: string, mid: string, format = 'md'): string {
+    return `/api/v1/chat/sessions/${encodeURIComponent(sid)}/messages/${encodeURIComponent(mid)}/export?format=${format}`;
+  },
 };

@@ -1,7 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { CircleHelp, LayoutGrid, Network, BookMarked, TriangleAlert, Columns3 } from 'lucide-react';
+import {
+  CircleHelp,
+  LayoutGrid,
+  Network,
+  BookMarked,
+  TriangleAlert,
+  Columns3,
+  MessagesSquare,
+} from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
+import { ChatView } from './components/ChatView';
 import { AskView } from './components/AskView';
 import { CompareView } from './components/CompareView';
 import { CoverageView } from './components/CoverageView';
@@ -10,6 +19,7 @@ import { GlossaryView } from './components/GlossaryView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
 
 const NAV: { id: View; label: string; icon: typeof Network }[] = [
+  { id: 'chat', label: 'Диалог', icon: MessagesSquare },
   { id: 'ask', label: 'Запрос', icon: Network },
   { id: 'compare', label: 'Сравнение', icon: Columns3 },
   { id: 'coverage', label: 'Покрытие', icon: LayoutGrid },
@@ -91,6 +101,7 @@ export function App() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">
+          {view === 'chat' && <ChatView />}
           {view === 'ask' && <AskView />}
           {view === 'compare' && <CompareView />}
           {view === 'coverage' && <CoverageView />}

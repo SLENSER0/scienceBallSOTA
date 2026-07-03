@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { AnswerPayload, GraphNode } from './types';
 
-export type View = 'ask' | 'compare' | 'coverage' | 'gaps' | 'glossary';
+export type View = 'chat' | 'ask' | 'compare' | 'coverage' | 'gaps' | 'glossary';
 
 interface AppState {
   view: View;
@@ -17,7 +17,7 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  view: 'ask',
+  view: 'chat',
   setView: (view) => set({ view }),
   role: 'researcher',
   setRole: (role) => set({ role }),
