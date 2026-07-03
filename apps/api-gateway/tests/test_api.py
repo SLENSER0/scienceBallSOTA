@@ -380,3 +380,20 @@ def test_admin_validate_shapes(client: TestClient) -> None:
 def test_admin_retrieval_eval(client: TestClient) -> None:
     r = client.get("/api/v1/admin/retrieval-eval").json()
     assert "aggregate" in r and "per_query" in r
+
+
+def test_error_taxonomy_wired(client: TestClient) -> None:
+    from kg_common.errors import (
+        KgError,
+        NotFoundError,
+        http_status_for,
+        to_error_response,
+    )
+
+    assert http_status_for(NotFoundError("x")) == 404
+    d = to_error_response(NotFoundError("no such node"), request_id="r1").model_dump(by_alias=True)
+    assert d["errorCode"] == "not_found" and d["requestId"] == "r1"
+    # the KgError handler is registered on the app
+    from api_gateway.main import create_app
+
+    assert KgError in create_app().exception_handlers

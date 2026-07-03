@@ -69,6 +69,21 @@ def create_app() -> FastAPI:
 
     app.add_middleware(ObservabilityMiddleware)
 
+    # Structured error taxonomy (§14.2): map KgError + generic exceptions to a
+    # uniform ErrorResponse, carrying the request id and redacting secrets (§19.7).
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    from kg_common.errors import KgError, http_status_for, to_error_response
+    from kg_common.security.redaction import redact
+
+    @app.exception_handler(KgError)
+    def _kg_error_handler(request: Request, exc: KgError) -> JSONResponse:
+        rid = request.headers.get("X-Request-ID")
+        body = to_error_response(exc, request_id=rid).model_dump(by_alias=True)
+        body["message"] = redact(str(body.get("message", "")))
+        return JSONResponse(body, status_code=http_status_for(exc))
+
     @app.get("/api/v1/admin/health")
     def health() -> Any:
         # Aggregated readiness: 503 if a critical dependency (the graph) is down,
