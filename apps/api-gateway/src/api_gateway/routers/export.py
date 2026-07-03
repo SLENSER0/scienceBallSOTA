@@ -92,3 +92,56 @@ def _to_jsonld(ans):  # type: ignore[no-untyped-def]
             for c in ans.citations
         ],
     }
+
+
+class SubgraphExportRequest(BaseModel):
+    node_ids: list[str]
+    expand: int = 1
+
+
+@router.post("/subgraph")
+def export_subgraph(
+    req: SubgraphExportRequest,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """Export a subgraph as FAIR JSON-LD: @context, stable @id per node/edge (§24.19)."""
+    audit.record("export_subgraph", user=user, role=role, detail={"n": len(req.node_ids)})
+    store = get_store()
+    sg = store.subgraph_from_ids(req.node_ids, expand=req.expand)
+    graph = []
+    for n in sg.nodes:
+        props = n.properties or {}
+        graph.append(
+            {
+                "@id": f"kg:{n.id}",  # stable id (deterministic §3.8)
+                "@type": n.type,
+                "name": n.label,
+                "confidence": n.confidence,
+                "kg:reviewStatus": props.get("review_status"),
+                "kg:evidenceStrength": props.get("evidence_strength"),
+                "dcterms:license": props.get("license", "CC-BY-4.0"),
+            }
+        )
+    edges = [
+        {
+            "@id": f"kg:edge/{e.id}",
+            "@type": "kg:Relationship",
+            "kg:predicate": e.type,
+            "kg:from": f"kg:{e.source}",
+            "kg:to": f"kg:{e.target}",
+            "confidence": e.confidence,
+            "kg:inferred": bool(e.inferred),
+        }
+        for e in sg.edges
+    ]
+    return {
+        "@context": {**JSONLD_CONTEXT, "dcterms": "http://purl.org/dc/terms/"},
+        "@type": "kg:KnowledgeSubgraph",
+        # FAIR metadata (§24.19): findable/accessible/interoperable/reusable
+        "dcterms:conformsTo": "https://science-ball.example/ontology",
+        "dcterms:license": "CC-BY-4.0",
+        "kg:nodeCount": len(graph),
+        "kg:edgeCount": len(edges),
+        "@graph": graph + edges,
+    }

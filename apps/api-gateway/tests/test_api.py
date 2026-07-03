@@ -340,3 +340,17 @@ def test_entity_detail_and_search_ordering(client: TestClient) -> None:
     assert d["id"] == "material:nickel" and d["type"] == "Material"
     assert "evidence_count" in d and "neighbor_count" in d
     assert client.get("/api/v1/entities/no:such").status_code == 404
+
+
+def test_export_subgraph_jsonld(client: TestClient) -> None:
+    # §24.19: exported subgraph has JSON-LD @context + stable @id per node/edge
+    r = client.post(
+        "/api/v1/export/subgraph",
+        json={"node_ids": ["material:nickel", "tech:catholyte-circulation-scheme"], "expand": 1},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "@context" in body and body["@type"] == "kg:KnowledgeSubgraph"
+    assert body["dcterms:license"] == "CC-BY-4.0"  # FAIR reusable
+    assert body["@graph"], "subgraph must contain nodes/edges"
+    assert all(item["@id"].startswith("kg:") for item in body["@graph"])  # stable ids

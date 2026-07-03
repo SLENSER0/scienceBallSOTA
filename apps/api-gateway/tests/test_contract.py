@@ -34,6 +34,7 @@ CRITICAL_PATHS = {
     ("post", "/api/v1/entities/{entity_id}/annotate"),
     ("get", "/api/v1/entities/{entity_id}/history"),
     ("post", "/api/v1/comparison"),
+    ("post", "/api/v1/export/subgraph"),
     ("get", "/api/v1/admin/audit"),
     ("get", "/api/v1/admin/health"),
 }
