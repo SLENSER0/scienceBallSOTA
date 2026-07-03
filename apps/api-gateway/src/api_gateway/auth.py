@@ -1,9 +1,16 @@
 """JWT auth + role resolution (§19 / §24.14).
 
-Demo-grade: a login endpoint issues an HS256 token carrying the user's role; a
-dependency resolves the caller's role from ``Authorization: Bearer <jwt>``,
-falling back to the ``X-Role`` header (dev) or ``researcher``. Real deployments
-plug in an IdP; the RBAC enforcement downstream is identical.
+Two token paths, resolved from ``Authorization: Bearer <jwt>``:
+
+* **authentik OIDC** (production SSO, opt-in via ``Settings.oidc_enabled``) — an
+  RS256 access/ID token verified against the provider's JWKS, whose ``groups``
+  claim maps to a platform :class:`~kg_schema.enums.Role` (see
+  :mod:`api_gateway.oidc`).
+* **demo HS256** (local/dev) — issued by ``/auth/login`` and signed with the
+  local ``JWT_SECRET``, carrying the role directly.
+
+OIDC is tried first when enabled; both fall back to the ``X-Role`` header (dev) or
+``researcher``. The RBAC enforcement downstream is identical either way.
 """
 
 from __future__ import annotations
@@ -14,10 +21,17 @@ from typing import Any
 import jwt
 from fastapi import Header
 
+from api_gateway.oidc import claims_to_identity, verify_oidc_token
 from kg_common import get_settings
 from kg_schema.enums import Role
 
 VALID_ROLES = {str(r) for r in Role}
+
+
+def _bearer(authorization: str | None) -> str | None:
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return None
 
 
 def issue_token(username: str, role: str) -> str:
@@ -44,9 +58,13 @@ def current_role(
     authorization: str | None = Header(default=None),
     x_role: str | None = Header(default=None),
 ) -> str:
-    """Resolve caller role: Bearer JWT → X-Role header (dev) → researcher."""
-    if authorization and authorization.lower().startswith("bearer "):
-        claims = decode_token(authorization[7:].strip())
+    """Resolve caller role: authentik OIDC → demo HS256 → X-Role (dev) → researcher."""
+    token = _bearer(authorization)
+    if token:
+        oidc = verify_oidc_token(token)  # None when OIDC off / not an authentik token
+        if oidc:
+            return claims_to_identity(oidc)[1]
+        claims = decode_token(token)
         if claims and claims.get("role") in VALID_ROLES:
             return claims["role"]
     if x_role in VALID_ROLES:
@@ -55,8 +73,12 @@ def current_role(
 
 
 def current_user(authorization: str | None = Header(default=None)) -> str:
-    if authorization and authorization.lower().startswith("bearer "):
-        claims = decode_token(authorization[7:].strip())
+    token = _bearer(authorization)
+    if token:
+        oidc = verify_oidc_token(token)
+        if oidc:
+            return claims_to_identity(oidc)[0]
+        claims = decode_token(token)
         if claims:
             return str(claims.get("sub", "anonymous"))
     return "anonymous"

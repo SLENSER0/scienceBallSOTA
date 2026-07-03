@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from api_gateway import audit
+from api_gateway import audit, oidc
 from api_gateway.auth import current_role, current_user, issue_token
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
@@ -21,6 +21,15 @@ def login(body: LoginBody) -> dict:
     token = issue_token(body.username, body.role)
     audit.record("login", user=body.username, role=body.role)
     return {"token": token, "token_type": "bearer", "role": body.role}
+
+
+@router.get("/auth/oidc/config")
+def oidc_config() -> dict:
+    """Non-secret OIDC config for the SPA to start the authentik login flow.
+
+    When ``enabled`` is false the frontend uses the demo ``/auth/login`` instead.
+    """
+    return oidc.public_config()
 
 
 @router.get("/auth/me")

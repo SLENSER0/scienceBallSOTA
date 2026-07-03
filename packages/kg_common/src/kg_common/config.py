@@ -116,6 +116,30 @@ class Settings(BaseSettings):
     )
     jwt_ttl_minutes: int = Field(default=720, alias="JWT_TTL_MINUTES")
 
+    # -- OIDC / authentik SSO (§19 / §24.14) ------------------------------
+    # Opt-in: when off the gateway keeps its demo HS256 login (legacy, tests
+    # green). When on, the gateway ALSO accepts OIDC access/ID tokens issued by an
+    # external IdP (authentik), verifying RS256 signatures against the provider's
+    # JWKS and mapping the token's ``groups`` claim to a platform ``Role``.
+    oidc_enabled: bool = Field(default=False, alias="OIDC_ENABLED")
+    # Issuer URL — for authentik: https://<host>/application/o/<app-slug>/ .
+    oidc_issuer: str = Field(default="", alias="OIDC_ISSUER")
+    oidc_client_id: str = Field(default="", alias="OIDC_CLIENT_ID")
+    # Confidential-client secret (only needed for server-side code exchange).
+    oidc_client_secret: SecretStr = Field(default=SecretStr(""), alias="OIDC_CLIENT_SECRET")
+    # Expected audience (usually the client_id); empty → not checked.
+    oidc_audience: str = Field(default="", alias="OIDC_AUDIENCE")
+    # JWKS URL override; empty → discovered from ``{issuer}/.well-known/openid-configuration``.
+    oidc_jwks_url: str = Field(default="", alias="OIDC_JWKS_URL")
+    # Claim carrying the user's group memberships (authentik default: ``groups``).
+    oidc_groups_claim: str = Field(default="groups", alias="OIDC_GROUPS_CLAIM")
+    # Redirect URI the SPA registers with authentik (returned by /auth/oidc/config).
+    oidc_redirect_uri: str = Field(default="", alias="OIDC_REDIRECT_URI")
+    # Optional explicit "authentik-group → platform-role" map as JSON, e.g.
+    # '{"kg-admins": "admin", "kg-curators": "curator"}'. Empty → match a group
+    # whose name equals a Role value (e.g. group "curator" → Role.CURATOR).
+    oidc_group_role_map: str = Field(default="", alias="OIDC_GROUP_ROLE_MAP")
+
     # -- Query hardening (§19.6) ------------------------------------------
     # Free-form Cypher is OFF by default; the agent uses parameterized templates.
     allow_raw_cypher: bool = Field(default=False, alias="ALLOW_RAW_CYPHER")
