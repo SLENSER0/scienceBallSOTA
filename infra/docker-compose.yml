@@ -48,7 +48,7 @@ services:
     environment:
       discovery.type: single-node
       plugins.security.disabled: "true"
-      OPENSEARCH_INITIAL_ADMIN_PASSWORD: adminadminadmin
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: Sci3nceBall@2026
       OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
     ports: ["9200:9200"]
     volumes: ["opensearch_data:/usr/share/opensearch/data"]
