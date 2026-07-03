@@ -20,7 +20,8 @@ from kg_extractors.composition_extractor import extract_compositions
 from kg_extractors.processing_extractor import extract_processing
 from kg_extractors.rule_extractor import extract_rules
 from kg_retrievers.graph_store import KuzuGraphStore
-from kg_schema.extraction import DocumentExtraction
+from kg_retrievers.value_in_mention import value_present_in_text
+from kg_schema.extraction import DocumentExtraction, EntityExtract
 from kg_schema.taxonomy import load_taxonomy
 
 _log = get_logger("ingest")
@@ -258,6 +259,22 @@ class IngestionPipeline:
                 )
             )
 
+    def _property_aliases(self, e: EntityExtract) -> list[str]:
+        """Surface forms used to locate a property mention in the chunk text (§33/N2).
+
+        Prefers the taxonomy's bilingual term set; always includes the extracted
+        surface form and the canonical name so the value detector can find the
+        sentence that names *this* property.
+        """
+        terms: list[str] = []
+        entry = self.tax.by_id(e.canonical_name or "")
+        if entry:
+            terms.extend(entry.all_terms)
+        for t in (e.text, e.canonical_name):
+            if t and t not in terms:
+                terms.append(t)
+        return [t for t in terms if t]
+
     def _apply_extraction(
         self, ex: DocumentExtraction, doc_id: str, chunk_id: str, page: int, text: str = ""
     ) -> None:
@@ -266,9 +283,18 @@ class IngestionPipeline:
         for e in ex.entities:
             nid = self._upsert_entity(e.canonical_name or e.text, e.entity_type, e.text)
             if nid:
-                self.store.upsert_edge(
-                    chunk_id, nid, "MENTIONS", **self._prov(confidence=e.confidence)
-                )
+                edge_props = self._prov(confidence=e.confidence)
+                # §33/N2: stamp the measurable-value-in-mention signal on prose
+                # Property MENTIONS edges, so the opt-in absence value gate (D3)
+                # can tell a bare property mention ("названо, не измерено") from
+                # one that actually states a value. Cheap offline regex; only
+                # Property edges carry it — material/structural edges do not, and
+                # the gate treats a missing flag as "unknown" (never downgrades).
+                if e.entity_type == "Property" and text:
+                    edge_props["value_present"] = value_present_in_text(
+                        text, self._property_aliases(e)
+                    )
+                self.store.upsert_edge(chunk_id, nid, "MENTIONS", **edge_props)
                 self.stats.entities += 1
                 if e.entity_type == "Material" and material_id is None:
                     material_id = nid
@@ -342,7 +368,10 @@ class IngestionPipeline:
         for cm in extract_compositions(text):
             comp_id = make_id("Composition", f"{chunk_id}:{'-'.join(cm.element_symbols())}")
             self.store.upsert_node(
-                comp_id, "Composition", name=cm.text, base_element=cm.base_element or "",
+                comp_id,
+                "Composition",
+                name=cm.text,
+                base_element=cm.base_element or "",
                 **self._prov(source_type="paragraph"),
             )
             if material_id:
@@ -351,7 +380,9 @@ class IngestionPipeline:
                 el_id = make_id("ChemicalElement", sym)
                 self.store.upsert_node(el_id, "ChemicalElement", name=sym, symbol=sym)
                 self.store.upsert_edge(
-                    comp_id, el_id, "CONTAINS_ELEMENT",
+                    comp_id,
+                    el_id,
+                    "CONTAINS_ELEMENT",
                     **self._prov(fraction=frac if frac is not None else -1.0),
                 )
 

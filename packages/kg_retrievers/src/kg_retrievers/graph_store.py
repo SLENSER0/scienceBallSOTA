@@ -82,6 +82,12 @@ REL_COLUMNS: list[tuple[str, str]] = [
     ("evidence_ids", "STRING"),
     ("inferred", "BOOLEAN"),
     ("contradicted", "BOOLEAN"),
+    # Measurable-value-in-mention signal (§33/N2): set on prose Document→Chunk→
+    # (MENTIONS)→Property edges at ingest (see ingestion pipeline + D1). NULL on
+    # structural/catalog edges and pre-N2 edges — the absence value gate treats a
+    # missing flag as "unknown" and never downgrades on it. Typed so it is
+    # Cypher-queryable and upserted idempotently on both ON CREATE / ON MATCH.
+    ("value_present", "BOOLEAN"),
     ("props", "STRING"),
 ]
 _REL_COL_NAMES = {c for c, _ in REL_COLUMNS}
