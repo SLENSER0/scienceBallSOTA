@@ -1,0 +1,93 @@
+# authentik SSO overlay (§19 / §24.14) — OPT-IN identity provider.
+#
+# authentik (https://github.com/goauthentik/authentik) is the OIDC provider the
+# api-gateway authenticates against (see api_gateway/oidc.py). It is deliberately a
+# separate overlay so the base stack stays IdP-free; bring it up alongside the base
+# compose:
+#
+#     docker compose -f infra/docker-compose.yml -f infra/docker-compose.authentik.yml up -d
+#
+# authentik runs with its OWN PostgreSQL + Redis (isolated from the app's stores).
+# Admin setup (create the OIDC provider/application, groups → roles) is in Russian
+# at docs/auth/authentik-setup.ru.md.
+name: science-ball
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-hc: &hc
+  interval: 15s
+  timeout: 5s
+  retries: 10
+  start_period: 30s
+
+x-authentik-env: &authentik-env
+  AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?set AUTHENTIK_SECRET_KEY in .env}
+  AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
+  AUTHENTIK_POSTGRESQL__NAME: authentik
+  AUTHENTIK_POSTGRESQL__USER: authentik
+  AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_PG_PASS:-authentik}
+  AUTHENTIK_REDIS__HOST: authentik-redis
+  # Bootstrap the initial admin (akadmin) on first start — remove after setup.
+  AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
+  AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-}
+  AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN:-}
+
+services:
+  authentik-postgresql:
+    image: postgres:16-alpine # PostgreSQL License
+    <<: *restart
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${AUTHENTIK_PG_PASS:-authentik}
+      POSTGRES_DB: authentik
+    volumes: ["authentik_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+
+  authentik-redis:
+    image: valkey/valkey:8-alpine # BSD (OSS Redis drop-in)
+    <<: *restart
+    volumes: ["authentik_redis:/data"]
+    healthcheck:
+      <<: *hc
+      test: ["CMD-SHELL", "valkey-cli ping | grep -q PONG"]
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2024.12} # MIT
+    <<: *restart
+    command: server
+    environment: *authentik-env
+    # UI/OIDC on host 9100 (9000 is taken by minio) and 9443 for TLS.
+    ports: ["${AUTHENTIK_HTTP_PORT:-9100}:9000", "${AUTHENTIK_HTTPS_PORT:-9443}:9443"]
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    depends_on:
+      authentik-postgresql: {condition: service_healthy}
+      authentik-redis: {condition: service_healthy}
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "ak", "healthcheck"]
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2024.12} # MIT
+    <<: *restart
+    command: worker
+    environment: *authentik-env
+    volumes:
+      - authentik_media:/media
+      - authentik_templates:/templates
+    depends_on:
+      authentik-postgresql: {condition: service_healthy}
+      authentik-redis: {condition: service_healthy}
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "ak", "healthcheck"]
+
+volumes:
+  authentik_pg:
+  authentik_redis:
+  authentik_media:
+  authentik_templates:
