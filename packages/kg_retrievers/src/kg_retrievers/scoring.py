@@ -41,6 +41,15 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 }
 
 
+def recency_score(node: dict[str, Any], *, now_year: int, half_life_years: float = 8.0) -> float:
+    """Exponential-decay recency in [0,1] from a node's ``year`` (no year → 0.5)."""
+    year = node.get("year")
+    if not isinstance(year, (int, float)) or year <= 0:
+        return 0.5
+    age = max(0.0, now_year - float(year))
+    return round(0.5 ** (age / half_life_years), 4)
+
+
 def evidence_quality_score(node: dict[str, Any]) -> float:
     """Quality in [0,1] from evidence strength × confidence, boosted if verified."""
     strength = STRENGTH_RANK.get(str(node.get("evidence_strength") or "").lower(), 0.3)

@@ -75,3 +75,14 @@ def test_weighted_fuse_custom_weights_shift_ranking() -> None:
     graph_heavy = weighted_fuse(comps, {"dense": 0.1, "graph_proximity": 0.9})
     assert dense_heavy[0].id == "x"
     assert graph_heavy[0].id == "y"
+
+
+def test_recency_score_decays_with_age() -> None:
+    from kg_retrievers.scoring import recency_score
+
+    now = 2026
+    assert recency_score({"year": 2026}, now_year=now) == 1.0
+    old = recency_score({"year": 2010}, now_year=now)
+    recent = recency_score({"year": 2024}, now_year=now)
+    assert 0.0 < old < recent < 1.0
+    assert recency_score({}, now_year=now) == 0.5  # unknown year → neutral
