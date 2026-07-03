@@ -35,13 +35,16 @@ def gaps_ranked(limit: int = 50) -> dict:
     """Gaps ranked by priority score with RU explanation + next-experiment hint (§15.9)."""
     from kg_retrievers.gap_scoring import gap_priority_score, next_experiment_hint
 
-    rows = get_store().rows(
+    store = get_store()
+    rows = store.rows(
         "MATCH (g:Node) WHERE g.label='Gap' "
-        f"RETURN g.id, g.name, g.gap_type, g.domain, g.absence_confidence LIMIT {int(limit)}"
+        f"RETURN g.id, g.name, g.gap_type, g.domain LIMIT {int(limit)}"
     )
     gaps = []
     for r in rows:
-        g = {"id": r[0], "name": r[1], "gap_type": r[2], "domain": r[3], "absence_confidence": r[4]}
+        # absence_confidence lives in the node's JSON props, not a column
+        ac = (store.get_node(r[0]) or {}).get("absence_confidence")
+        g = {"id": r[0], "name": r[1], "gap_type": r[2], "domain": r[3], "absence_confidence": ac}
         g["score"] = round(gap_priority_score(g), 4)
         g["next_experiment"] = next_experiment_hint(g)
         gaps.append(g)
