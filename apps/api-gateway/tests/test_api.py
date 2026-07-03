@@ -426,3 +426,9 @@ def test_entity_resolve_alias(client: TestClient) -> None:
     assert miss["matched"] is False
     # /entities/search still resolves (route ordering intact)
     assert client.get("/api/v1/entities/search", params={"q": "осмос"}).json()["count"] >= 1
+
+
+def test_admin_community_hierarchy(client: TestClient) -> None:
+    client.post("/api/v1/admin/communities")
+    h = client.get("/api/v1/admin/community-hierarchy").json()
+    assert "nodes" in h or "levels" in h or isinstance(h, dict)

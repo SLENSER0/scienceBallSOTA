@@ -100,6 +100,14 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
     return local_search(get_store(), seed, limit=limit)
 
 
+@router.get("/community-hierarchy")
+def community_hierarchy() -> dict:
+    """2-level hierarchical community structure (§11.6)."""
+    from kg_retrievers.community_hierarchy import build_hierarchy
+
+    return build_hierarchy(get_store()).as_dict()
+
+
 @router.get("/retrieval-eval")
 def retrieval_eval() -> dict:
     """Run the retrieval eval (Recall@k/MRR/nDCG) over the seed golden set (§4.11/§18.6)."""
