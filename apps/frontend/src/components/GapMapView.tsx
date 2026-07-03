@@ -62,6 +62,20 @@ export function GapMapView() {
 
 function GapCard({ g, rank }: { g: PrioritizedGap; rank: number }) {
   const tone = g.priority >= 75 ? '#E5484D' : g.priority >= 55 ? '#E0A23C' : '#8FA3B0';
+  if (!g.scored) {
+    return (
+      <div className="panel p-4 opacity-70">
+        <div className="flex items-center gap-2">
+          <span className="chip text-faint border-line">не оценён</span>
+          <span className="text-sm text-muted">{g.name}</span>
+          {g.domain && <span className="chip text-faint">{DOMAIN_RU[g.domain] ?? g.domain}</span>}
+        </div>
+        <div className="mt-1 font-mono text-[10px] text-faint">
+          агент не смог оценить (сбой модели) — не значит низкий приоритет
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="panel p-4">
       <div className="flex items-start gap-3">

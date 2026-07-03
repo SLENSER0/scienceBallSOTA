@@ -205,5 +205,6 @@ export interface PrioritizedGap {
   feasibility: number;
   rationale: string;
   action: string;
+  scored: boolean;
   model?: string | null;
 }

@@ -39,6 +39,7 @@ class PrioritizedGap:
     feasibility: int
     rationale: str
     action: str
+    scored: bool = True  # False = the model failed to score it (NOT a low priority)
     model: str | None = None
 
 
@@ -51,43 +52,55 @@ _SYSTEM = (
 )
 
 
-def _score_gap(g: dict[str, Any]) -> PrioritizedGap:
+def _score_once(user: str, model_id: str) -> tuple[dict, str | None]:
     from kg_extractors.llm import get_llm
 
+    llm = get_llm()
+    data = llm.complete_json(user, system=_SYSTEM, model=model_id, max_tokens=700)
+    return (data if isinstance(data, dict) else {}), (
+        llm.used_models[-1] if llm.used_models else None
+    )
+
+
+def _score_gap(g: dict[str, Any]) -> PrioritizedGap:
+    """Score one gap; on a silent model failure fall back to the fast model, then mark
+    the gap as unscored (adversarial finding: a null-model default of 50/50/50 silently
+    sank the high-value «никелевый штейн» to the bottom)."""
+    s = get_settings()
     mats = ", ".join(x for x in (g.get("materials") or []) if x) or "н/д"
     user = (
         f"Пробел: {g['name']}\n"
         f"Тип: {g.get('type') or 'н/д'} | Домен: {g.get('domain') or 'н/д'} | Материалы: {mats}\n\n"
         "Оцени приоритет исследования."
     )
-    pri, imp, feas, rationale, action, model = 50, 50, 50, "", "", None
-    try:
-        llm = get_llm()
-        data = llm.complete_json(
-            user, system=_SYSTEM, model=get_settings().llm_model_synth_quality, max_tokens=700
-        )
-        model = llm.used_models[-1] if llm.used_models else None
-        if isinstance(data, dict):
-            pri = int(max(0, min(100, data.get("priority", 50))))
-            imp = int(max(0, min(100, data.get("impact", 50))))
-            feas = int(max(0, min(100, data.get("feasibility", 50))))
-            rationale = str(data.get("rationale", "")).strip()
-            action = str(data.get("action", "")).strip()
-    except Exception as exc:
-        _log.warning("gap_prioritizer.failed", gap=str(g.get("id"))[:60], error=str(exc)[:120])
-        rationale = "оценка недоступна (модель)"
-
+    data, model = {}, None
+    for model_id in (s.llm_model_synth_quality, s.llm_model_synth):  # quality → fast fallback
+        try:
+            data, model = _score_once(user, model_id)
+            if data.get("priority") is not None:
+                break
+        except Exception as exc:
+            _log.warning(
+                "gap_prioritizer.attempt_failed",
+                gap=str(g.get("id"))[:60],
+                model=model_id,
+                error=str(exc)[:100],
+            )
+    scored = bool(data.get("priority") is not None)
     return PrioritizedGap(
         id=str(g.get("id")),
         name=str(g.get("name")),
         type=g.get("type"),
         domain=g.get("domain"),
-        priority=pri,
-        impact=imp,
-        feasibility=feas,
-        rationale=rationale,
-        action=action,
-        model=model,
+        priority=int(max(0, min(100, data.get("priority", 0)))) if scored else 0,
+        impact=int(max(0, min(100, data.get("impact", 0)))) if scored else 0,
+        feasibility=int(max(0, min(100, data.get("feasibility", 0)))) if scored else 0,
+        rationale=str(data.get("rationale", "")).strip()
+        if scored
+        else "не удалось оценить (модель)",
+        action=str(data.get("action", "")).strip(),
+        scored=scored,
+        model=model if scored else None,
     )
 
 
@@ -98,12 +111,15 @@ def prioritize_gaps(store: Any, *, limit: int = 12) -> dict[str, Any]:
         for r in store.rows(_GAPS_CYPHER, {"lim": max(1, min(limit, 24))})
         if r[0] and r[1]
     ]
-    scored: list[PrioritizedGap] = []
+    result: list[PrioritizedGap] = []
     if gaps:
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-            scored = list(pool.map(_score_gap, gaps))
-    scored.sort(key=lambda g: g.priority, reverse=True)
-    used = sorted({m for g in scored if (m := g.model)})
+            result = list(pool.map(_score_gap, gaps))
+    # Scored gaps ranked by priority; unscored (model failures) kept but pushed to the end
+    # and clearly flagged — never mixed into the ranking with a misleading default.
+    result.sort(key=lambda g: (g.scored, g.priority), reverse=True)
+    used = sorted({m for g in result if (m := g.model)})
+    scored = result
     return {
         "gaps": [asdict(g) for g in scored],
         "count": len(scored),

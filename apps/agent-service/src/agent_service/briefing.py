@@ -33,7 +33,10 @@ def gather_snapshot(store: Any) -> dict[str, Any]:
 
     coverage = build_dashboard(store).as_dict()
     gaps = [{"name": r[0], "type": r[1], "domain": r[2]} for r in store.rows(_GAPS_CYPHER) if r[0]]
-    contradictions = list_contradictions(store, limit=8)
+    # Fetch a wide slice, then keep the largest-spread conflicts (the ones worth reporting).
+    contradictions = sorted(
+        list_contradictions(store, limit=40), key=lambda c: c.get("spread", 0), reverse=True
+    )[:12]
     techs = [{"id": r[0], "name": r[1], "degree": int(r[2] or 0)} for r in store.rows(_TECH_CYPHER)]
     return {
         "counts": store.counts(),
@@ -47,30 +50,48 @@ def gather_snapshot(store: Any) -> dict[str, Any]:
 
 _BRIEF_SYSTEM = (
     "Ты — научный аналитик R&D в горном деле и металлургии. По снапшоту графа знаний "
-    "напиши сжатый обзор по-русски в markdown, СТРОГО по данным (не выдумывай). Разделы: "
-    "**Обзор** (объём базы, домены); **Сильные стороны** (где данных много); "
-    "**Зоны риска** (домены с малым числом источников — назови их); "
-    "**Ключевые открытые вопросы** (по пробелам); **Заметные противоречия**; "
-    "**Рекомендации** (2–3 приоритета). Кратко, по делу, с числами из снапшота."
+    "напиши сжатый обзор по-русски в markdown. ПРАВИЛА: (1) используй ТОЛЬКО числа из "
+    "снапшота; не выдумывай знаменателей и итогов — общие счётчики даны явно. (2) Про "
+    "противоречия пиши истинные диапазоны (min–max) из данных, в первую очередь самый "
+    "большой спред. (3) Если единица измерения не подходит показателю (напр. «мм» для "
+    "концентрации) — отметь это как вероятную ошибку извлечения, а не как факт. Разделы: "
+    "**Обзор** (объём базы, домены); **Сильные стороны**; **Зоны риска** (домены с малым "
+    "числом источников — назови); **Ключевые открытые вопросы** (пробелы); **Заметные "
+    "противоречия** (с диапазонами); **Рекомендации** (2–3 приоритета)."
 )
 
 
 def _prompt(snap: dict[str, Any]) -> str:
     cov = snap["coverage"]
+    totals = cov.get("totals", {})
     doms = "; ".join(
         f"{d['domain']}: источников {d['sources']}, измерений {d['measurements']}, "
         f"пробелов {d['gaps']}{' [РИСК]' if d.get('risk') == 'high' else ''}"
         for d in cov.get("by_domain", [])[:10]
     )
-    gaps = "; ".join(f"{g['name']}" for g in snap["gaps"][:8])
-    contras = "; ".join(f"{c['name']}" for c in snap["contradictions"][:6])
-    techs = ", ".join(t["name"] for t in snap["topTechnologies"][:6])
+    # Gap-type breakdown so the agent doesn't invent denominators.
+    from collections import Counter
+
+    gtypes = Counter(g.get("type") or "?" for g in snap["gaps"])
+    gtype_str = ", ".join(f"{k}: {v}" for k, v in gtypes.most_common())
+    gaps = "; ".join(g["name"] for g in snap["gaps"][:10])
+    # Contradictions WITH their true value spread (biggest first).
+    contras = "; ".join(
+        f"{c['name']} [диапазон {min(c['values'])}–{max(c['values'])} {c.get('unit') or ''}]"
+        if c.get("values")
+        else c["name"]
+        for c in sorted(snap["contradictions"], key=lambda c: c.get("spread", 0), reverse=True)[:8]
+    )
+    techs = ", ".join(t["name"] for t in snap["topTechnologies"][:8])
     return (
-        f"Узлов: {snap['counts'].get('nodes')}, связей: {snap['counts'].get('rels')}.\n"
+        f"ИТОГИ (используй только их): узлов {snap['counts'].get('nodes')}, "
+        f"связей {snap['counts'].get('rels')}, всего пробелов {totals.get('gaps')}, "
+        f"всего противоречий {totals.get('contradictions')}.\n"
         f"Домены: {doms}\n"
-        f"Зоны риска: {', '.join(cov.get('risk_domains', [])) or 'нет'}\n"
-        f"Открытые пробелы: {gaps}\n"
-        f"Противоречия: {contras}\n"
+        f"Зоны риска (мало источников): {', '.join(cov.get('risk_domains', [])) or 'нет'}\n"
+        f"Пробелы по типам: {gtype_str}\n"
+        f"Примеры пробелов: {gaps}\n"
+        f"Крупнейшие противоречия: {contras}\n"
         f"Ключевые технологии (по связям): {techs}\n\n"
         "Напиши обзор состояния знаний."
     )
