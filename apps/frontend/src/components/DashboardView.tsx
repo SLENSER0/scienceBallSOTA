@@ -13,6 +13,7 @@ import {
 import { api } from '../api';
 import { CoverageView } from './CoverageView';
 import { MaterialCoverageHeatmapView } from './MaterialCoverageHeatmapView';
+import { LargeGraphView } from './LargeGraphView';
 
 // Командный центр (agentic dashboard). The hard numbers of the knowledge graph at a
 // glance — size, top technologies, per-domain coverage + the material×property coverage
@@ -89,6 +90,14 @@ export function DashboardView() {
             {/* Покрытие материал × свойство — тепловая карта, встроенная в обзор */}
             <div className="panel mt-5 p-4">
               <MaterialCoverageHeatmapView embedded />
+            </div>
+
+            {/* Клубок корпуса (WebGL) — встроен в обзор фиксированной высотой */}
+            <div className="mt-5">
+              <div className="mb-2 text-sm text-nickel">Клубок корпуса</div>
+              <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
+                <LargeGraphView />
+              </div>
             </div>
           </>
         )}
