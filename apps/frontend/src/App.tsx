@@ -5,66 +5,29 @@ import {
   ChevronRight,
   CircleHelp,
   Network,
-  BookMarked,
-  TriangleAlert,
   Columns3,
   LogOut,
   Library,
   Boxes,
-  ClipboardList,
   ShieldCheck,
   Bot,
   GitCompareArrows,
   Radar,
   Target,
   Route,
-  Scale,
-  Trophy,
   Sparkles,
-  Layers,
-  Workflow,
   PackageCheck,
-  Image as ImageIcon,
-  FlaskConical,
-  Gauge,
   Waypoints,
-  GitFork,
-  Share2,
+  ScanSearch,
   Table2,
   Hexagon,
-  MapPin,
-  ScanText,
-  ScrollText,
-  Activity,
-  FileCode2,
-  Shapes,
-  Fingerprint,
-  GitBranch,
-  HeartPulse,
-  Highlighter,
-  Quote,
   Lasso,
-  Undo2,
-  Ruler,
-  FileStack,
   Search,
-  Code2,
-  Wrench,
   ShieldAlert,
   Brain,
-  FolderInput,
   Filter,
   History,
-  Radio,
-  ListOrdered,
-  TrendingDown,
   ClipboardCheck,
-  BadgeCheck,
-  Languages,
-  ThumbsUp,
-  Atom,
-  BookOpenCheck,
-  CalendarClock,
   Users,
 } from 'lucide-react';
 import { api } from './api';
@@ -160,6 +123,11 @@ import DefinitionOfDoneView from './components/DefinitionOfDoneView';
 import { ExtractionRecallEvalView } from './components/ExtractionRecallEvalView';
 import { FacetSearchView } from './components/FacetSearchView';
 import { CorpusExplorerView } from './components/CorpusExplorerView';
+import { GraphExploreView } from './components/GraphExploreView';
+import { EvidenceInspectorHubView } from './components/EvidenceInspectorHubView';
+import { SourceTrustHubView } from './components/SourceTrustHubView';
+import { CurationHubView } from './components/CurationHubView';
+import { AgentReasoningHubView } from './components/AgentReasoningHubView';
 import { FactTimeMachineView } from './components/FactTimeMachineView';
 import { GoldenDatasetView } from './components/GoldenDatasetView';
 import { GraphDiffView } from './components/GraphDiffView';
@@ -208,17 +176,18 @@ type Grp =
   | 'agent'
   | 'admin';
 
+// Jury-facing sidebar: 86→25 screens across 9 product groups. Engineering groups
+// «Данные и извлечение» / «Качество и оценка» are fully hidden (their screens' routes
+// stay in code). data/quality remain valid Grp members but have no visible group here.
 const GROUPS: { id: Grp; label: string }[] = [
   { id: 'overview', label: 'Обзор' },
   { id: 'qa', label: 'Вопросы и ответы' },
-  { id: 'gaps', label: 'Пробелы · противоречия' },
+  { id: 'gaps', label: 'Пробелы и противоречия' },
   { id: 'knowledge', label: 'Аналитика знаний' },
   { id: 'graph', label: 'Граф и связи' },
-  { id: 'evidence', label: 'Доказательства · доверие' },
-  { id: 'data', label: 'Данные и извлечение' },
-  { id: 'quality', label: 'Качество и оценка' },
+  { id: 'evidence', label: 'Доказательства и доверие' },
   { id: 'curation', label: 'Курирование' },
-  { id: 'agent', label: 'Агент · внутренности' },
+  { id: 'agent', label: 'Ассистент и демо' },
   { id: 'admin', label: 'Администрирование' },
 ];
 
@@ -227,137 +196,37 @@ type NavItem = { id: View; label: string; icon: typeof Network; roles?: string[]
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Обзор базы знаний', icon: Radar, group: 'overview' },
 
-  // { id: 'chat', label: 'Диалог с клубком', icon: MessagesSquare, group: 'qa' }, // слито в «Запрос к графу» (тот же ответ + гео-фильтр); роут жив, вернуть = раскомментировать
   { id: 'ask', label: 'Запрос к графу', icon: Network, group: 'qa' },
-  { id: 'advisor', label: 'Советник (рекомендации)', icon: Bot, group: 'qa' },
+  { id: 'advisor', label: 'Советник', icon: Bot, group: 'qa' },
   { id: 'compare', label: 'Сравнение технологий', icon: Columns3, group: 'qa' },
-  { id: 'library', label: 'Библиотека · deep-research', icon: Library, roles: INTERNAL, group: 'qa' },
+  { id: 'library', label: 'Библиотека', icon: Library, roles: INTERNAL, group: 'qa' },
 
-  // Раздел схлопнут 9→3: «Карта пробелов» — единый хаб (приоритеты пробелов +
-  // сводка противоречий + очередь ревью, слита из бывш. «Пробелы и риски»).
-  // Скрытые дубли ниже закомментированы — вернуть в меню = раскомментировать строку
-  // (сами экраны в коде и роутинге живы, доступны программно).
   { id: 'gapmap', label: 'Карта пробелов', icon: Target, roles: INTERNAL, group: 'gaps' },
-  { id: 'contradictions', label: 'Противоречия (арбитр)', icon: GitCompareArrows, roles: INTERNAL, group: 'gaps' },
-  // { id: 'gapmatrix', label: 'Матрица пробелов', icon: Grid3x3, roles: INTERNAL, group: 'gaps' }, // убрано по запросу
-  // { id: 'gapplan', label: 'План экспериментов', icon: FlaskConical, roles: INTERNAL, group: 'gaps' }, // убрано по запросу (план закрытия пробелов)
-  // { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: INTERNAL, group: 'gaps' }, // → слито в «Карта пробелов»
-  // { id: 'absence', label: 'Карта неизвестного', icon: Compass, roles: INTERNAL, group: 'gaps' },
-  // { id: 'voi', label: 'Ценность информации', icon: Lightbulb, roles: INTERNAL, group: 'gaps' }, // дубль «Карты неизвестного»
+  { id: 'contradictions', label: 'Противоречия', icon: GitCompareArrows, roles: INTERNAL, group: 'gaps' },
 
+  { id: 'corpusexplore', label: 'Поиск по корпусу', icon: Filter, group: 'knowledge' },
   { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
   { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
-  // Убрано по запросу — покрытие по доменам уже встроено в «Обзор базы знаний»:
-  // { id: 'coverage', label: 'Покрытие по доменам', icon: LayoutGrid, group: 'knowledge' },
-  // { id: 'coveragesankey', label: 'Потоки покрытия', icon: Workflow, group: 'knowledge' },
-  // { id: 'communities', label: 'Сообщества (GraphRAG)', icon: Sparkles, group: 'knowledge' },
-  { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR, group: 'knowledge' },
-  { id: 'graphintegrity', label: 'Целостность графа', icon: ShieldAlert, roles: CURATOR, group: 'knowledge' },
-  { id: 'corpusexplore', label: 'Поиск по корпусу', icon: Filter, group: 'knowledge' },
-  // Слито в «Поиск по корпусу» (табы Фасеты · Диапазоны · Глоссарий); роуты живы:
-  // { id: 'glossary', label: 'Глоссарий', icon: BookMarked, group: 'knowledge' },
-  // { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' }, // убрано — легенда лучше inline на графе
+  { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
-  { id: 'entities', label: 'Сущности (детали)', icon: Boxes, group: 'graph' },
-  { id: 'simembed', label: 'Похожие (эмбеддинги)', icon: Hexagon, group: 'graph' }, // перемещено к «Сущности»
+  { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
   { id: 'largegraph', label: 'Клубок корпуса (WebGL)', icon: Waypoints, group: 'graph' },
   { id: 'graphpath', label: 'Путь между сущностями', icon: Route, roles: INTERNAL, group: 'graph' },
-  { id: 'graphtemplates', label: 'Шаблоны запросов', icon: Code2, roles: INTERNAL, group: 'graph' },
   { id: 'subgraphask', label: 'Спросить о подграфе', icon: Lasso, roles: INTERNAL, group: 'graph' },
-  { id: 'linkpred', label: 'Предсказание связей', icon: GitFork, roles: INTERNAL, group: 'graph' },
-  // Убрано по запросу (для демо — узкое внутреннее ML-тулинг):
-  // { id: 'livegds', label: 'Живой GDS', icon: Wand2, roles: INTERNAL, group: 'graph' },
-  // { id: 'simlinks', label: 'Вероятные связи', icon: Share2, roles: INTERNAL, group: 'graph' },
-  // { id: 'missinglinks', label: 'Неявные связи', icon: Spline, roles: INTERNAL, group: 'graph' },
-  // { id: 'similarMaterials', label: 'Похожие материалы', icon: Layers, roles: INTERNAL, group: 'graph' },
 
-  { id: 'evidenceinspector', label: 'Инспектор evidence', icon: Search, roles: INTERNAL, group: 'evidence' },
-  { id: 'evidencebbox', label: 'Bbox-цитаты', icon: MapPin, roles: INTERNAL, group: 'evidence' },
-  { id: 'figures', label: 'Фигуры-доказательства', icon: ImageIcon, roles: INTERNAL, group: 'evidence' },
-  { id: 'figcaptions', label: 'Подписи как evidence', icon: Quote, roles: INTERNAL, group: 'evidence' },
-  { id: 'provcitations', label: 'Провенанс цитат', icon: Fingerprint, roles: INTERNAL, group: 'evidence' },
-  { id: 'sourcetrust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL, group: 'evidence' },
-  { id: 'warnings', label: 'Панель предупреждений', icon: ShieldAlert, roles: INTERNAL, group: 'evidence' },
-  { id: 'evidencepack', label: 'Evidence Pack (экспорт)', icon: PackageCheck, roles: INTERNAL, group: 'evidence' },
-  { id: 'searchhl', label: 'Подсветка в поиске', icon: Highlighter, group: 'evidence' },
+  { id: 'evidence-inspector', label: 'Инспектор доказательств', icon: ScanSearch, roles: INTERNAL, group: 'evidence' },
+  { id: 'source-trust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL, group: 'evidence' },
+  { id: 'warnings', label: 'Панель рисков ответа', icon: ShieldAlert, roles: INTERNAL, group: 'evidence' },
+  { id: 'evidencepack', label: 'Доказательный пакет', icon: PackageCheck, roles: INTERNAL, group: 'evidence' },
 
-  { id: 'batchingest', label: 'Пакетный приём', icon: FileStack, roles: INTERNAL, group: 'data' },
-  { id: 'ingestpipeline', label: 'Конвейер приёма', icon: Workflow, roles: INTERNAL, group: 'data' },
-  { id: 'ocr', label: 'OCR сканов', icon: ScanText, roles: INTERNAL, group: 'data' },
-  { id: 'proseclaims', label: 'Факты из прозы', icon: ScrollText, roles: ANALYST, group: 'data' },
-  { id: 'schemaextract', label: 'Схема-экстракция', icon: Shapes, roles: INTERNAL, group: 'data' },
-  { id: 'experimentextract', label: 'ExperimentExtract', icon: FlaskConical, roles: ANALYST, group: 'data' },
-  { id: 'extractorrun', label: 'Прогоны экстрактора', icon: GitBranch, roles: INTERNAL, group: 'data' },
-  { id: 'mlner', label: 'ML-NER (GLiNER)', icon: ScanText, roles: INTERNAL, group: 'data' },
+  { id: 'curation-hub', label: 'Курирование', icon: ClipboardCheck, roles: CURATOR, group: 'curation' },
 
-  { id: 'benchmark', label: 'Бенчмарк (SOTA)', icon: Trophy, roles: ANALYST, group: 'quality' },
-  { id: 'ragchecks', label: 'RAGAS / DeepEval', icon: ShieldCheck, roles: ANALYST, group: 'quality' },
-  { id: 'extraction_eval', label: 'Extraction eval', icon: Gauge, roles: ANALYST, group: 'quality' },
-  { id: 'qualityboard', label: 'Табло качества', icon: Activity, roles: ANALYST, group: 'quality' },
-  { id: 'mlflow', label: 'MLflow эксперименты', icon: FlaskConical, roles: INTERNAL, group: 'quality' },
-  { id: 'ereval', label: 'Качество ER (F1)', icon: Gauge, roles: ANALYST, group: 'quality' },
-  { id: 'opsdash', label: 'Ops-дашборды', icon: Activity, roles: ANALYST, group: 'quality' },
-  { id: 'reranklive', label: 'Reranker (live)', icon: Layers, roles: ANALYST, group: 'quality' },
-  { id: 'suspects', label: 'Подозрительные значения', icon: TriangleAlert, roles: CURATOR, group: 'quality' },
-  { id: 'unitprov', label: 'Провенанс единиц', icon: Fingerprint, roles: INTERNAL, group: 'quality' },
-  { id: 'unitreview', label: 'Единицы на ревью', icon: Ruler, roles: CURATOR, group: 'quality' },
-  { id: 'apples', label: 'Единые единицы', icon: Scale, group: 'quality' },
-  { id: 'hardness', label: 'Твёрдость HV↔HRC↔HB', icon: Gauge, group: 'quality' },
-
-  { id: 'curation', label: 'Очередь курирования', icon: ClipboardList, roles: CURATOR, group: 'curation' },
-  { id: 'er_candidates', label: 'Слияние сущностей', icon: Layers, roles: CURATOR, group: 'curation' },
-  { id: 'erstep', label: 'ER-шаг конвейера', icon: Workflow, roles: INTERNAL, group: 'curation' },
-  { id: 'mentionresolve', label: 'Резолвер упоминаний', icon: Target, roles: CURATOR, group: 'curation' },
-  { id: 'mergeundo', label: 'Откат слияний', icon: Undo2, roles: CURATOR, group: 'curation' },
-  { id: 'tablecorrection', label: 'Правка таблиц', icon: Wrench, roles: CURATOR, group: 'curation' },
-
-  { id: 'reasoning', label: 'Ход мысли', icon: Route, group: 'agent' },
-  { id: 'agenttrace', label: 'Трейс агента', icon: GitBranch, roles: INTERNAL, group: 'agent' },
-  { id: 'runtransparency', label: 'Прозрачность прогона', icon: FileCode2, roles: INTERNAL, group: 'agent' },
-  { id: 'hitl', label: 'Уточнение (HITL)', icon: CircleHelp, group: 'agent' },
-  { id: 'confidencefusion', label: 'Слияние уверенности', icon: Layers, roles: INTERNAL, group: 'agent' },
-  { id: 'edgeanomalies', label: 'Аномалии рёбер', icon: GitFork, roles: INTERNAL, group: 'agent' },
-  { id: 'targetdemo', label: 'Демо-прогон §23', icon: Sparkles, group: 'agent' },
+  { id: 'targetdemo', label: 'Демонстрационный прогон', icon: Sparkles, group: 'agent' },
+  { id: 'hitl', label: 'Уточнение в диалоге', icon: CircleHelp, group: 'agent' },
+  { id: 'agent-reasoning', label: 'Ход мысли ассистента', icon: Brain, group: 'agent' },
+  { id: 'collaboration', label: 'Совместная работа', icon: Users, roles: CURATOR, group: 'agent' },
 
   { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: CURATOR, group: 'admin' },
-
-  // -- Batch-4 feature screens ----------------------------------------------
-  // { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
-  // { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
-  // { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' }, // убрано — покрытие уже в «Обзоре»
-  // { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' }, // → «Поиск по корпусу»
-  { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
-  // { id: 'rangefacets', label: 'Диапазонные фасеты', icon: SlidersHorizontal, group: 'knowledge' }, // → «Поиск по корпусу»
-  { id: 'graphdiff', label: 'Diff графа (курирование)', icon: GitCompareArrows, roles: CURATOR, group: 'graph' },
-  // { id: 'subgraphchat', label: 'Чат с подграфом', icon: Lasso, roles: INTERNAL, group: 'graph' }, // убрано по запросу
-  { id: 'newdocsensor', label: 'Сенсор новых документов', icon: FolderInput, roles: INTERNAL, group: 'data' },
-  { id: 'pipelineemission', label: 'Эмиссия линиджа', icon: Radio, roles: INTERNAL, group: 'data' },
-  { id: 'pipelinelineage', label: 'Линидж конвейера', icon: GitBranch, roles: INTERNAL, group: 'data' },
-  { id: 'extractionrecall', label: 'Recall извлечения', icon: Gauge, roles: ANALYST, group: 'quality' },
-  { id: 'goldendataset', label: 'Golden dataset', icon: BookMarked, roles: ANALYST, group: 'quality' },
-  { id: 'rankingexplain', label: 'Объяснение ранжирования', icon: ListOrdered, roles: ANALYST, group: 'quality' },
-  { id: 'regressiongate', label: 'Гейт регрессий', icon: TrendingDown, roles: ANALYST, group: 'quality' },
-  { id: 'retrievaleval', label: 'Retrieval-eval (hybrid/bm25/dense)', icon: Gauge, roles: ANALYST, group: 'quality' },
-  { id: 'verifiergate', label: 'Verifier-гейт', icon: BadgeCheck, roles: ANALYST, group: 'quality' },
-  { id: 'curationdiffreagraph', label: 'Diff курирования (до/после)', icon: GitCompareArrows, roles: CURATOR, group: 'curation' },
-  { id: 'reviewtaskgen', label: 'Генерация задач ревью', icon: ClipboardList, roles: CURATOR, group: 'curation' },
-  { id: 'langgraphstudio', label: 'LangGraph Studio', icon: Workflow, roles: INTERNAL, group: 'agent' },
-  { id: 'ltmemory', label: 'Память ассистента', icon: Brain, roles: INTERNAL, group: 'agent' },
-  { id: 'dod', label: 'Definition of Done', icon: ClipboardCheck, roles: ANALYST, group: 'admin' },
-  { id: 'sourcecatalog', label: 'Каталог источников', icon: Library, roles: ANALYST, group: 'admin' },
-
-  // -- Batch-5 feature screens ----------------------------------------------
-  // { id: 'graphlegend', label: 'Легенда графа', icon: Shapes, group: 'graph' }, // убрано по запросу
-  { id: 'entitytimeline', label: 'Timeline сущности', icon: CalendarClock, group: 'graph' },
-  { id: 'materialsner', label: 'Материаловедческий NER', icon: Atom, roles: INTERNAL, group: 'data' },
-  { id: 'dagsterassets', label: 'Asset-граф Dagster', icon: Workflow, roles: INTERNAL, group: 'data' },
-  { id: 'calibration', label: 'Калибровка уверенности', icon: Gauge, roles: ANALYST, group: 'quality' },
-  { id: 'expertfeedback', label: 'Экспертный фидбэк → регрессии', icon: ThumbsUp, roles: ANALYST, group: 'quality' },
-  { id: 'propertytermreview', label: 'Новые термины свойств', icon: BookOpenCheck, roles: CURATOR, group: 'curation' },
-  { id: 'collaboration', label: 'Совместные расследования', icon: Users, roles: CURATOR, group: 'agent' },
-  { id: 'pipelineagentdag', label: 'DAG конвейера и агента', icon: Share2, roles: INTERNAL, group: 'agent' },
-  { id: 'ermetrics', label: 'Метрики ER (наблюдаемость)', icon: Gauge, roles: ANALYST, group: 'admin' },
-  { id: 'localeswitcher', label: 'Язык интерфейса (i18n)', icon: Languages, roles: ANALYST, group: 'admin' },
 ];
 
 export function App() {
@@ -521,6 +390,11 @@ export function App() {
           {view === 'entities' && <EntityDetailView />}
           {view === 'glossary' && <GlossaryView />}
           {view === 'corpusexplore' && <CorpusExplorerView />}
+          {view === 'graph-explore' && <GraphExploreView />}
+          {view === 'evidence-inspector' && <EvidenceInspectorHubView />}
+          {view === 'source-trust' && <SourceTrustHubView />}
+          {view === 'curation-hub' && <CurationHubView />}
+          {view === 'agent-reasoning' && <AgentReasoningHubView />}
           {view === 'curation' && <CurationView />}
           {view === 'admin' && <AdminView />}
           {/* -- Batch-1 feature screens -- */}

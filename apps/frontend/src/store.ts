@@ -91,6 +91,12 @@ export type View =
   | 'extractionrecall'
   | 'facetsearch'
   | 'corpusexplore'
+  // Merged tabbed hubs (jury-facing consolidation)
+  | 'graph-explore'
+  | 'evidence-inspector'
+  | 'source-trust'
+  | 'curation-hub'
+  | 'agent-reasoning'
   | 'facttimemachine'
   | 'goldendataset'
   | 'graphdiff'
