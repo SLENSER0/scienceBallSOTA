@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -72,17 +72,17 @@ export function DashboardView() {
           <>
             {/* Counters */}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={<Database size={15} />} label="Узлы" v={snap?.counts.nodes} />
-              <Stat icon={<Boxes size={15} />} label="Связи" v={snap?.counts.rels} />
+              <Stat icon={<Database size={15} />} label="Узлы" v={snap?.counts?.nodes} />
+              <Stat icon={<Boxes size={15} />} label="Связи" v={snap?.counts?.rels} />
               <Stat
                 icon={<TriangleAlert size={15} />}
                 label="Пробелы"
-                v={snap?.coverage.totals?.gaps}
+                v={snap?.coverage?.totals?.gaps}
               />
               <Stat
                 icon={<GitCompareArrows size={15} />}
                 label="Противоречия"
-                v={snap?.coverage.totals?.contradictions}
+                v={snap?.coverage?.totals?.contradictions}
               />
             </div>
 
@@ -128,7 +128,9 @@ export function DashboardView() {
             <div className="mt-5">
               <div className="mb-2 text-sm text-nickel">Клубок корпуса</div>
               <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
-                <LargeGraphView />
+                <LazyVisible>
+                  <LargeGraphView />
+                </LazyVisible>
               </div>
             </div>
 
@@ -136,12 +138,41 @@ export function DashboardView() {
             <div className="mt-5">
               <div className="mb-2 text-sm text-nickel">Карта кластеров</div>
               <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
-                <CommunityClusterGraphView />
+                <LazyVisible>
+                  <CommunityClusterGraphView />
+                </LazyVisible>
               </div>
             </div>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Defer expensive WebGL panels until scrolled into view: never spin up a second
+// Sigma/WebGL context or run a layout for a below-the-fold panel during first paint.
+function LazyVisible({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || show) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShow(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show]);
+  return (
+    <div ref={ref} className="h-full">
+      {show ? children : null}
     </div>
   );
 }
