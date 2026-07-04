@@ -114,7 +114,10 @@ def _classify_cell(
 def gaps_absence(
     domain: str | None = Query(None, description="Filter by the material's domain"),
     verdict: str | None = Query(None, description="Keep only this absence_verdict"),
-    limit: int = Query(120, ge=1, le=400, description="Max cells to classify"),
+    limit: int = Query(120, ge=1, le=400, description="Max cells to return"),
+    scan_cap: int = Query(
+        1200, ge=1, le=5000, description="Max empty cells to classify before ranking"
+    ),
 ) -> dict:
     """Absence-verdict annotated gaps for the «карта неизвестного» UI (§25.14/§25.13).
 
@@ -129,6 +132,10 @@ def gaps_absence(
     store = get_store()
     amap = build_absence_map(store, domain=domain)
 
+    # Classify a broad candidate pool (bounded by ``scan_cap`` for cost), THEN rank
+    # by extractor-miss risk, THEN truncate to ``limit`` — so the returned page is
+    # the genuinely highest-risk cells, not just the first ``limit`` in grid order
+    # (M-36). Truncating before the sort would return a non-representative sample.
     annotated: list[dict[str, Any]] = []
     for cell in amap.cells:
         if getattr(cell, "status", "") == _COVERED_STATUS:
@@ -145,11 +152,12 @@ def gaps_absence(
         if verdict and item["absence_verdict"] != verdict:
             continue
         annotated.append(item)
-        if len(annotated) >= limit:
-            break
+        if len(annotated) >= scan_cap:
+            break  # cap the classification cost, not the ranking pool at ``limit``
 
     # Default order: highest extractor-miss risk first (most actionable to re-check).
     annotated.sort(key=lambda a: a["p_extractor_missed"], reverse=True)
+    annotated = annotated[:limit]
 
     by_verdict: dict[str, int] = {}
     for a in annotated:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from kg_common.storage.chat_sessions import ChatMessage, ChatSession, ChatStore
@@ -99,3 +101,30 @@ def test_empty_session_has_no_messages(store: ChatStore) -> None:
     store.create_session("s", user_id="u")
     assert store.messages("s") == []
     assert store.messages("does-not-exist") == []
+
+
+def test_concurrent_add_message_no_duplicate_seq(tmp_path) -> None:
+    """M-35: concurrent appends to one session must get unique, contiguous seqs.
+
+    Uses a file-backed SQLite so all worker threads share one database (an
+    in-memory URL would give each thread its own). Without serialization the
+    read-max-then-insert races and two messages land on the same ``seq``.
+    """
+    url = f"sqlite:///{tmp_path / 'chat.db'}"
+    store = ChatStore(url)
+    store.migrate()
+    store.create_session("s", user_id="u")
+
+    n = 64
+
+    def add(i: int) -> int:
+        return store.add_message("s", "user", f"msg {i}", f"m{i}")
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        seqs = sorted(pool.map(add, range(n)))
+
+    # Every returned seq is unique and the set is exactly 0..n-1 (no dups/gaps).
+    assert seqs == list(range(n))
+    persisted = [m.seq for m in store.messages("s")]
+    assert sorted(persisted) == list(range(n))
+    assert len(set(persisted)) == n  # no duplicate seq persisted

@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 from typing import Any
 
@@ -179,11 +181,41 @@ async def deep_stream(
         if not deep_research_available():
             yield _sse("error", {"message": "open_deep_research недоступен"})
             return
+        # Drain the ODR run in a background task and pull events off a queue with a
+        # 15s timeout, emitting an SSE keep-alive comment while idle. Deep research
+        # can go minutes between events; without this, idle-timeout proxies (nginx,
+        # gunicorn, CDNs) sever the connection mid-run (M-24).
+        queue: asyncio.Queue = asyncio.Queue()
+        end_marker = object()
+
+        async def _produce() -> None:
+            try:
+                async for event, data in stream_deep_research(question):
+                    await queue.put(("event", (event, data)))
+            except Exception as exc:  # surface a failure mid-stream
+                await queue.put(("error", str(exc)[:200]))
+            finally:
+                await queue.put((end_marker, None))
+
+        task = asyncio.create_task(_produce())
         try:
-            async for event, data in stream_deep_research(question):
+            while True:
+                try:
+                    kind, payload = await asyncio.wait_for(queue.get(), timeout=15.0)
+                except TimeoutError:
+                    yield b": keepalive\n\n"  # SSE comment — ignored by EventSource
+                    continue
+                if kind is end_marker:
+                    break
+                if kind == "error":
+                    yield _sse("error", {"message": payload})
+                    break
+                event, data = payload
                 yield _sse(event, data)
-        except Exception as exc:  # surface a failure mid-stream
-            yield _sse("error", {"message": str(exc)[:200]})
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 

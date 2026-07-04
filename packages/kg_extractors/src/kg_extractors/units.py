@@ -146,7 +146,28 @@ CANONICAL_BY_KIND: dict[str, str] = {
     # magnitudes are preserved (100 ppm must not become 0.01 percent).
 }
 
+# Pint unit strings that are densities, not mass concentrations. They share the
+# [mass]/[length]^3 dimensionality with mg/L concentrations, so without this
+# guard to_canonical would wrongly rescale e.g. 1200 kg/m^3 -> 1.2e6 mg/L.
+_DENSITY_UNITS: frozenset[str] = frozenset({"kg/m^3"})
+
 _NUM = r"[-+]?\d+(?:[.,]\d+)?"
+# Thousands grouping: "1 000 000", "1 000" (space / NBSP U+00A0 / narrow-NBSP
+# U+202F between 3-digit groups). NFKC turns NBSP/narrow-NBSP into plain spaces,
+# but we match the explicit codepoints too for safety.
+_THOUSANDS_RE = re.compile(r"\d{1,3}(?:[\s\u00A0\u202F]\d{3})+(?!\d)")
+_GROUP_SEP_RE = re.compile(r"[\s\u00A0\u202F]")
+
+
+def _strip_thousands(s: str) -> str:
+    """Collapse thousands separators inside grouped numbers ("1 000 000" ->
+    "1000000") so float() keeps the full magnitude instead of reading only the
+    first group or fabricating a spurious second constraint. Only whitespace/
+    NBSP wedged between a 1-3 digit head and one-or-more 3-digit groups is
+    removed, so ordinary spacing between distinct numbers is preserved."""
+    return _THOUSANDS_RE.sub(lambda m: _GROUP_SEP_RE.sub("", m.group(0)), s)
+
+
 _OPS = {
     "≤": "<=",
     "⩽": "<=",
@@ -200,6 +221,11 @@ def _kind(unit_str: str) -> str | None:
     except Exception:
         return None
     dim = q.dimensionality
+    # Density (kg/m^3) shares its dimensionality with mass concentration
+    # ([mass]/[length]^3) but is NOT a mg/L concentration — treat it as its own
+    # kind so it is left as-is instead of being multiplied ×1000 into mg/L.
+    if unit_str in _DENSITY_UNITS:
+        return "density"
     checks = {
         "concentration_mass_vol": "[mass] / [length] ** 3",
         "flow_rate": "[length] ** 3 / [time]",
@@ -290,11 +316,21 @@ def _f(x: str) -> float:
     return float(x.replace(",", ".").replace("+", ""))
 
 
+def _is_year_like(v: float) -> bool:
+    """A bare integer in the calendar-year band — likely a date/counter, not a
+    measurement (e.g. «от 2015», «после 2020»)."""
+    return v.is_integer() and 1500 <= v <= 2100
+
+
 def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
     """Extract numeric conditions (ranges / inequalities / single values)."""
     if not text:
         return []
     t = unicodedata.normalize("NFKC", text)
+    # Collapse thousands separators ("1 000 000" -> "1000000") BEFORE matching so
+    # grouped magnitudes are read whole instead of as a leading group + a bogus
+    # trailing constraint.
+    t = _strip_thousands(t)
     out: list[ParsedConstraint] = []
     seen: set[str] = set()
     covered: list[tuple[int, int]] = []  # char spans already consumed by range/ineq
@@ -354,9 +390,18 @@ def parse_numeric_constraints(text: str) -> list[ParsedConstraint]:
         op = _OPS.get(raw_op) or ru_ops.get(raw_op)
         if not op:
             continue
+        value = _f(m.group(2))
+        unit = m.group(3)
+        # Don't fabricate a unit-less measurement from prose about dates/counts.
+        # A constraint with no unit is only trusted when it uses an explicit
+        # comparison symbol (< > ≤ ≥ …); directional words («от»/«до»/«более»…)
+        # with no unit are almost always years/enumerations. Also drop any
+        # unit-less year-like integer regardless of operator.
+        if unit is None and (raw_op not in _OPS or _is_year_like(value)):
+            continue
         add(
             ParsedConstraint(
-                op, value=_f(m.group(2)), unit=m.group(3), source_span=m.group(0).strip()
+                op, value=value, unit=unit, source_span=m.group(0).strip()
             ),
             m.span(),
         )

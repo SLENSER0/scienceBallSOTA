@@ -15,6 +15,7 @@ per-session ``seq`` so ``messages`` can return the turn order deterministically;
 
 from __future__ import annotations
 
+import threading
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -92,6 +93,10 @@ class ChatStore:
         self._store = SqlMetaStore(url)  # reuse engine + shared MetaData
         self.engine = self._store.engine
         self._insert = _dialect_insert(self.engine)
+        # Serializes the per-session ``seq`` read-max-then-insert in add_message so
+        # concurrent appends to one session can't compute (and persist) the same
+        # ``seq`` (M-35). One lock per store; the critical section is tiny.
+        self._seq_lock = threading.Lock()
 
     # -- schema -----------------------------------------------------------
     def migrate(self) -> None:
@@ -154,40 +159,66 @@ class ChatStore:
         When ``seq`` is ``None`` it auto-increments per session: the first
         message gets ``seq=0`` and each next one ``max(seq)+1``. Re-adding an
         existing ``message_id`` keeps that message's ``seq`` (idempotent).
+
+        The auto-``seq`` read-max-then-insert is serialized under
+        :attr:`_seq_lock` so concurrent appends to the same session can't read
+        the same ``max(seq)`` and persist duplicate ``seq`` values (M-35). When
+        the caller supplies an explicit ``seq`` no serialization is needed.
         """
+        if seq is None:
+            with self._seq_lock:
+                return self._append_autoseq(session_id, role, content, message_id)
+        return self._insert_message(session_id, role, content, message_id, seq)
+
+    def _append_autoseq(
+        self, session_id: str, role: str, content: str, message_id: str
+    ) -> int:
+        """Compute the next per-session ``seq`` and insert; caller holds the lock."""
         with self.engine.begin() as conn:
-            if seq is None:
-                existing = conn.execute(
-                    select(chat_messages.c.seq).where(chat_messages.c.message_id == message_id)
-                ).first()
-                if existing is not None:
-                    seq = int(existing.seq)  # keep existing seq on re-add
-                else:
-                    top = conn.execute(
-                        select(func.max(chat_messages.c.seq)).where(
-                            chat_messages.c.session_id == session_id
-                        )
-                    ).scalar()
-                    seq = 0 if top is None else int(top) + 1
-            stmt = self._insert(chat_messages).values(
-                message_id=message_id,
-                session_id=session_id,
-                role=role,
-                content=content,
-                created_at=_now(),
-                seq=seq,
-            )
-            # re-add by PK updates role/content/seq; created_at stays first insert
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["message_id"],
-                set_={
-                    "role": stmt.excluded.role,
-                    "content": stmt.excluded.content,
-                    "seq": stmt.excluded.seq,
-                },
-            )
-            conn.execute(stmt)
+            existing = conn.execute(
+                select(chat_messages.c.seq).where(chat_messages.c.message_id == message_id)
+            ).first()
+            if existing is not None:
+                seq = int(existing.seq)  # keep existing seq on re-add
+            else:
+                top = conn.execute(
+                    select(func.max(chat_messages.c.seq)).where(
+                        chat_messages.c.session_id == session_id
+                    )
+                ).scalar()
+                seq = 0 if top is None else int(top) + 1
+            self._exec_upsert(conn, session_id, role, content, message_id, seq)
         return seq
+
+    def _insert_message(
+        self, session_id: str, role: str, content: str, message_id: str, seq: int
+    ) -> int:
+        """Insert (UPSERT by ``message_id``) with an explicit ``seq``."""
+        with self.engine.begin() as conn:
+            self._exec_upsert(conn, session_id, role, content, message_id, seq)
+        return seq
+
+    def _exec_upsert(
+        self, conn: Any, session_id: str, role: str, content: str, message_id: str, seq: int
+    ) -> None:
+        stmt = self._insert(chat_messages).values(
+            message_id=message_id,
+            session_id=session_id,
+            role=role,
+            content=content,
+            created_at=_now(),
+            seq=seq,
+        )
+        # re-add by PK updates role/content/seq; created_at stays first insert
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["message_id"],
+            set_={
+                "role": stmt.excluded.role,
+                "content": stmt.excluded.content,
+                "seq": stmt.excluded.seq,
+            },
+        )
+        conn.execute(stmt)
 
     def messages(self, session_id: str) -> list[ChatMessage]:
         """Return the session's messages ordered by ``seq`` (turn order, §14.4)."""

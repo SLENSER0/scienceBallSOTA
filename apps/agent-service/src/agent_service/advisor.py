@@ -16,6 +16,7 @@ Candidate agents run concurrently (I/O-bound LLM calls) so latency ≈ the slowe
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -26,6 +27,9 @@ from kg_retrievers.graph_retriever import GraphRetriever
 _log = get_logger("advisor")
 _MAX_CANDIDATES = 8
 _MAX_WORKERS = 10  # fan out up to 10 candidate-evaluation agents at once (user-requested)
+# M-25: wall-clock budget for the whole candidate fan-out. Since the agents start
+# together this bounds each call too; a straggler is degraded, never awaited forever.
+_EVAL_TIMEOUT_S = 45.0
 
 
 @dataclass
@@ -41,6 +45,9 @@ class AdvisorCandidate:
     n_measurements: int = 0
     relevance: int = 0  # 2=on-topic (name match), 1=same domain, 0=off-topic
     model: str | None = None
+    # M-33: False when the LLM eval failed/was malformed — such cards keep a graph-only
+    # fit_score of 0 and are ranked strictly below every evaluated candidate.
+    evaluated: bool = True
 
 
 @dataclass
@@ -164,6 +171,55 @@ _EVAL_SYSTEM = (
 _REL_LABEL = {2: "прямо на тему запроса", 1: "смежная область", 0: "вне темы запроса"}
 
 
+def _card(
+    sol: dict[str, Any],
+    tier: int,
+    *,
+    fit: int,
+    verdict: str,
+    supports: list[str],
+    limitations: list[str],
+    gaps: list[str],
+    model: str | None,
+    evaluated: bool,
+) -> AdvisorCandidate:
+    return AdvisorCandidate(
+        id=str(sol.get("id")),
+        name=str(sol.get("name") or sol.get("id")),
+        practice_type=str(sol.get("practice_type") or "unknown"),
+        fit_score=fit,
+        verdict=verdict,
+        supports=supports,
+        limitations=limitations,
+        gaps=gaps,
+        n_measurements=len(sol.get("measurements", [])),
+        relevance=tier,
+        model=model,
+        evaluated=evaluated,
+    )
+
+
+def _degraded_card(
+    sol: dict[str, Any], q_terms: set[str], intent: Any, reason: str
+) -> AdvisorCandidate:
+    """A graph-only card for a candidate whose LLM eval failed/timed out (M-33/M-25).
+
+    ``evaluated=False`` and ``fit_score=0`` so it never fabricates a score and always
+    ranks below every candidate that was actually scored.
+    """
+    return _card(
+        sol,
+        _relevance_tier(sol, q_terms, intent),
+        fit=0,
+        verdict=reason,
+        supports=[],
+        limitations=[x for x in sol.get("limitations", []) if x][:6],
+        gaps=[],
+        model=None,
+        evaluated=False,
+    )
+
+
 def _evaluate_candidate(
     sol: dict[str, Any], query: str, constraints: str, q_terms: set[str], intent: Any
 ) -> AdvisorCandidate:
@@ -183,36 +239,33 @@ def _evaluate_candidate(
         f"Известные ограничения: {'; '.join(limitations) or 'н/д'}\n\n"
         "Оцени соответствие условиям."
     )
-    fit, verdict, sup, lim, gaps, model = 50, "", [], limitations, [], None
     try:
         llm = get_llm()
         data = llm.complete_json(
             user, system=_EVAL_SYSTEM, model=get_settings().llm_model_synth_quality, max_tokens=1200
         )
         model = llm.used_models[-1] if llm.used_models else None
-        if isinstance(data, dict):
-            fit = int(max(0, min(100, data.get("fit_score", 50))))
-            verdict = str(data.get("verdict", "")).strip()
-            sup = [str(x) for x in data.get("supports", [])][:6]
-            lim = [str(x) for x in data.get("limitations", limitations)][:6]
-            gaps = [str(x) for x in data.get("gaps", [])][:6]
+        # M-33: a malformed reply (no numeric fit_score) must NOT become a fake 50 —
+        # degrade to a graph-only card that ranks last, with an explicit verdict.
+        if isinstance(data, dict) and isinstance(data.get("fit_score"), (int, float)):
+            return _card(
+                sol,
+                tier,
+                fit=int(max(0, min(100, data["fit_score"]))),
+                verdict=str(data.get("verdict", "")).strip(),
+                supports=[str(x) for x in data.get("supports", [])][:6],
+                limitations=[str(x) for x in data.get("limitations", limitations)][:6],
+                gaps=[str(x) for x in data.get("gaps", [])][:6],
+                model=model,
+                evaluated=True,
+            )
+        _log.warning("advisor.eval_malformed", tech=str(name)[:60])
+        return _degraded_card(
+            sol, q_terms, intent, "оценка недоступна (некорректный ответ модели), данные графа"
+        )
     except Exception as exc:  # degrade to a graph-only card, never fail the whole run
         _log.warning("advisor.eval_failed", tech=str(name)[:60], error=str(exc)[:120])
-        verdict = "оценка недоступна (модель), показаны данные графа"
-
-    return AdvisorCandidate(
-        id=str(sol.get("id")),
-        name=str(name),
-        practice_type=str(sol.get("practice_type") or "unknown"),
-        fit_score=fit,
-        verdict=verdict,
-        supports=sup,
-        limitations=lim,
-        gaps=gaps,
-        n_measurements=len(sol.get("measurements", [])),
-        relevance=tier,
-        model=model,
-    )
+        return _degraded_card(sol, q_terms, intent, "оценка недоступна (модель), данные графа")
 
 
 _SUMMARY_SYSTEM = (
@@ -245,9 +298,48 @@ def _synthesize(
 
 
 # -- orchestration ----------------------------------------------------------
-def _rank_key(c: AdvisorCandidate) -> tuple[int, int]:
-    # On-topic candidates ALWAYS outrank off-topic ones; then by fit (adversarial fix #1).
-    return (c.relevance, c.fit_score)
+def _rank_key(c: AdvisorCandidate) -> tuple[int, int, int]:
+    # M-33: every scored card outranks every un-scored (failed/timed-out) one; then
+    # on-topic beats off-topic (adversarial fix #1); then by fit.
+    return (int(c.evaluated), c.relevance, c.fit_score)
+
+
+def _stream_cards(
+    candidates: list[dict[str, Any]], query: str, constraints: str, q_terms: set[str], intent: Any
+):  # type: ignore[no-untyped-def]
+    """Yield an :class:`AdvisorCandidate` per candidate as its agent finishes (M-25).
+
+    The whole fan-out is bounded by ``_EVAL_TIMEOUT_S``: a straggler is cancelled and
+    yielded as a degraded card instead of hanging the generator. On early close
+    (client disconnect → ``GeneratorExit``) the ``finally`` cancels every future and
+    tears the pool down without waiting, so no orphaned LLM work blocks the caller.
+    """
+    pool = ThreadPoolExecutor(max_workers=_MAX_WORKERS)
+    fut_to_cand = {
+        pool.submit(_evaluate_candidate, c, query, constraints, q_terms, intent): c
+        for c in candidates
+    }
+    pending = set(fut_to_cand)
+    try:
+        try:
+            for fut in as_completed(fut_to_cand, timeout=_EVAL_TIMEOUT_S):
+                pending.discard(fut)
+                try:
+                    yield fut.result()
+                except Exception as exc:  # never let one agent kill the fan-out
+                    _log.warning("advisor.future_failed", error=str(exc)[:120])
+                    yield _degraded_card(fut_to_cand[fut], q_terms, intent, "оценка недоступна")
+        except FuturesTimeout:
+            _log.warning("advisor.eval_timeout", pending=len(pending))
+        for fut in pending:  # degrade whatever didn't finish inside the budget
+            fut.cancel()
+            yield _degraded_card(
+                fut_to_cand[fut], q_terms, intent, "оценка недоступна (таймаут), данные графа"
+            )
+    finally:
+        for fut in fut_to_cand:
+            fut.cancel()
+        pool.shutdown(wait=False)
 
 
 def _prepare(query: str, store: Any, geography: str | None, top_k: int):  # type: ignore[no-untyped-def]
@@ -269,13 +361,7 @@ def advise(
 
     evals: list[AdvisorCandidate] = []
     if candidates:
-        with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-            evals = list(
-                pool.map(
-                    lambda c: _evaluate_candidate(c, query, constraints, q_terms, intent),
-                    candidates,
-                )
-            )
+        evals = list(_stream_cards(candidates, query, constraints, q_terms, intent))
     evals.sort(key=_rank_key, reverse=True)
 
     summary, sum_model = _synthesize(query, evals, retrieval.contradictions)
@@ -298,15 +384,9 @@ def stream_advise(query: str, store: Any, *, geography: str | None = None, top_k
 
     evals: list[AdvisorCandidate] = []
     if candidates:
-        with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
-            futures = [
-                pool.submit(_evaluate_candidate, c, query, constraints, q_terms, intent)
-                for c in candidates
-            ]
-            for fut in as_completed(futures):  # stream each card the instant its agent finishes
-                cand = fut.result()
-                evals.append(cand)
-                yield "candidate", asdict(cand)
+        for cand in _stream_cards(candidates, query, constraints, q_terms, intent):
+            evals.append(cand)
+            yield "candidate", asdict(cand)
     evals.sort(key=_rank_key, reverse=True)
 
     summary, sum_model = _synthesize(query, evals, retrieval.contradictions)

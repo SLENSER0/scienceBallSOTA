@@ -137,6 +137,37 @@ def _table(retrieval: RetrievalResult) -> dict[str, Any] | None:
     return {"columns": ["Решение", "Практика", "Ключевой показатель", "Применимость"], "rows": rows}
 
 
+def _brief_conclusion(retrieval: RetrievalResult) -> str:
+    """A 2–4 line extractive «краткий вывод» from graph facts — no LLM, instant."""
+    parts: list[str] = []
+    practice_ru = {"russia": "отеч.", "foreign": "заруб.", "global": "межд.", "cis": "СНГ"}
+    sols = [s for s in retrieval.solutions[:5] if s.get("name")]
+    if sols:
+
+        def _label(s: dict) -> str:
+            pt = practice_ru.get(s.get("practice_type"))
+            return s["name"] + (f" ({pt})" if pt else "")
+
+        names = ", ".join(_label(s) for s in sols)
+        parts.append(f"**Кратко:** по вашим условиям релевантны — {names}.")
+    fbits: list[str] = []
+    for f in retrieval.facts[:3]:
+        n = f.node
+        prop = n.get("property_name") or n.get("name")
+        val = n.get("value_normalized")
+        unit = n.get("normalized_unit") or n.get("unit") or ""
+        if prop and val is not None:
+            fbits.append(f"{prop} ≈ {val} {unit}".strip())
+    if fbits:
+        parts.append("Ключевые показатели: " + "; ".join(fbits) + ".")
+    if retrieval.contradictions:
+        parts.append(f"⚠ Есть противоречивые данные ({len(retrieval.contradictions)}) — см. ниже.")
+    if not parts:
+        return ""
+    parts.append("_Подробный разбор с доказательствами формируется…_")
+    return " ".join(parts)
+
+
 def _fallback_markdown(
     intent: QueryIntent, retrieval: RetrievalResult, cite: dict[str, str]
 ) -> str:
@@ -169,7 +200,11 @@ def _fallback_markdown(
 
 
 def build_answer(
-    intent: QueryIntent, retrieval: RetrievalResult, *, use_llm: bool = True
+    intent: QueryIntent,
+    retrieval: RetrievalResult,
+    *,
+    use_llm: bool = True,
+    reasoning_mode: bool = False,
 ) -> AnswerPayload:
     citations = assign_citations(retrieval)
     cite = _cite_index(retrieval)
@@ -184,10 +219,17 @@ def build_answer(
 
             llm = get_llm()
             user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
-            # Reasoning-capable synth models expose their chain-of-thought → surface it.
-            markdown, reasoning = llm.complete_with_reasoning(
-                user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=2400
-            )
+            # Speed path: a plain completion skips the separate chain-of-thought round
+            # (which ~doubled latency on the synchronous /query surface). Reasoning is
+            # still available on demand via complete_with_reasoning where it's shown.
+            if reasoning_mode:
+                markdown, reasoning = llm.complete_with_reasoning(
+                    user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
+                )
+            else:
+                markdown = llm.complete(
+                    user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
+                )
             used_models = list(llm.used_models[-1:])
         except Exception as exc:
             _log.warning("synthesize.llm_failed", error=str(exc))
@@ -217,3 +259,61 @@ def build_answer(
         used_models=used_models,
         reasoning=reasoning,
     )
+
+
+def stream_answer(intent: QueryIntent, retrieval: RetrievalResult):
+    """Yield ('meta', obj) → ('token', str)* → ('final', dict) for live SSE.
+
+    Same payload as :func:`build_answer`, but the answer text streams token-by-token so
+    a brief conclusion shows in a few seconds and the rest fills in as it generates.
+    """
+    citations = assign_citations(retrieval)
+    cite = _cite_index(retrieval)
+    context = build_context(retrieval, cite)
+    # Everything except the answer text — emitted immediately (graph, gaps, citations).
+    yield "meta", {
+        "graph": retrieval.graph,
+        "table": _table(retrieval),
+        "gaps": [{"name": g.get("name"), "type": g.get("gap_type")} for g in retrieval.gaps],
+        "contradictions": [{"name": c.get("name")} for c in retrieval.contradictions],
+        "citations": citations,
+        "parsed_query": intent.to_dict(),
+    }
+    # A brief extractive conclusion straight from the graph facts — no LLM wait, so a
+    # readable «краткий вывод» shows the moment retrieval finishes; the LLM refines below.
+    brief = _brief_conclusion(retrieval)
+    if brief:
+        yield "brief", {"text": brief}
+    parts: list[str] = []
+    used_models: list[str] = []
+    try:
+        from kg_extractors.llm import get_llm
+
+        llm = get_llm()
+        user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
+        # Generous cap so the RU answer (token-heavy Cyrillic) is never cut mid-word;
+        # streaming means a larger cap costs nothing until the model actually needs it.
+        for piece in llm.complete_stream(
+            user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=4000
+        ):
+            parts.append(piece)
+            yield "token", piece
+        used_models = list(llm.used_models[-1:])
+    except Exception as exc:  # fall back to an extractive answer on stream failure
+        _log.warning("synthesize.stream_failed", error=str(exc))
+    markdown = "".join(parts).strip()
+    if not markdown:
+        markdown = _fallback_markdown(intent, retrieval, cite)
+        yield "token", markdown
+    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    confs = [ev.get("confidence", 0.6) for ev in real_ev]
+    base = sum(confs) / len(confs) if confs else 0.3
+    if retrieval.contradictions:
+        base *= 0.8
+    if not real_ev:
+        base = min(base, 0.3)
+    yield "final", {
+        "answer_markdown": markdown,
+        "confidence": round(base, 2),
+        "used_models": used_models,
+    }

@@ -15,8 +15,9 @@ diagnostics that prove the guarantee on real Neo4j data (server-profile :8000):
   experiment (``Experiment-USES_SAMPLE->Sample-{HAS_MATERIAL,PROCESSED_BY}->…``).
 * ``GET  /audit``         — scan the live graph's edge signatures and classify each
   against the §8.2 ontology: how many triplets conform, which violate.
-* ``GET  /live-sample-paths`` — find real ``Sample`` pivot paths already in Neo4j
-  and re-validate them against the schema.
+* ``GET  /live-sample-paths`` — take real specimen pivots in Neo4j (a Material with
+  Measurements, optionally a ProcessingRegime), re-express them as the canonical
+  §8.2 ``Sample`` pivot and re-validate against the schema.
 
 The extractor never auto-upserts (§6.11): output is meant to flow through the
 span-validator (§6.10) + curation orchestrator (§6.13), not straight to Neo4j.
@@ -252,49 +253,65 @@ def audit(
 # ---------------------------------------------------------------------------
 
 
+# How many representative Measurement ids to hang off each specimen's pivot path.
+_SAMPLE_MEASUREMENT_CAP = 3
+
+# Real specimen pivots in the live graph: a Material that has Measurements
+# ``ABOUT_MATERIAL`` it (and, when present, a ProcessingRegime that ``APPLIES_TO``
+# it). The corpus carries no native ``Sample`` / ``USES_SAMPLE`` edges, so this is
+# the real structure that the canonical §8.2 Sample pivot re-expresses.
+_LIVE_PIVOT_CYPHER = (
+    "MATCH (mat:Node {label:'Material'})"
+    "<-[:Rel {type:'ABOUT_MATERIAL'}]-(ms:Node {label:'Measurement'}) "
+    "WITH mat, collect(DISTINCT ms.id) AS all_ms "
+    "OPTIONAL MATCH (mat)<-[:Rel {type:'APPLIES_TO'}]-(reg:Node {label:'ProcessingRegime'}) "
+    "RETURN mat.id AS mid, mat.name AS mname, reg.id AS rid, reg.name AS rname, "
+    "size(all_ms) AS n_ms, all_ms[0.." + str(_SAMPLE_MEASUREMENT_CAP) + "] AS sample_ms "
+    "ORDER BY n_ms DESC LIMIT "
+)
+
+
 @router.get("/live-sample-paths")
 def live_sample_paths(
     limit: int = Query(default=25, ge=1, le=200),
 ) -> dict:
-    """Find real ``Sample`` pivot paths in the live graph and re-validate them (§6.11).
+    """Re-express real specimen pivots as canonical ``Sample`` paths and validate (§6.11).
 
-    Walks ``(:Experiment)-[USES_SAMPLE]->(:Sample)`` and hangs the optional
-    ``PROCESSED_BY``/``HAS_MATERIAL`` legs off the sample, then runs every present
-    edge back through :func:`constrain_triplets`. Confirms the built subgraph
-    contains valid ``Sample`` paths that pass schema-validation (§8). Returns an
-    empty list (not an error) when the corpus has no such paths yet.
+    The live graph binds a specimen through ``Measurement-ABOUT_MATERIAL->Material``
+    (and optionally ``ProcessingRegime-APPLIES_TO->Material``) rather than the
+    canonical ``Experiment-USES_SAMPLE->Sample`` pivot — those §8.2 edges are never
+    ingested, so the old walk always came back empty. Instead we take each real
+    Material that carries Measurements, re-express it via
+    :func:`synthesize_sample_path` as the schema-clean ``Sample`` pivot the §6.11
+    extractor would emit, and run every triplet back through
+    :func:`constrain_triplets`. The result proves the pivot is whitelisted on real
+    corpus nodes. Returns an empty list (not an error) when no material carries a
+    measurement yet.
     """
     store = _require_server()
-    rows = store.rows(
-        "MATCH (e:Node)-[:Rel {type:'USES_SAMPLE'}]->(s:Node) "
-        "OPTIONAL MATCH (s)-[:Rel {type:'PROCESSED_BY'}]->(reg:Node) "
-        "OPTIONAL MATCH (s)-[:Rel {type:'HAS_MATERIAL'}]->(m:Node) "
-        "RETURN e.id AS eid, e.name AS ename, s.id AS sid, s.name AS sname, "
-        "reg.id AS rid, reg.name AS rname, m.id AS mid, m.name AS mname "
-        f"LIMIT {int(limit)}",
-        {},
-    )
+    rows = store.rows(_LIVE_PIVOT_CYPHER + str(int(limit)), {})
     paths: list[dict] = []
     all_valid = True
-    for eid, ename, sid, sname, rid, rname, mid, mname in rows:
-        triplets = [
-            pg.Triplet(str(eid), "Experiment", "USES_SAMPLE", str(sid), "Sample"),
-        ]
-        if mid is not None:
-            triplets.append(pg.Triplet(str(sid), "Sample", "HAS_MATERIAL", str(mid), "Material"))
-        if rid is not None:
-            triplets.append(
-                pg.Triplet(str(sid), "Sample", "PROCESSED_BY", str(rid), "ProcessingRegime")
-            )
+    for mid, mname, rid, rname, n_ms, sample_ms in rows:
+        measurement_ids = [str(x) for x in (sample_ms or [])]
+        experiment_id = f"exp:{mid}"  # synthetic pivot anchor over the real Material
+        triplets = pg.synthesize_sample_path(
+            experiment_id,
+            material_id=str(mid),
+            regime_id=str(rid) if rid is not None else None,
+            measurement_ids=measurement_ids,
+        )
         res = pg.constrain_triplets(triplets)
         valid = len(res.rejected) == 0
         all_valid = all_valid and valid
         paths.append(
             {
-                "experiment": {"id": eid, "name": ename},
-                "sample": {"id": sid, "name": sname},
-                "material": {"id": mid, "name": mname} if mid is not None else None,
+                "experiment": {"id": experiment_id, "synthetic": True},
+                "sample": {"id": triplets[0].object},
+                "material": {"id": mid, "name": mname},
                 "regime": {"id": rid, "name": rname} if rid is not None else None,
+                "measurement_count": int(n_ms or 0),
+                "sample_measurement_ids": measurement_ids,
                 "edges": [
                     {
                         "subject_type": t.subject_type,

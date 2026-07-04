@@ -38,13 +38,18 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from api_gateway.auth import current_user
+from api_gateway.auth import current_role, current_user
 from kg_common import get_settings
 
 router = APIRouter(prefix="/api/v1/collab", tags=["collaboration"])
 
 # Graph target types a comment may attach to (§23.32 acceptance).
 COMMENT_TARGETS = ("Entity", "Experiment", "Evidence", "Gap", "Answer", "Investigation")
+
+# Elevated roles that may curate any comment/investigation regardless of ownership
+# (§19 RBAC): see a private investigation, force a comment's lifecycle, promote to
+# factual evidence, or list every investigation via ``all_visible``.
+_ELEVATED_ROLES = {"curator", "admin"}
 
 _cache: dict[str, Any] = {}
 
@@ -139,10 +144,26 @@ def list_comments(
 
 
 @router.post("/comments/{comment_id}/status")
-def set_status(comment_id: str, body: StatusBody, user: str = Depends(current_user)) -> dict:
-    """Transition a comment's lifecycle (draft/in_review/resolved/archived)."""
+def set_status(
+    comment_id: str,
+    body: StatusBody,
+    user: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> dict:
+    """Transition a comment's lifecycle (draft/in_review/resolved/archived).
+
+    Only the comment's author or a curator/admin may change its status (§19).
+    """
+    store = _store()
+    cur = store.get_comment(comment_id)
+    if cur is None:
+        raise HTTPException(status_code=404, detail="comment not found")
+    if role not in _ELEVATED_ROLES and cur.author != user:
+        raise HTTPException(
+            status_code=403, detail="only the author or a curator/admin may change status"
+        )
     try:
-        c = _store().set_comment_status(comment_id, body.status, user, assignee=body.assignee)
+        c = store.set_comment_status(comment_id, body.status, user, assignee=body.assignee)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if c is None:
@@ -151,8 +172,18 @@ def set_status(comment_id: str, body: StatusBody, user: str = Depends(current_us
 
 
 @router.post("/comments/{comment_id}/promote")
-def promote(comment_id: str, body: PromoteBody, user: str = Depends(current_user)) -> dict:
-    """Manually promote/demote a comment to factual-evidence status (§10.8)."""
+def promote(
+    comment_id: str,
+    body: PromoteBody,
+    user: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> dict:
+    """Manually promote/demote a comment to factual-evidence status (§10.8).
+
+    Promotion/demotion is a curation action: curator/admin only (§19).
+    """
+    if role not in _ELEVATED_ROLES:
+        raise HTTPException(status_code=403, detail="promote/demote requires a curator/admin role")
     c = _store().promote_comment(comment_id, user, promoted=body.promoted)
     if c is None:
         raise HTTPException(status_code=404, detail="comment not found")
@@ -184,19 +215,42 @@ def create_investigation(body: InvestigationBody, user: str = Depends(current_us
 def list_investigations(
     all_visible: bool = Query(default=False, description="curator/admin: list all, not just mine"),
     user: str = Depends(current_user),
+    role: str = Depends(current_role),
 ) -> dict:
-    """List investigations the caller owns or is a member of (newest first)."""
+    """List investigations the caller owns or is a member of (newest first).
+
+    ``all_visible`` (list every investigation, including private ones) is a curation
+    capability restricted to curator/admin (§19); other roles always get their own.
+    """
+    if all_visible and role not in _ELEVATED_ROLES:
+        raise HTTPException(status_code=403, detail="all_visible requires a curator/admin role")
     rows = _store().list_investigations(None if all_visible else user)
     return {"investigations": [i.as_dict() for i in rows], "count": len(rows)}
 
 
-@router.get("/investigations/{investigation_id}")
-def get_investigation(investigation_id: str, _user: str = Depends(current_user)) -> dict:
-    """Investigation detail plus every comment bound to it."""
-    store = _store()
-    inv = store.get_investigation(investigation_id)
+def _visible_investigation(investigation_id: str, user: str, role: str):  # type: ignore[no-untyped-def]
+    """Return the investigation if the caller may see it, else raise 404.
+
+    An investigation is private to its owner + members; curator/admin may see any.
+    A 404 (not 403) is returned to a non-member so existence is not leaked (§19 IDOR).
+    """
+    inv = _store().get_investigation(investigation_id)
     if inv is None:
         raise HTTPException(status_code=404, detail="investigation not found")
+    if role not in _ELEVATED_ROLES and user != inv.owner and user not in inv.members:
+        raise HTTPException(status_code=404, detail="investigation not found")
+    return inv
+
+
+@router.get("/investigations/{investigation_id}")
+def get_investigation(
+    investigation_id: str,
+    user: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> dict:
+    """Investigation detail plus every comment bound to it (owner/member/curator only)."""
+    store = _store()
+    inv = _visible_investigation(investigation_id, user, role)
     comments = store.list_comments_for_investigation(investigation_id)
     out = inv.as_dict()
     out["comments"] = [c.as_dict() for c in comments]
@@ -205,9 +259,16 @@ def get_investigation(investigation_id: str, _user: str = Depends(current_user))
 
 @router.patch("/investigations/{investigation_id}")
 def update_investigation(
-    investigation_id: str, body: InvestigationPatch, user: str = Depends(current_user)
+    investigation_id: str,
+    body: InvestigationPatch,
+    user: str = Depends(current_user),
+    role: str = Depends(current_role),
 ) -> dict:
-    """Patch an investigation (status/notes/entities/members/append answer)."""
+    """Patch an investigation (status/notes/entities/members/append answer).
+
+    Restricted to the owner, a member, or a curator/admin (§19 IDOR).
+    """
+    _visible_investigation(investigation_id, user, role)
     try:
         inv = _store().update_investigation(
             investigation_id,
