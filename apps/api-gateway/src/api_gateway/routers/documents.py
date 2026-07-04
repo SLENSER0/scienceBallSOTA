@@ -185,15 +185,31 @@ def list_documents(limit: int = 30) -> dict:
 
 @router.get("/{doc_id:path}/parsed")
 def document_parsed(doc_id: str) -> dict:
-    """Full parsed content — pages + tables (§17.19 postраничный parsed-просмотр)."""
-    d = _load_sidecar(doc_id)
-    return {
-        "doc_id": d["doc_id"],
-        "title": d["title"],
-        "page_count": d["page_count"],
-        "pages": d["pages"],
-        "tables": d["tables"],
-    }
+    """Full parsed content — sidecar pages/tables, else the document's graph :Chunk text."""
+    p = _sidecar(doc_id)
+    if p.exists():
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return {
+            "doc_id": d["doc_id"],
+            "title": d["title"],
+            "page_count": d["page_count"],
+            "pages": d["pages"],
+            "tables": d["tables"],
+        }
+    # Fallback: a corpus document's body lives in the graph as :Chunk nodes.
+    store = get_store()
+    chunks = _doc_chunks(store, doc_id)
+    if chunks:
+        node = store.get_node(doc_id) or {}
+        title = node.get("name") or node.get("canonical_name") or doc_id
+        return {
+            "doc_id": doc_id,
+            "title": str(title),
+            "page_count": len(chunks),
+            "pages": chunks,
+            "tables": [],
+        }
+    raise HTTPException(status_code=404, detail="document not found")
 
 
 @router.get("/{doc_id:path}/pages/{page}")
@@ -256,6 +272,7 @@ class CorpusSource(BaseModel):
     doi: str | None = None
     authors: list[str] = []
     has_parsed: bool = False
+    chunk_count: int = 0
 
 
 def _authors_list(node: dict[str, Any]) -> list[str]:
@@ -287,6 +304,34 @@ def _as_int(v: Any) -> int | None:
         return None
 
 
+def _doc_chunks(store: Any, doc_id: str, limit: int = 4000) -> list[dict[str, Any]]:
+    """Real document body from the graph — :Chunk nodes for this doc, grouped by page.
+
+    Uploaded docs keep parsed text in a sidecar; corpus documents (ingested into the
+    graph) carry their body as :Chunk nodes (doc_id + page + text). This surfaces the
+    actual text of a graph-only source for the viewer and download (§5.2)."""
+    try:
+        rows = store.rows(
+            "MATCH (c:Node {label:'Chunk'}) WHERE c.doc_id = $id AND c.text IS NOT NULL "
+            f"RETURN coalesce(c.page, 0) AS page, c.text AS text ORDER BY page LIMIT {int(limit)}",
+            {"id": doc_id},
+        )
+    except Exception:
+        return []
+    by_page: dict[int, list[str]] = {}
+    order: list[int] = []
+    for page, text in rows:
+        try:
+            p = int(page)
+        except (TypeError, ValueError):
+            p = 0
+        if p not in by_page:
+            by_page[p] = []
+            order.append(p)
+        by_page[p].append(str(text or ""))
+    return [{"page": p, "text": "\n\n".join(by_page[p])} for p in sorted(order)]
+
+
 @router.get("/corpus")
 def corpus_sources(
     limit: int = 200,
@@ -296,11 +341,17 @@ def corpus_sources(
     """List citable corpus sources — seed/manual :Paper + uploaded :Document (§17.19)."""
     store = get_store()
     bounded = min(max(limit, 1), 500)
-    # NB: LIMIT is interpolated as an int literal (not a bound $param) — the embedded
-    # Kuzu store rejects a parameterized LIMIT, matching every other query in the repo
-    # (graph.py, search.py). `bounded` is an int, so there is no injection surface.
+    # Push the type filter into the query (BEFORE LIMIT) so `doc_type=document` isn't
+    # starved by a LIMIT that filled up with papers first.
+    label_map = {"paper": "Paper", "document": "Document"}
+    dt = (doc_type or "").strip().lower()
+    labels = [label_map[dt]] if dt in label_map else ["Paper", "Document"]
+    labels_lit = "[" + ", ".join(f"'{lbl}'" for lbl in labels) + "]"
+    # NB: LIMIT + labels are literals (bounded int / fixed label names, no user text) —
+    # the embedded Kuzu store rejects a bound $param LIMIT, matching every other query
+    # in the repo (graph.py, search.py). No injection surface.
     rows = store.rows(
-        "MATCH (n:Node) WHERE n.label IN ['Paper','Document'] AND n.name IS NOT NULL "
+        f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL "
         f"RETURN n LIMIT {int(bounded)}",
     )
     sources: list[CorpusSource] = []
@@ -328,9 +379,24 @@ def corpus_sources(
     if q:
         ql = q.lower()
         sources = [s for s in sources if ql in s.title.lower()]
-    if doc_type:
-        sources = [s for s in sources if s.doc_type == doc_type]
-    sources.sort(key=lambda s: (0 if s.has_parsed else 1, s.title.lower()))
+    # (doc_type is already applied in the Cypher label filter above.)
+    # Attach real-text counts (graph :Chunk per doc) in one bulk read so the UI knows
+    # which sources have body text and can open/download the actual text.
+    ids = [s.doc_id for s in sources]
+    if ids:
+        try:
+            crows = store.rows(
+                "MATCH (c:Node {label:'Chunk'}) WHERE c.doc_id IN $ids "
+                "RETURN c.doc_id AS did, count(*) AS n",
+                {"ids": ids},
+            )
+            counts = {str(did): int(n) for did, n in crows}
+        except Exception:
+            counts = {}
+        for s in sources:
+            s.chunk_count = counts.get(s.doc_id, 0)
+    # Sources with real text (parsed sidecar or graph chunks) first, then by title.
+    sources.sort(key=lambda s: (0 if (s.has_parsed or s.chunk_count > 0) else 1, s.title.lower()))
     return {"sources": [s.model_dump() for s in sources], "count": len(sources)}
 
 
@@ -362,6 +428,24 @@ def download_document(doc_id: str) -> Response:
         content = "\n".join(lines)
         return Response(
             content=content,
+            media_type="text/markdown",
+            headers={"Content-Disposition": f'attachment; filename="{safe}.md"'},
+        )
+
+    # Corpus document whose body lives in the graph → export the real :Chunk text.
+    store = get_store()
+    chunks = _doc_chunks(store, doc_id)
+    if chunks:
+        cnode = store.get_node(doc_id) or {}
+        ctitle = cnode.get("name") or cnode.get("canonical_name") or doc_id
+        clines = [f"# {ctitle}", ""]
+        for pg in chunks:
+            clines.append(f"## Стр. {pg['page']}")
+            clines.append("")
+            clines.append(pg["text"])
+            clines.append("")
+        return Response(
+            content="\n".join(clines),
             media_type="text/markdown",
             headers={"Content-Disposition": f'attachment; filename="{safe}.md"'},
         )

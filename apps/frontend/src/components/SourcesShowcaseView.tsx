@@ -31,6 +31,7 @@ interface CorpusSource {
   doi: string | null;
   authors: string[];
   has_parsed: boolean;
+  chunk_count: number;
 }
 
 interface CorpusResponse {
@@ -134,11 +135,12 @@ export function SourcesShowcaseView() {
       window.open(`https://doi.org/${s.doi}`, '_blank', 'noopener');
       return;
     }
-    if (s.has_parsed) {
+    if (s.has_parsed || s.chunk_count > 0) {
+      // Uploaded sidecar OR body text in the graph (:Chunk) → open the in-app viewer.
       setViewerDoc(s.doc_id);
       return;
     }
-    // No link, no parsed sidecar → focus the source node in the graph explorer.
+    // No link, no text → focus the source node in the graph explorer.
     setSelectedNode({ id: s.doc_id, label: s.title, type: s.doc_type });
     setView('graph-explore');
   };
@@ -313,6 +315,9 @@ function SourceCard({
           <span className="chip text-faint">{s.evidence_strength}</span>
         )}
         {s.domain && <span className="chip text-faint">{s.domain}</span>}
+        {s.chunk_count > 0 && (
+          <span className="chip text-copper">текст: {s.chunk_count} фрагм.</span>
+        )}
         {s.has_parsed && <span className="chip text-copper">разобран</span>}
       </div>
 
