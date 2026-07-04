@@ -12,44 +12,67 @@ def attach_routers(app: FastAPI) -> None:
         advise,
         agent_reasoning,
         agent_timeline,
+        # batch 2
+        agent_trace,
         apples,
+        arbiter_resolve,
         auth,
         benchmark,
         chat,
         chat_absence,
+        community_cluster_graph,
         community_panel,
         comparison,
         contradictions,
         corpus_overview,
         coverage_heatmap,
+        coverage_sankey,
         curation,
+        demo_run,
         documents,
+        edge_anomalies,
         entity_resolution,
         er_candidates,
         evidence,
+        evidence_bbox,
         evidence_pack,
         experiments,
         export,
+        extraction_eval,
         figures,
         gap_closure,
         gaps,
         gds_live,
+        gliner_ner,
         graph,
+        graph_encoding,
         graph_ext,
+        graph_path,
         hardness,
         hitl,
         ingest,
         insights,
+        kg_health,
         link_prediction,
         missing_links,
+        mlflow_ui,
         mp_authority,
         notifications,
+        property_graph,
+        prose_claims,
+        quality_board,
         query,
+        rag_checks,
         research,
+        run_transparency,
         search,
+        similar_embeddings,
+        similar_materials,
         similarity_links,
         source_trust,
+        suspect_values,
         table_cell,
+        unit_provenance,
         views,
         voi,
     )
@@ -103,3 +126,26 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(entity_resolution.router)
     app.include_router(gds_live.router)
     app.include_router(similarity_links.router)
+    # --- batch 2 roadmap features ---
+    app.include_router(graph_path.router)
+    app.include_router(coverage_sankey.router)
+    app.include_router(suspect_values.router)
+    app.include_router(mlflow_ui.router)
+    app.include_router(gliner_ner.router)
+    app.include_router(similar_materials.router)
+    app.include_router(similar_embeddings.router)
+    app.include_router(demo_run.router)
+    app.include_router(extraction_eval.router)
+    app.include_router(community_cluster_graph.router)
+    app.include_router(rag_checks.router)
+    app.include_router(evidence_bbox.router)
+    app.include_router(run_transparency.router)
+    app.include_router(quality_board.router)
+    app.include_router(arbiter_resolve.router)
+    app.include_router(graph_encoding.router)
+    app.include_router(kg_health.router)
+    app.include_router(prose_claims.router)
+    app.include_router(property_graph.router)
+    app.include_router(unit_provenance.router)
+    app.include_router(agent_trace.router)
+    app.include_router(edge_anomalies.router)
