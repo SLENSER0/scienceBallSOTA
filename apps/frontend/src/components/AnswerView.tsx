@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Children, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AlertTriangle, Brain, ChevronDown, ChevronRight, Download, FileText, SearchX } from 'lucide-react';
@@ -16,9 +16,47 @@ function practiceLabel(g: string): string {
   return PRACTICE_LABEL[g] ?? g;
 }
 
+// Turn inline «[n]» citation markers inside rendered markdown text into clickable
+// chips that open the matching source in the evidence drawer («по ним переходить»).
+function renderWithCites(children: ReactNode, onCite: (marker: string) => void): ReactNode {
+  return Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    return child.split(/(\[\d{1,3}\])/g).map((seg, i) => {
+      if (!/^\[\d{1,3}\]$/.test(seg)) return seg;
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onCite(seg)}
+          title="открыть источник"
+          className="mx-0.5 inline rounded bg-copper/15 px-1 align-baseline font-mono text-[11px] text-copper transition hover:bg-copper/30"
+        >
+          {seg}
+        </button>
+      );
+    });
+  });
+}
+
 export function AnswerView({ answer }: { answer: AnswerPayload }) {
   const setSelectedNode = useStore((s) => s.setSelectedNode);
   const conf = answer.confidence ?? 0;
+
+  // Open the cited source (by its «[n]» marker) in the evidence drawer.
+  const openCite = (marker: string) => {
+    const c = answer.citations.find((x) => x.marker === marker);
+    if (!c) return;
+    setSelectedNode({
+      id: c.evidence.evidenceId,
+      label: c.sourceTitle ?? c.evidence.text ?? marker,
+      type: 'Evidence',
+      properties: c.evidence as unknown as Record<string, unknown>,
+    });
+  };
+  const mdComponents = {
+    p: ({ children }: { children?: ReactNode }) => <p>{renderWithCites(children, openCite)}</p>,
+    li: ({ children }: { children?: ReactNode }) => <li>{renderWithCites(children, openCite)}</li>,
+  };
 
   return (
     <div className="mt-6 animate-rise">
@@ -40,9 +78,11 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
         <ExportButtons query={(answer.parsedQuery?.raw as string) ?? ''} />
       </div>
 
-      {/* Markdown answer */}
+      {/* Markdown answer — inline [n] markers are clickable → open the source drawer */}
       <div className="md">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer.answerMarkdown}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+          {answer.answerMarkdown}
+        </ReactMarkdown>
       </div>
 
       {/* Comparison table */}
