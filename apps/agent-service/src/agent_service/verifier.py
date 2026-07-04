@@ -19,13 +19,19 @@ def verify_answer(store: KuzuGraphStore, answer: AnswerPayload) -> dict[str, Any
     every numeric claim in the prose must carry an inline ``[n]`` citation.
     """
     from agent_service.answer_validator import validate_answer
+    from agent_service.text_quality import is_clean_text
 
     cites = answer.citations
     grounded: list[str] = []
     unsupported: list[str] = []
     for c in cites:
         eid = c.evidence.evidence_id
-        if eid and store.get_node(eid) is not None:
+        # A citation grounds only if its node exists AND its evidence text is readable:
+        # a present-but-junk span (``(cid:NN)`` OCR artifact) is a real node yet useless
+        # provenance, so it counts as unsupported and drags coverage/confidence down.
+        text = (c.evidence.text or "") if c.evidence else ""
+        junk = bool(text) and not is_clean_text(text)
+        if eid and not junk and store.get_node(eid) is not None:
             grounded.append(eid)
         else:
             unsupported.append(c.marker)
@@ -92,7 +98,11 @@ def apply_verification(store: KuzuGraphStore, answer: AnswerPayload) -> AnswerPa
     if report["unsupported"]:
         cap = min(cap, report["coverage"])
     if not report["numeric_validation"]["ok"]:
-        cap = min(cap, 0.5)
+        # Fabricated numbers are the most damaging failure mode, so the cap bites
+        # harder the more uncited measurements there are (0.40 for one → floor 0.25),
+        # instead of a flat 0.5 that sat above the old already-low base and never fired.
+        n_bad = len(report["numeric_validation"]["numeric_claims_without_evidence"])
+        cap = min(cap, max(0.25, 0.45 - 0.05 * n_bad))
     if cap < 1.0:
         answer.confidence = round(min(answer.confidence, cap), 4)
     return answer

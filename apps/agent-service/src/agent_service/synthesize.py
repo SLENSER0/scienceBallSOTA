@@ -8,8 +8,10 @@ when no LLM key is configured, so the pipeline always produces an answer.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
+from agent_service.text_quality import clean_fraction, is_clean_text
 from kg_common import AnswerPayload, Citation, EvidenceRef, get_logger
 from kg_extractors.query_parser import QueryIntent
 from kg_retrievers.graph_retriever import RetrievalResult
@@ -31,14 +33,146 @@ SYSTEM = (
     "6) Противоречия (если значения конфликтуют).\n"
     "7) Незакрытые пробелы: чего в данных не хватает.\n"
     "8) Уровень достоверности.\n"
-    "Если фактов недостаточно — честно скажи об этом. Не выдумывай источники."
+    "Если фактов недостаточно — честно скажи об этом. Не выдумывай источники.\n"
+    "ЗАПРЕЩЕНО: помечать числа тегами вида [global], [foreign], [FACTS], [unknown], "
+    "[числовые факты] — это НЕ ссылки. Ссылкой считается ТОЛЬКО [n] на конкретный "
+    "источник из FACTS. Любое числовое значение без ссылки [n] приводить нельзя: либо "
+    "укажи [n], либо не называй число. Если нужных данных в FACTS нет — прямо напиши "
+    "об этом и не подставляй правдоподобные значения."
 )
+
+
+# --- grounding-hardening helpers (see agent_service.text_quality) -------------
+def _citable_evidence(retrieval: RetrievalResult) -> list[dict[str, Any]]:
+    """Real, readable evidence: drop the RBAC notice and OCR/extraction junk.
+
+    A span whose ``text`` is present but unreadable — ``(cid:NN)`` glyph fallbacks,
+    dotted TOC leaders, shattered word-spacing — is excluded so it never becomes a
+    numbered citation nor is fed to the LLM as a source. Structured sources that
+    carry only a name (no text) are kept: their title is meaningful, not noise.
+    """
+    out: list[dict[str, Any]] = []
+    for ev in retrieval.evidence:
+        if ev.get("id") == "restricted:notice":
+            continue
+        text = ev.get("text") or ""
+        if text and not is_clean_text(text):
+            continue
+        out.append(ev)
+    return out
+
+
+_TOKEN_RE = re.compile(r"[A-Za-zА-Яа-яЁё0-9]+")
+
+
+def _tokens(s: str) -> set[str]:
+    return {t.lower() for t in _TOKEN_RE.findall(s or "")}
+
+
+def _intent_terms(intent: QueryIntent) -> set[str]:
+    """Meaningful (≥4-char) query terms: raw question tokens + matched entity names."""
+    terms = _tokens(getattr(intent, "raw", "") or "")
+    for e in getattr(intent, "entities", []) or []:
+        nm = getattr(e, "canonical_en", None)
+        if nm is None and isinstance(e, dict):
+            nm = e.get("name")
+        terms |= _tokens(nm or "")
+    return {t for t in terms if len(t) >= 4}
+
+
+def _relevant_gaps(intent: QueryIntent, gaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep only gaps lexically tied to the question — never a generic backlog.
+
+    The retriever attaches a Gap node for every matched candidate, so an off-target
+    match (generic smelting nodes on a water-treatment question) drags in unrelated
+    «gaps». Keep a gap only when its name shares a meaningful stem with the question
+    or a matched entity. If the intent has no usable terms we can't judge relevance,
+    so the original list is returned unchanged (no worse than before).
+    """
+    if not gaps:
+        return []
+    terms = _intent_terms(intent)
+    if not terms:
+        return list(gaps)
+    def _overlaps(t: str, w: str) -> bool:
+        return t == w or (len(t) >= 5 and t in w) or (len(w) >= 5 and w in t)
+
+    kept: list[dict[str, Any]] = []
+    for g in gaps:
+        gtok = _tokens(g.get("name") or "")
+        if any(_overlaps(t, w) for t in terms for w in gtok):
+            kept.append(g)
+    return kept
+
+
+def _clean_passages(retrieval: RetrievalResult) -> list[dict[str, Any]]:
+    return [p for p in (getattr(retrieval, "passages", None) or []) if is_clean_text(p.get("text"))]
+
+
+def _out_of_coverage(retrieval: RetrievalResult, citable: list[dict[str, Any]]) -> bool:
+    """True when nothing readable — evidence, facts, solutions or clean passages — remains."""
+    return not (
+        citable or retrieval.facts or retrieval.solutions or _clean_passages(retrieval)
+    )
+
+
+def _calibrated_confidence(
+    retrieval: RetrievalResult, citable: list[dict[str, Any]], rel_gaps: list[dict[str, Any]]
+) -> float:
+    """Confidence reflects how much *readable* support the answer stands on (§13.17+).
+
+    The old formula was a flat mean of evidence confidence (~0.49 whether the corpus
+    answered the question or returned nothing — a useless signal). Here it rises with
+    the amount of clean, structured support and the readable fraction of retrieved
+    evidence, and falls with OCR-noise, missing data and contradictions.
+    """
+    facts = retrieval.facts or []
+    sols = retrieval.solutions or []
+    support = len(citable) + len(facts) + len(sols) + len(_clean_passages(retrieval))
+    if support == 0:
+        return 0.1  # corpus does not cover this question — a grounded refusal
+    confs = [ev.get("confidence", 0.6) for ev in citable] or [0.5]
+    mean_conf = sum(confs) / len(confs)
+    all_text = [ev.get("text") for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    cf = clean_fraction(all_text) if all_text else 1.0
+    quantity = min(1.0, support / 6.0)  # a couple of signals shouldn't read as certain
+    base = mean_conf * quantity * (0.55 + 0.45 * cf)
+    base *= 1.0 - 0.05 * min(len(rel_gaps), 4)  # up to −20 % for many open gaps
+    if retrieval.contradictions:
+        base *= 0.85
+    return round(max(0.05, min(0.9, base)), 2)
+
+
+def _out_of_coverage_markdown(intent: QueryIntent, retrieval: RetrievalResult) -> str:
+    """Deterministic grounded refusal when the corpus has no readable support.
+
+    Emitted INSTEAD of calling the LLM, so an empty/junk retrieval can't be padded
+    with plausible-but-fabricated numbers (the benchmark's worst failure mode).
+    """
+    q = (getattr(intent, "raw", "") or "").strip()
+    return "\n".join(
+        [
+            "### Краткий вывод",
+            "",
+            f"В доступном корпусе нет данных, релевантных запросу «{q}». "
+            "Чтобы не выдавать недостоверные сведения, система не формирует ответ по "
+            "существу и не приводит числовых значений по этому вопросу.",
+            "",
+            "### Что нужно, чтобы ответить",
+            "- Загрузить в корпус профильные источники по теме запроса "
+            "(обзоры, статьи, патенты, техрегламенты).",
+            "- Либо использовать внешний поиск / веб-контур для этого вопроса.",
+            "",
+            "_Подтверждённых фактов в корпусе по этому вопросу не найдено (грунтованный отказ)._",
+        ]
+    )
 
 
 def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
     citations: list[Citation] = []
-    # the RBAC 'restricted:notice' marker is not a real source — never cite it
-    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    # Cite only real, readable sources: the RBAC notice and OCR/extraction junk
+    # (``(cid:NN)`` etc.) are excluded so garbage never becomes a numbered citation.
+    real_ev = _citable_evidence(retrieval)
     for i, ev in enumerate(real_ev, start=1):
         citations.append(
             Citation(
@@ -71,16 +205,18 @@ def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
 
 
 def _cite_index(retrieval: RetrievalResult) -> dict[str, str]:
-    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    # Same citable set as assign_citations, so markers stay aligned 1:1.
+    real_ev = _citable_evidence(retrieval)
     return {ev["id"]: f"[{i}]" for i, ev in enumerate(real_ev, start=1)}
 
 
 def build_context(retrieval: RetrievalResult, cite: dict[str, str]) -> str:
     lines: list[str] = ["FACTS:"]
-    # sources
-    if retrieval.evidence:
+    # sources — only real, readable spans (OCR/extraction junk is not a source)
+    citable = _citable_evidence(retrieval)
+    if citable:
         lines.append("Источники:")
-        for ev in retrieval.evidence:
+        for ev in citable:
             m = cite.get(ev["id"], "")
             strength = ev.get("evidence_strength", "")
             geo = ev.get("practice_type") or ev.get("country") or ""
@@ -120,10 +256,11 @@ def build_context(retrieval: RetrievalResult, cite: dict[str, str]) -> str:
         lines.append("Пробелы (нет данных):")
         for g in retrieval.gaps:
             lines.append(f"  - {g.get('name')}")
-    # hybrid passages (unstructured corpus context, §24.9 fallback)
-    if getattr(retrieval, "passages", None):
+    # hybrid passages (unstructured corpus context, §24.9 fallback) — readable only
+    clean_p = _clean_passages(retrieval)
+    if clean_p:
         lines.append("Обзорные фрагменты из корпуса (неструктурированные):")
-        for p in retrieval.passages[:5]:
+        for p in clean_p[:5]:
             lines.append(f"  - «{(p.get('text') or '')[:220]}» (док {p.get('doc_id')})")
     return "\n".join(lines)
 
@@ -250,53 +387,54 @@ def build_answer(
 ) -> AnswerPayload:
     citations = assign_citations(retrieval)
     cite = _cite_index(retrieval)
-    context = build_context(retrieval, cite)
+    citable = _citable_evidence(retrieval)
+    rel_gaps = _relevant_gaps(intent, retrieval.gaps)
     used_models: list[str] = []
-
-    markdown = ""
     reasoning = ""
-    if use_llm:
-        try:
-            from kg_extractors.llm import get_llm
 
-            llm = get_llm()
-            user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
-            # Speed path: a plain completion skips the separate chain-of-thought round
-            # (which ~doubled latency on the synchronous /query surface). Reasoning is
-            # still available on demand via complete_with_reasoning where it's shown.
-            if reasoning_mode:
-                markdown, reasoning = llm.complete_with_reasoning(
-                    user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
-                )
-            else:
-                markdown = llm.complete(
-                    user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
-                )
-            used_models = list(llm.used_models[-1:])
-        except Exception as exc:
-            _log.warning("synthesize.llm_failed", error=str(exc))
-    if not markdown:
-        markdown = _fallback_markdown(intent, retrieval, cite)
+    # Out-of-coverage: no readable evidence, no facts, no solutions, no clean passages.
+    # Answer deterministically INSTEAD of calling the LLM, so an empty/junk retrieval
+    # can never be padded with plausible-but-fabricated numbers (benchmark's worst case).
+    out_of_coverage = _out_of_coverage(retrieval, citable)
 
-    # confidence: mean evidence confidence, penalized by gaps/contradictions.
-    # Exclude the synthetic 'restricted:notice' marker (conf 0.0) so RBAC redaction
-    # doesn't deflate confidence (finding synthesize.py:191).
-    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
-    confs = [ev.get("confidence", 0.6) for ev in real_ev]
-    base = sum(confs) / len(confs) if confs else 0.3
-    if retrieval.contradictions:
-        base *= 0.8
-    if not real_ev:
-        base = min(base, 0.3)
+    if out_of_coverage:
+        markdown = _out_of_coverage_markdown(intent, retrieval)
+        confidence = 0.1
+    else:
+        context = build_context(retrieval, cite)
+        markdown = ""
+        if use_llm:
+            try:
+                from kg_extractors.llm import get_llm
+
+                llm = get_llm()
+                user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
+                # Speed path: a plain completion skips the separate chain-of-thought round
+                # (which ~doubled latency on the synchronous /query surface). Reasoning is
+                # still available on demand via complete_with_reasoning where it's shown.
+                if reasoning_mode:
+                    markdown, reasoning = llm.complete_with_reasoning(
+                        user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
+                    )
+                else:
+                    markdown = llm.complete(
+                        user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
+                    )
+                used_models = list(llm.used_models[-1:])
+            except Exception as exc:
+                _log.warning("synthesize.llm_failed", error=str(exc))
+        if not markdown:
+            markdown = _fallback_markdown(intent, retrieval, cite)
+        confidence = _calibrated_confidence(retrieval, citable, rel_gaps)
 
     return AnswerPayload(
         answer_markdown=markdown,
         citations=citations,
         graph=retrieval.graph,
         table=_table(retrieval),
-        gaps=[{"name": g.get("name"), "type": g.get("gap_type")} for g in retrieval.gaps],
+        gaps=[{"name": g.get("name"), "type": g.get("gap_type")} for g in rel_gaps],
         contradictions=[{"name": c.get("name")} for c in retrieval.contradictions],
-        confidence=round(base, 2),
+        confidence=confidence,
         parsed_query=intent.to_dict(),
         used_models=used_models,
         reasoning=reasoning,
@@ -311,16 +449,28 @@ def stream_answer(intent: QueryIntent, retrieval: RetrievalResult):
     """
     citations = assign_citations(retrieval)
     cite = _cite_index(retrieval)
-    context = build_context(retrieval, cite)
+    citable = _citable_evidence(retrieval)
+    rel_gaps = _relevant_gaps(intent, retrieval.gaps)
     # Everything except the answer text — emitted immediately (graph, gaps, citations).
     yield "meta", {
         "graph": retrieval.graph,
         "table": _table(retrieval),
-        "gaps": [{"name": g.get("name"), "type": g.get("gap_type")} for g in retrieval.gaps],
+        "gaps": [{"name": g.get("name"), "type": g.get("gap_type")} for g in rel_gaps],
         "contradictions": [{"name": c.get("name")} for c in retrieval.contradictions],
         "citations": citations,
         "parsed_query": intent.to_dict(),
     }
+
+    # Same grounded-refusal guard as build_answer: with no readable support, stream a
+    # deterministic refusal and never let the LLM fabricate values (hero-path parity).
+    out_of_coverage = _out_of_coverage(retrieval, citable)
+    if out_of_coverage:
+        markdown = _out_of_coverage_markdown(intent, retrieval)
+        yield "token", markdown
+        yield "final", {"answer_markdown": markdown, "confidence": 0.1, "used_models": []}
+        return
+
+    context = build_context(retrieval, cite)
     # A brief extractive conclusion straight from the graph facts — no LLM wait, so a
     # readable «краткий вывод» shows the moment retrieval finishes; the LLM refines below.
     brief = _brief_conclusion(retrieval)
@@ -347,15 +497,8 @@ def stream_answer(intent: QueryIntent, retrieval: RetrievalResult):
     if not markdown:
         markdown = _fallback_markdown(intent, retrieval, cite)
         yield "token", markdown
-    real_ev = [ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
-    confs = [ev.get("confidence", 0.6) for ev in real_ev]
-    base = sum(confs) / len(confs) if confs else 0.3
-    if retrieval.contradictions:
-        base *= 0.8
-    if not real_ev:
-        base = min(base, 0.3)
     yield "final", {
         "answer_markdown": markdown,
-        "confidence": round(base, 2),
+        "confidence": _calibrated_confidence(retrieval, citable, rel_gaps),
         "used_models": used_models,
     }
