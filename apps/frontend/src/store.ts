@@ -49,7 +49,6 @@ export type View =
   | 'suspects'
   | 'kghealth'
   | 'clustergraph'
-  | 'corpusmap3d'
   | 'coveragesankey'
   | 'graphencoding'
   | 'evidencebbox'

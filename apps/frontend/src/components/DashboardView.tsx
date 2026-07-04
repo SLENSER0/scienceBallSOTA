@@ -17,6 +17,7 @@ import { CoverageView } from './CoverageView';
 import { MaterialCoverageHeatmapView } from './MaterialCoverageHeatmapView';
 import { LargeGraphView } from './LargeGraphView';
 import { CommunityClusterGraphView } from './CommunityClusterGraphView';
+import { ClusterMap3DView } from './ClusterMap3DView';
 
 // Командный центр (agentic dashboard). The hard numbers of the knowledge graph at a
 // glance — size, top technologies, per-domain coverage + the material×property coverage
@@ -140,6 +141,16 @@ export function DashboardView() {
               <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
                 <LazyVisible>
                   <CommunityClusterGraphView />
+                </LazyVisible>
+              </div>
+            </div>
+
+            {/* Карта тем корпуса (3D) — семантические кластеры эмбеддингов чанков */}
+            <div className="mt-5">
+              <div className="mb-2 text-sm text-nickel">Карта тем корпуса (3D)</div>
+              <div className="panel h-[560px] min-h-0 overflow-hidden p-0">
+                <LazyVisible>
+                  <ClusterMap3DView />
                 </LazyVisible>
               </div>
             </div>

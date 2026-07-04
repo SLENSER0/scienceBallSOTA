@@ -201,12 +201,12 @@ export function ClusterMap3DView() {
   if (err) return <div style={{ padding: 24, color: '#e0666e' }}>Не удалось загрузить карту: {err}. Постройте её: <code>uv run python scripts/precompute_cluster_map.py</code></div>;
   if (!data) return <div style={{ padding: 24, opacity: 0.7 }}>Загрузка карты тем корпуса…</div>;
 
-  const wrap: CSSProperties = { position: 'relative', width: '100%', height: 'calc(100vh - 96px)', minHeight: 480, borderRadius: 12, overflow: 'hidden', background: '#0a0c10' };
+  const wrap: CSSProperties = { position: 'relative', width: '100%', flex: 1, minHeight: 260, borderRadius: 12, overflow: 'hidden', background: '#0a0c10' };
   const legend: CSSProperties = { position: 'absolute', top: 12, right: 12, width: 260, maxHeight: 'calc(100% - 90px)', overflow: 'auto', background: 'rgba(16,18,24,.86)', border: '1px solid #262b35', borderRadius: 10, padding: 8, backdropFilter: 'blur(8px)', color: '#e9edf3', fontSize: 12.5 };
 
   return (
-    <div style={{ padding: '0 4px' }}>
-      <div style={{ margin: '2px 0 10px' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '8px 10px 10px', boxSizing: 'border-box' }}>
+      <div style={{ margin: '2px 0 8px' }}>
         <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Карта тем корпуса — 3D</h2>
         <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
           {data.total.toLocaleString('ru')} чанков · {data.k} тематических кластеров · показано {data.shown.toLocaleString('ru')} · PCA-3D охват {data.var3d}%
