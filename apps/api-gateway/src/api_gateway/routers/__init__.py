@@ -60,10 +60,14 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(notifications.router)
     app.include_router(graph.router)
     app.include_router(graph.entities_router)
+    # er_candidates GET /entities/candidates must precede search.py's /entities/{entity_id}
+    app.include_router(er_candidates.router)
     app.include_router(search.router)
     app.include_router(evidence.router)
     app.include_router(admin.router)
     app.include_router(export.router)
+    # absence GET /gaps/absence must precede gaps.py's /gaps/{gap_id}
+    app.include_router(absence.router)
     app.include_router(gaps.router)
     app.include_router(curation.router)
     app.include_router(ingest.router)
@@ -76,11 +80,9 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(advise.router)
     app.include_router(contradictions.router)
     app.include_router(insights.router)
-    # --- batch 1 roadmap features ---
+    # --- batch 1 roadmap features (er_candidates already mounted above) ---
     app.include_router(table_cell.router)
-    app.include_router(er_candidates.router)
     app.include_router(mp_authority.router)
-    app.include_router(absence.router)
     app.include_router(voi.router)
     app.include_router(evidence_pack.router)
     app.include_router(figures.router)
