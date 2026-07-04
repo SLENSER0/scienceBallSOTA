@@ -58,7 +58,7 @@ def _cluster_rows(store: Any) -> list[list[Any]]:
     return store.rows(
         "MATCH (n:Node) WHERE n.community_id IS NOT NULL AND n.label <> $f "
         "RETURN n.community_id, coalesce(n.name,''), coalesce(n.domain,''), "
-        "coalesce(n.evidence_count,0)",
+        "coalesce(n.degree,0)",
         {"f": _FINDING},
     )
 

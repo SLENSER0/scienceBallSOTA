@@ -4,16 +4,21 @@ import {
   AlertTriangle,
   ArrowRight,
   Clock,
+  ExternalLink,
+  FileText,
   GitCommitVertical,
   History,
   Loader2,
   Lock,
   PencilLine,
+  Quote,
   ScrollText,
   ShieldCheck,
   Unlock,
   UserRound,
+  X,
 } from 'lucide-react';
+import { DocumentViewer } from './DocumentUpload';
 
 // §3.7 «Машина времени факта» + «никогда не перезаписывать reviewed».
 // Self-contained (no api.ts edits): вызывает роутер fact-versions напрямую с той
@@ -115,6 +120,27 @@ interface NodesResponse {
   nodes: NodeRow[];
 }
 
+// -- provenance / «Источник факта» (GET /fact-versions/{id}/source) -----------
+interface EvidenceSrc {
+  evidenceId: string;
+  text: string;
+  page: number | null;
+  docId: string | null;
+  sourceType: string | null;
+  evidenceStrength: string | null;
+  confidence: number | null;
+}
+interface SourceDoc {
+  docId: string;
+  title: string;
+  docType: string;
+}
+interface FactSource {
+  entityId: string;
+  evidence: EvidenceSrc[];
+  documents: SourceDoc[];
+}
+
 const REVIEW_TONE: Record<string, string> = {
   accepted: 'text-emerald-400 bg-emerald-500/15',
   corrected: 'text-sky-400 bg-sky-500/15',
@@ -162,6 +188,8 @@ export function FactTimeMachineView() {
   const [label, setLabel] = useState('Measurement');
   const [entityId, setEntityId] = useState<string | null>(null);
   const [field, setField] = useState<string | null>(null);
+  // Which source document to preview in the modal («Открыть источник»).
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
 
   // Small picker: entities of the chosen type to start from.
   const picker = useQuery({
@@ -183,6 +211,15 @@ export function FactTimeMachineView() {
         `/api/v1/fact-versions/${encodeURIComponent(entityId!)}/${encodeURIComponent(field!)}`,
       ),
     enabled: !!entityId && !!field,
+  });
+
+  // Provenance for the whole selected entity/fact: which document(s) it was
+  // extracted from + the evidence quotes. Per-fact, so keyed on entityId only.
+  const source = useQuery({
+    queryKey: ['ftm-source', entityId],
+    queryFn: () =>
+      apiGet<FactSource>(`/api/v1/fact-versions/${encodeURIComponent(entityId!)}/source`),
+    enabled: !!entityId,
   });
 
   function loadEntity(id: string) {
@@ -299,6 +336,13 @@ export function FactTimeMachineView() {
               />
             </div>
 
+            {/* «Источник факта» — откуда взят факт: документ(ы) + цитаты-обоснования */}
+            <FactSourcePanel
+              data={source.data}
+              isLoading={source.isLoading}
+              onOpenDoc={setOpenDoc}
+            />
+
             <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_1fr]">
               {/* fields list */}
               <div className="panel p-3">
@@ -366,6 +410,142 @@ export function FactTimeMachineView() {
           </>
         )}
       </div>
+
+      {/* Full source document preview (reuses the DocumentUpload viewer). */}
+      {openDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-graphite/70 p-4"
+          onClick={() => setOpenDoc(null)}
+        >
+          <div className="panel w-full max-w-3xl p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-nickel">
+                <FileText size={15} className="text-copper" /> Источник факта
+              </div>
+              <button
+                onClick={() => setOpenDoc(null)}
+                className="rounded p-1 text-faint hover:text-copper"
+                title="Закрыть"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <DocumentViewer docId={openDoc} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FactSourcePanel({
+  data,
+  isLoading,
+  onOpenDoc,
+}: {
+  data: FactSource | undefined;
+  isLoading: boolean;
+  onOpenDoc: (docId: string) => void;
+}) {
+  return (
+    <div className="panel mb-5 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm text-faint">
+        <FileText size={15} className="text-copper" /> Источник факта
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-sm text-faint">
+          <Loader2 size={16} className="animate-spin" /> Загрузка источника…
+        </div>
+      ) : !data || (data.documents.length === 0 && data.evidence.length === 0) ? (
+        <div className="text-sm text-faint">
+          У этого факта нет привязанного источника в графе (например, посевные значения).
+        </div>
+      ) : data.documents.length === 0 ? (
+        // Evidence есть, но документ не сматчился — показываем цитаты без группировки.
+        <div className="flex flex-col gap-2">
+          <div className="text-xs text-faint">Цитаты-источники (документ не сопоставлен в графе):</div>
+          {data.evidence.map((e) => (
+            <blockquote
+              key={e.evidenceId}
+              className="rounded-r border-l-2 border-copper/40 bg-white/[0.02] py-1.5 pl-3 pr-2 text-xs text-faint"
+            >
+              <div className="flex gap-1.5">
+                <Quote size={12} className="mt-0.5 shrink-0 text-copper/70" />
+                <span className="line-clamp-3 italic">{e.text}</span>
+              </div>
+              {(e.page != null || e.evidenceStrength) && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 pl-[18px] text-[11px] text-faint/80">
+                  {e.page != null && <span>стр. {e.page}</span>}
+                  {e.evidenceStrength && (
+                    <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-copper">
+                      {e.evidenceStrength}
+                    </span>
+                  )}
+                </div>
+              )}
+            </blockquote>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {data.documents.map((doc) => {
+            const quotes = data.evidence.filter((e) => e.docId === doc.docId);
+            const chip =
+              doc.docType === 'paper'
+                ? 'bg-sky-500/15 text-sky-400'
+                : 'bg-white/10 text-faint';
+            return (
+              <div
+                key={doc.docId}
+                className="rounded-lg border border-white/10 bg-white/[0.02] p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <ScrollText size={15} className="mt-0.5 shrink-0 text-copper" />
+                    <div className="min-w-0 text-sm text-ink">{doc.title}</div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${chip}`}>
+                      {doc.docType}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => onOpenDoc(doc.docId)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-copper/20 px-3 py-1.5 text-sm text-copper hover:bg-copper/30"
+                  >
+                    <ExternalLink size={14} /> Открыть источник
+                  </button>
+                </div>
+
+                {quotes.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-2">
+                    {quotes.map((e) => (
+                      <blockquote
+                        key={e.evidenceId}
+                        className="rounded-r border-l-2 border-copper/40 bg-white/[0.02] py-1.5 pl-3 pr-2 text-xs text-faint"
+                      >
+                        <div className="flex gap-1.5">
+                          <Quote size={12} className="mt-0.5 shrink-0 text-copper/70" />
+                          <span className="line-clamp-3 italic">{e.text}</span>
+                        </div>
+                        {(e.page != null || e.evidenceStrength) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2 pl-[18px] text-[11px] text-faint/80">
+                            {e.page != null && <span>стр. {e.page}</span>}
+                            {e.evidenceStrength && (
+                              <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-copper">
+                                {e.evidenceStrength}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </blockquote>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

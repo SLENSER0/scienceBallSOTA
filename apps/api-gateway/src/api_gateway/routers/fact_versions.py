@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from api_gateway import audit
 from api_gateway.auth import current_role, current_user
+from api_gateway.deps import get_store
 from api_gateway.fact_versions_store import (
     EntityNotFound,
     FieldNotVersionable,
@@ -56,6 +57,94 @@ def facts(entity_id: str) -> dict:
         return entity_facts(entity_id)
     except EntityNotFound as exc:
         raise HTTPException(status_code=404, detail="entity not found") from exc
+
+
+@router.get("/{entity_id}/source")
+def entity_source(entity_id: str) -> dict:
+    """Провенанс факта (§3.7/§5.2.4): связанные Evidence (SUPPORTED_BY) + дедуп исходных документов.
+
+    ВАЖНО: объявлено ТЕКСТУАЛЬНО ДО ``/{entity_id}/{field}``, иначе FastAPI сматчил
+    бы "source" как {field}. Пустые массивы (а не ошибка) для seed-заглушек без
+    привязанного Evidence; 404 только если самой сущности нет.
+    """
+    store = get_store()
+    if store.get_node(entity_id) is None:
+        raise HTTPException(status_code=404, detail="entity not found")
+
+    evidence: list[dict] = []
+    doc_ids: list[str] = []
+    try:
+        ev = store.rows(
+            "MATCH (m:Node {id:$id})-[r:Rel]-(e:Node {label:'Evidence'}) "
+            "WHERE r.type='SUPPORTED_BY' "
+            "RETURN e.id, e.text, e.page, e.doc_id, e.source_type, e.evidence_strength, e.confidence "
+            "LIMIT 25",
+            {"id": entity_id},
+        )
+    except Exception:
+        ev = []
+    for row in ev:
+        eid, text, page, doc_id, source_type, strength, conf = (list(row) + [None] * 7)[:7]
+        try:
+            page_val = int(page) if page is not None else None
+        except (TypeError, ValueError):
+            page_val = None
+        try:
+            conf_val = float(conf) if conf is not None else None
+        except (TypeError, ValueError):
+            conf_val = None
+        evidence.append(
+            {
+                "evidenceId": eid,
+                "text": text,
+                "page": page_val,
+                "docId": doc_id,
+                "sourceType": source_type,
+                "evidenceStrength": strength,
+                "confidence": conf_val,
+            }
+        )
+        if doc_id and doc_id not in doc_ids:
+            doc_ids.append(doc_id)
+
+    documents: list[dict] = []
+    if doc_ids:
+        try:
+            drows = store.rows(
+                "MATCH (d:Node) WHERE d.label IN ['Document','Paper'] AND d.id IN $ids "
+                "RETURN d.id, coalesce(d.name, d.canonical_name, d.id), d.label",
+                {"ids": doc_ids},
+            )
+        except Exception:
+            drows = []
+        by_id: dict[str, dict] = {}
+        for row in drows:
+            did, title, label = (list(row) + [None] * 3)[:3]
+            if did is not None:
+                by_id[did] = {"docId": did, "title": title, "docType": (label or "").lower()}
+        # Порядок документов — по первому появлению в evidence.
+        documents = [by_id[did] for did in doc_ids if did in by_id]
+
+    # Также резолвим документы, достижимые НАПРЯМУЮ через SUPPORTED_BY: часть фактов
+    # ссылается прямо на :Paper/:Document, а не только через Evidence.doc_id. Union + дедуп,
+    # чтобы «Источник» находился и когда doc_id не сматчился на id узла.
+    seen_docs = {d["docId"] for d in documents}
+    try:
+        prows = store.rows(
+            "MATCH (m:Node {id:$id})-[r:Rel]-(d:Node) "
+            "WHERE r.type='SUPPORTED_BY' AND d.label IN ['Document','Paper'] "
+            "RETURN d.id, coalesce(d.name, d.canonical_name, d.id), d.label LIMIT 10",
+            {"id": entity_id},
+        )
+    except Exception:
+        prows = []
+    for row in prows:
+        did, title, label = (list(row) + [None] * 3)[:3]
+        if did is not None and did not in seen_docs:
+            seen_docs.add(did)
+            documents.append({"docId": did, "title": title, "docType": (label or "").lower()})
+
+    return {"entityId": entity_id, "evidence": evidence, "documents": documents}
 
 
 @router.get("/{entity_id}/{field}")

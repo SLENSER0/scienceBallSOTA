@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,18 +12,49 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { api } from '../api';
+import type { Briefing } from '../types';
 import { CoverageView } from './CoverageView';
 import { MaterialCoverageHeatmapView } from './MaterialCoverageHeatmapView';
 import { LargeGraphView } from './LargeGraphView';
+import { CommunityClusterGraphView } from './CommunityClusterGraphView';
 
 // Командный центр (agentic dashboard). The hard numbers of the knowledge graph at a
 // glance — size, top technologies, per-domain coverage + the material×property coverage
-// heatmap embedded inline — plus an analyst agent's narrative «state of knowledge»
-// briefing written over that snapshot (DeepSeek).
+// heatmap + the cluster map embedded inline — plus an analyst agent's narrative «state
+// of knowledge» briefing written over that snapshot (DeepSeek).
+
+// Persist the last briefing so the dashboard PAINTS INSTANTLY the moment the user logs
+// in (placeholderData), then refreshes in the background instead of showing a spinner
+// while the analyst agent regenerates it.
+const BRIEFING_CACHE_KEY = 'sb.briefing';
+function loadCachedBriefing(): Briefing | undefined {
+  try {
+    const raw = localStorage.getItem(BRIEFING_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Briefing) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export function DashboardView() {
-  const q = useQuery({ queryKey: ['briefing'], queryFn: api.briefing, staleTime: 5 * 60_000 });
+  const q = useQuery({
+    queryKey: ['briefing'],
+    queryFn: api.briefing,
+    staleTime: 5 * 60_000,
+    placeholderData: loadCachedBriefing,
+  });
   const snap = q.data?.snapshot;
+
+  // Cache fresh briefings (never the placeholder) for the next instant login.
+  useEffect(() => {
+    if (q.data && !q.isPlaceholderData) {
+      try {
+        localStorage.setItem(BRIEFING_CACHE_KEY, JSON.stringify(q.data));
+      } catch {
+        /* storage may be unavailable */
+      }
+    }
+  }, [q.data, q.isPlaceholderData]);
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -40,17 +72,17 @@ export function DashboardView() {
           <>
             {/* Counters */}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={<Database size={15} />} label="Узлы" v={snap?.counts.nodes} />
-              <Stat icon={<Boxes size={15} />} label="Связи" v={snap?.counts.rels} />
+              <Stat icon={<Database size={15} />} label="Узлы" v={snap?.counts?.nodes} />
+              <Stat icon={<Boxes size={15} />} label="Связи" v={snap?.counts?.rels} />
               <Stat
                 icon={<TriangleAlert size={15} />}
                 label="Пробелы"
-                v={snap?.coverage.totals?.gaps}
+                v={snap?.coverage?.totals?.gaps}
               />
               <Stat
                 icon={<GitCompareArrows size={15} />}
                 label="Противоречия"
-                v={snap?.coverage.totals?.contradictions}
+                v={snap?.coverage?.totals?.contradictions}
               />
             </div>
 
@@ -96,12 +128,51 @@ export function DashboardView() {
             <div className="mt-5">
               <div className="mb-2 text-sm text-nickel">Клубок корпуса</div>
               <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
-                <LargeGraphView />
+                <LazyVisible>
+                  <LargeGraphView />
+                </LazyVisible>
+              </div>
+            </div>
+
+            {/* Карта кластеров — встроена в обзор фиксированной высотой */}
+            <div className="mt-5">
+              <div className="mb-2 text-sm text-nickel">Карта кластеров</div>
+              <div className="panel h-[520px] min-h-0 overflow-hidden p-0">
+                <LazyVisible>
+                  <CommunityClusterGraphView />
+                </LazyVisible>
               </div>
             </div>
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Defer expensive WebGL panels until scrolled into view: never spin up a second
+// Sigma/WebGL context or run a layout for a below-the-fold panel during first paint.
+function LazyVisible({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || show) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShow(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [show]);
+  return (
+    <div ref={ref} className="h-full">
+      {show ? children : null}
     </div>
   );
 }
