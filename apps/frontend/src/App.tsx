@@ -27,7 +27,6 @@ import {
   PackageCheck,
   Image as ImageIcon,
   FlaskConical,
-  Grid3x3,
   Gauge,
   Waypoints,
   GitFork,
@@ -243,18 +242,19 @@ const NAV: NavItem[] = [
   // Скрытые дубли ниже закомментированы — вернуть в меню = раскомментировать строку
   // (сами экраны в коде и роутинге живы, доступны программно).
   { id: 'gapmap', label: 'Карта пробелов', icon: Target, roles: INTERNAL, group: 'gaps' },
-  { id: 'gapmatrix', label: 'Матрица пробелов', icon: Grid3x3, roles: INTERNAL, group: 'gaps' },
   { id: 'contradictions', label: 'Противоречия (арбитр)', icon: GitCompareArrows, roles: INTERNAL, group: 'gaps' },
+  // { id: 'gapmatrix', label: 'Матрица пробелов', icon: Grid3x3, roles: INTERNAL, group: 'gaps' }, // убрано по запросу
   // { id: 'gapplan', label: 'План экспериментов', icon: FlaskConical, roles: INTERNAL, group: 'gaps' }, // убрано по запросу (план закрытия пробелов)
   // { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: INTERNAL, group: 'gaps' }, // → слито в «Карта пробелов»
   // { id: 'absence', label: 'Карта неизвестного', icon: Compass, roles: INTERNAL, group: 'gaps' },
   // { id: 'voi', label: 'Ценность информации', icon: Lightbulb, roles: INTERNAL, group: 'gaps' }, // дубль «Карты неизвестного»
 
-  { id: 'coverage', label: 'Покрытие по доменам', icon: LayoutGrid, group: 'knowledge' },
   { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
-  { id: 'coveragesankey', label: 'Потоки покрытия', icon: Workflow, group: 'knowledge' },
-  { id: 'communities', label: 'Сообщества (GraphRAG)', icon: Sparkles, group: 'knowledge' },
   { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
+  // Убрано по запросу — покрытие по доменам уже встроено в «Обзор базы знаний»:
+  // { id: 'coverage', label: 'Покрытие по доменам', icon: LayoutGrid, group: 'knowledge' },
+  // { id: 'coveragesankey', label: 'Потоки покрытия', icon: Workflow, group: 'knowledge' },
+  // { id: 'communities', label: 'Сообщества (GraphRAG)', icon: Sparkles, group: 'knowledge' },
   { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR, group: 'knowledge' },
   { id: 'graphintegrity', label: 'Целостность графа', icon: ShieldAlert, roles: CURATOR, group: 'knowledge' },
   { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' },
