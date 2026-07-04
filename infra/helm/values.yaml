@@ -23,9 +23,10 @@ env:
   QDRANT_URL: http://qdrant:6333
   OPENSEARCH_URL: http://opensearch:9200
   LLM_API_BASE: https://openrouter.ai/api/v1
-  # OSS-only models (ADR-0006)
-  LLM_MODEL_EXTRACT: qwen/qwen-2.5-7b-instruct
-  LLM_MODEL_SYNTH: deepseek/deepseek-chat-v3-0324
+  # OSS-only models (ADR-0006) — Q2-2026 set
+  LLM_MODEL_EXTRACT: qwen/qwen3.6-35b-a3b
+  LLM_MODEL_SYNTH: deepseek/deepseek-v4-flash
+  LLM_MODEL_SYNTH_QUALITY: z-ai/glm-5.2
 
 secrets:
   # provided via a K8s Secret (see docs/secrets.md); never committed
