@@ -16,6 +16,25 @@ import {
   GitCompareArrows,
   Radar,
   Target,
+  Route,
+  Scale,
+  Trophy,
+  Sparkles,
+  Layers,
+  Workflow,
+  PackageCheck,
+  Image as ImageIcon,
+  FlaskConical,
+  Grid3x3,
+  Gauge,
+  Waypoints,
+  GitFork,
+  Wand2,
+  Share2,
+  Lightbulb,
+  Compass,
+  Table2,
+  Spline,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -35,6 +54,31 @@ import { EntityDetailView } from './components/EntityDetailView';
 import { CurationView } from './components/CurationView';
 import { AdminView } from './components/AdminView';
 import { EvidenceDrawer } from './components/EvidenceDrawer';
+// -- Batch-1 feature screens ------------------------------------------------
+import { AgentReasoningTimelineView } from './components/AgentReasoningTimelineView';
+import { ApplesToApplesView } from './components/ApplesToApplesView';
+import { BenchmarkView } from './components/BenchmarkView';
+import { CommunitySummariesView } from './components/CommunitySummariesView';
+import { ERCandidatesView } from './components/ERCandidatesView';
+import { EntityResolutionStepView } from './components/EntityResolutionStepView';
+import { EvidencePackView } from './components/EvidencePackView';
+import { FigureEvidenceView } from './components/FigureEvidenceView';
+import { GapClosurePlanView } from './components/GapClosurePlanView';
+import { GapMatrixView } from './components/GapMatrixView';
+import { HardnessCompareView } from './components/HardnessCompareView';
+import { HitlClarifyView } from './components/HitlClarifyView';
+import { LargeGraphView } from './components/LargeGraphView';
+import { LinkPredictionView } from './components/LinkPredictionView';
+import { LiveGdsView } from './components/LiveGdsView';
+import { SimilarLinksView } from './components/SimilarLinksView';
+import { SourceTrustView } from './components/SourceTrustView';
+import { ValueOfInformationView } from './components/ValueOfInformationView';
+import { AbsenceMapView } from './components/AbsenceMapView';
+import { MaterialCoverageHeatmapView } from './components/MaterialCoverageHeatmapView';
+import { MissingLinksBoardView } from './components/MissingLinksBoardView';
+
+const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
+const CURATOR = ['curator', 'project_manager', 'admin'];
 
 const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
   { id: 'dashboard', label: 'Обзор', icon: Radar },
@@ -54,6 +98,29 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   // Curation + governance are internal-team surfaces.
   { id: 'curation', label: 'Курирование', icon: ClipboardList, roles: ['curator', 'project_manager', 'admin'] },
   { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: ['curator', 'project_manager', 'admin'] },
+
+  // -- Batch-1 feature screens ----------------------------------------------
+  { id: 'reasoning', label: 'Ход мысли', icon: Route },
+  { id: 'hitl', label: 'Уточнение (HITL)', icon: CircleHelp },
+  { id: 'communities', label: 'Сообщества', icon: Sparkles },
+  { id: 'largegraph', label: 'Клубок корпуса', icon: Waypoints },
+  { id: 'livegds', label: 'Живой GDS', icon: Wand2, roles: INTERNAL },
+  { id: 'apples', label: 'Единые единицы', icon: Scale },
+  { id: 'hardness', label: 'Твёрдость HV↔HRC↔HB', icon: Gauge },
+  { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL },
+  { id: 'gapmatrix', label: 'Матрица пробелов', icon: Grid3x3, roles: INTERNAL },
+  { id: 'gapplan', label: 'План экспериментов', icon: FlaskConical, roles: INTERNAL },
+  { id: 'linkpred', label: 'Предсказание связей', icon: GitFork, roles: INTERNAL },
+  { id: 'simlinks', label: 'Вероятные связи', icon: Share2, roles: INTERNAL },
+  { id: 'missinglinks', label: 'Неявные связи', icon: Spline, roles: INTERNAL },
+  { id: 'absence', label: 'Карта неизвестного', icon: Compass, roles: INTERNAL },
+  { id: 'voi', label: 'Ценность информации', icon: Lightbulb, roles: INTERNAL },
+  { id: 'figures', label: 'Фигуры-доказательства', icon: ImageIcon, roles: INTERNAL },
+  { id: 'evidencepack', label: 'Evidence Pack', icon: PackageCheck, roles: INTERNAL },
+  { id: 'sourcetrust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL },
+  { id: 'benchmark', label: 'Бенчмарк', icon: Trophy, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'er_candidates', label: 'Слияние сущностей', icon: Layers, roles: CURATOR },
+  { id: 'erstep', label: 'ER-шаг конвейера', icon: Workflow, roles: INTERNAL },
 ];
 
 export function App() {
@@ -74,7 +141,7 @@ export function App() {
         <div className="mb-6 flex h-9 w-9 items-center justify-center rounded-md bg-copper/15 text-copper">
           <ClubokMark />
         </div>
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
           {nav.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -150,6 +217,28 @@ export function App() {
           {view === 'glossary' && <GlossaryView />}
           {view === 'curation' && <CurationView />}
           {view === 'admin' && <AdminView />}
+          {/* -- Batch-1 feature screens -- */}
+          {view === 'reasoning' && <AgentReasoningTimelineView />}
+          {view === 'hitl' && <HitlClarifyView />}
+          {view === 'communities' && <CommunitySummariesView />}
+          {view === 'largegraph' && <LargeGraphView />}
+          {view === 'livegds' && <LiveGdsView />}
+          {view === 'apples' && <ApplesToApplesView />}
+          {view === 'hardness' && <HardnessCompareView />}
+          {view === 'coverageMatrix' && <MaterialCoverageHeatmapView />}
+          {view === 'gapmatrix' && <GapMatrixView />}
+          {view === 'gapplan' && <GapClosurePlanView />}
+          {view === 'linkpred' && <LinkPredictionView />}
+          {view === 'simlinks' && <SimilarLinksView />}
+          {view === 'missinglinks' && <MissingLinksBoardView />}
+          {view === 'absence' && <AbsenceMapView />}
+          {view === 'voi' && <ValueOfInformationView />}
+          {view === 'figures' && <FigureEvidenceView />}
+          {view === 'evidencepack' && <EvidencePackView />}
+          {view === 'sourcetrust' && <SourceTrustView />}
+          {view === 'benchmark' && <BenchmarkView />}
+          {view === 'er_candidates' && <ERCandidatesView />}
+          {view === 'erstep' && <EntityResolutionStepView />}
         </main>
       </div>
 

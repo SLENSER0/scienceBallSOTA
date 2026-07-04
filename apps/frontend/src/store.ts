@@ -15,7 +15,29 @@ export type View =
   | 'advisor'
   | 'contradictions'
   | 'dashboard'
-  | 'gapmap';
+  | 'gapmap'
+  // -- Batch-1 feature screens ---------------------------------------------
+  | 'reasoning'
+  | 'apples'
+  | 'benchmark'
+  | 'communities'
+  | 'er_candidates'
+  | 'erstep'
+  | 'evidencepack'
+  | 'figures'
+  | 'gapplan'
+  | 'gapmatrix'
+  | 'hardness'
+  | 'hitl'
+  | 'largegraph'
+  | 'linkpred'
+  | 'livegds'
+  | 'simlinks'
+  | 'sourcetrust'
+  | 'voi'
+  | 'absence'
+  | 'coverageMatrix'
+  | 'missinglinks';
 
 interface AppState {
   view: View;

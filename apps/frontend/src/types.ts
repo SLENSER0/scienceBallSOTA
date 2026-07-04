@@ -224,3 +224,81 @@ export interface PrioritizedGap {
   scored: boolean;
   model?: string | null;
 }
+
+// -- §17.9 GraphRAG community summaries -------------------------------------
+export interface CommunitySummary {
+  community_id: number;
+  title: string;
+  summary: string;
+  size: number;
+  domains: string[];
+  top_entities: string[];
+  member_ids: string[];
+}
+
+// -- §8.8 Entity-resolution candidate review -------------------------------
+export interface ERMention {
+  id: string;
+  name: string | null;
+  label: string | null;
+  formula: string | null;
+  review_status: string | null;
+}
+export interface ERCandidate {
+  candidate_id: string;
+  entity_type: string;
+  decision: string; // auto_merge | review_needed | separate
+  match_probability: number;
+  canonical_id: string;
+  blocked_by_review: boolean;
+  mentions: ERMention[];
+}
+export interface ERCandidatesResponse {
+  status: string;
+  entity_type: string;
+  count: number;
+  candidates: ERCandidate[];
+}
+
+// -- §3.14 similarity / implicit-link suggestions --------------------------
+export interface SimLinkSeed {
+  id: string;
+  name: string | null;
+  label: string | null;
+}
+export interface SimLinksSeeds {
+  count: number;
+  seeds: SimLinkSeed[];
+}
+export interface SimLinkSupporter {
+  id: string;
+  name: string;
+  similarity: number;
+}
+export interface SimLinkSuggestion {
+  target: string;
+  target_name: string | null;
+  target_label: string;
+  raw_score: number;
+  score: number;
+  support_count: number;
+  supporters: SimLinkSupporter[];
+  reason: string;
+}
+export interface SimLinksSuggest {
+  seed: { id: string; name: string | null; label: string | null };
+  method: 'gds' | 'in_process';
+  target_label: string | null;
+  count: number;
+  suggestions: SimLinkSuggestion[];
+}
+
+// -- §8.2 Materials Project authority badge --------------------------------
+export interface MaterialsProjectBadgeData {
+  entity_id: string;
+  has_authority: boolean;
+  source_system: string;
+  mp_id: string | null;
+  canonical_formula: string | null;
+  url: string | null;
+}

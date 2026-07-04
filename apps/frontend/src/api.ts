@@ -3,16 +3,21 @@ import type {
   AnswerPayload,
   AuditEntry,
   Briefing,
+  CommunitySummary,
   ContradictionAnalysis,
   ContradictionSummary,
   CoverageDomain,
+  ERCandidatesResponse,
   EvidenceContext,
   GlossaryTerm,
   GraphResponse,
   LineageRun,
+  MaterialsProjectBadgeData,
   NodeRow,
   PrioritizedGap,
   SavedView,
+  SimLinksSeeds,
+  SimLinksSuggest,
 } from './types';
 
 function authHeaders(): Record<string, string> {
@@ -316,7 +321,308 @@ export const api = {
   gapsPrioritized(limit = 12): Promise<{ gaps: PrioritizedGap[]; count: number; usedModels: string[] }> {
     return req(`/api/v1/insights/gaps-prioritized?limit=${limit}`);
   },
+
+  // -- §17.7 Agent reasoning trace (tool-call timeline) ---------------------
+  agentReasoningTrace(
+    question: string,
+  ): Promise<import('./components/AgentReasoningTimelineView').ReasoningTrace> {
+    return req('/api/v1/agent/reasoning-trace', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    });
+  },
+
+  // -- §7.5 Apples-to-apples unit normalization -----------------------------
+  comparisonNormalize(
+    cells: { label: string; value: number; unit: string }[],
+    targetUnit?: string,
+  ): Promise<NormalizeResult> {
+    return req<NormalizeResult>('/api/v1/comparison/normalize', {
+      method: 'POST',
+      body: JSON.stringify({ cells, target_unit: targetUnit ?? null }),
+    });
+  },
+
+  // -- §17.9 GraphRAG community summaries -----------------------------------
+  communitySummaries(limit = 60): Promise<{ count: number; communities: CommunitySummary[] }> {
+    return req(`/api/v1/graph-communities/summaries?limit=${limit}`);
+  },
+  communitySubgraph(communityId: number, expand = 1): Promise<GraphResponse> {
+    return req(`/api/v1/graph-communities/${communityId}/subgraph?expand=${expand}`);
+  },
+
+  // -- §8.8 ER candidate review + merge -------------------------------------
+  erCandidates(status = 'review_needed', type = 'Material', limit = 50): Promise<ERCandidatesResponse> {
+    return req(
+      `/api/v1/entities/candidates?status=${encodeURIComponent(status)}&type=${encodeURIComponent(type)}&limit=${limit}`,
+    );
+  },
+  mergeEntities(keepId: string, dropId: string, reason = ''): Promise<Record<string, unknown>> {
+    return req('/api/v1/entities/merge', {
+      method: 'POST',
+      body: JSON.stringify({ keep_id: keepId, drop_id: dropId, reason }),
+    });
+  },
+
+  // -- §8.10 Incremental ER pipeline step -----------------------------------
+  // Response shapes (ERStepStatus/ERStepPreview/ERDemoResult) are declared and
+  // cast via useQuery<...> inside EntityResolutionStepView, so we keep the client
+  // return loose (`any`) to satisfy those generics.
+  erStepStatus(): Promise<any> {
+    return req('/api/v1/ingestion/er/status');
+  },
+  erStepPreview(type = 'Material'): Promise<any> {
+    return req(`/api/v1/ingestion/er/preview?type=${encodeURIComponent(type)}`);
+  },
+  erStepDemo(): Promise<any> {
+    return req('/api/v1/ingestion/er/demo', { method: 'POST' });
+  },
+
+  // -- §15.9 Gap-closure experiment plan ------------------------------------
+  gapClosurePlan(
+    maxExperiments?: number,
+    domain?: string,
+    budget?: number,
+  ): Promise<import('./components/GapClosurePlanView').ClosurePlanResponse> {
+    const p = new URLSearchParams();
+    if (maxExperiments != null) p.set('max_experiments', String(maxExperiments));
+    if (domain) p.set('domain', domain);
+    if (budget != null) p.set('budget', String(budget));
+    const qs = p.toString();
+    return req(`/api/v1/gap-closure/plan${qs ? `?${qs}` : ''}`);
+  },
+
+  // -- §17.14 Gap matrix (type × domain) ------------------------------------
+  gapsMatrix(): Promise<{ matrix: Record<string, Record<string, number>> }> {
+    return req('/api/v1/gaps/matrix');
+  },
+  gapsList(opts: { gapType?: string; domain?: string; limit?: number } = {}): Promise<{
+    count: number;
+    gaps: { id: string; name: string; type: string; domain: string }[];
+  }> {
+    const p = new URLSearchParams();
+    if (opts.gapType) p.set('gap_type', opts.gapType);
+    if (opts.domain) p.set('domain', opts.domain);
+    if (opts.limit) p.set('limit', String(opts.limit));
+    const qs = p.toString();
+    return req(`/api/v1/gaps${qs ? `?${qs}` : ''}`);
+  },
+
+  // -- §7.3 Cross-scale hardness HV↔HRC↔HB (ASTM E140) ----------------------
+  hardnessEquivalents(value: number, scale: string): Promise<HardnessEquivalents> {
+    return req<HardnessEquivalents>('/api/v1/hardness/equivalents', {
+      method: 'POST',
+      body: JSON.stringify({ value, scale }),
+    });
+  },
+  hardnessCompare(
+    readings: { label: string; value: number; scale: string }[],
+    targetScale = 'HV',
+  ): Promise<HardnessCompareResult> {
+    return req<HardnessCompareResult>('/api/v1/hardness/compare', {
+      method: 'POST',
+      body: JSON.stringify({ readings, target_scale: targetScale }),
+    });
+  },
+
+  // -- §13.11 Link prediction (Mode D) --------------------------------------
+  linkPredictionSeeds(
+    label = 'Material',
+  ): Promise<{ count: number; seeds: { id: string; name: string; label: string }[] }> {
+    return req(`/api/v1/link-prediction/seeds?label=${encodeURIComponent(label)}`);
+  },
+  linkPredict(
+    seed: string,
+    metric = 'adamic_adar',
+    targetLabel?: string,
+    limit = 12,
+  ): Promise<{
+    seed: { id: string; name: string | null; label: string | null };
+    metric: string;
+    target_label: string | null;
+    count: number;
+    predictions: {
+      target: string;
+      target_name: string | null;
+      target_label: string;
+      metric: string;
+      raw_score: number;
+      score: number;
+      shared_neighbors: number;
+      jaccard: number;
+      adamic_adar: number;
+      resource_allocation: number;
+      preferential: number;
+      reason: string;
+    }[];
+  }> {
+    const q = new URLSearchParams({ seed, metric, limit: String(limit) });
+    if (targetLabel) q.set('target_label', targetLabel);
+    return req(`/api/v1/link-prediction/predict?${q.toString()}`);
+  },
+
+  // -- §3.14 Live GDS on Neo4j (Louvain + nodeSimilarity) -------------------
+  gdsStatus(): Promise<{
+    available: boolean;
+    profile: string;
+    clustered?: boolean;
+    communities?: number;
+    reason?: string;
+  }> {
+    return req('/api/v1/gds-live/status');
+  },
+  gdsColoredGraph(limit = 400): Promise<GraphResponse> {
+    return req(`/api/v1/gds-live/colored-graph?limit=${limit}`);
+  },
+  gdsCommunities(limit = 24): Promise<{
+    clustered: boolean;
+    count: number;
+    communities: { community_id: number; size: number; top_entities: string[] }[];
+  }> {
+    return req(`/api/v1/gds-live/communities?limit=${limit}`);
+  },
+  gdsSimilar(
+    seed: string,
+    limit = 10,
+  ): Promise<{
+    seed: { id: string; name?: string; label?: string };
+    count: number;
+    similar: { id: string; name: string; label?: string; similarity: number }[];
+  }> {
+    return req(`/api/v1/gds-live/similar?seed=${encodeURIComponent(seed)}&limit=${limit}`);
+  },
+  gdsLouvain(): Promise<{
+    run_id: string;
+    community_count: number;
+    modularity: number;
+    nodes_written: number;
+    projected: { nodes: number; relationships: number };
+    communities: { community_id: number; size: number; top_entities: string[] }[];
+  }> {
+    return req('/api/v1/gds-live/louvain', { method: 'POST' });
+  },
+
+  // -- §8.2 Materials Project authority badge -------------------------------
+  materialsProjectBadge(entityId: string): Promise<MaterialsProjectBadgeData> {
+    return req(`/api/v1/entities/${encodeURIComponent(entityId)}/materials-project`);
+  },
+
+  // -- §3.14 Similarity-based implicit links --------------------------------
+  simLinksSeeds(label = 'Material'): Promise<SimLinksSeeds> {
+    return req(`/api/v1/similarity-links/seeds?label=${encodeURIComponent(label)}`);
+  },
+  simLinksSuggest(seed: string, targetLabel?: string): Promise<SimLinksSuggest> {
+    const tl = targetLabel ? `&target_label=${encodeURIComponent(targetLabel)}` : '';
+    return req(`/api/v1/similarity-links/suggest?seed=${encodeURIComponent(seed)}${tl}`);
+  },
+
+  // -- §6.10 Table-cell evidence tracing ------------------------------------
+  evidenceTableCell(evidenceId: string): Promise<{
+    isTableCell: boolean;
+    source: string;
+    docId: string | null;
+    tableId: string | null;
+    rowIndex: number | null;
+    colIndex: number | null;
+    grid: string[][];
+    highlight: { row: number; col: number };
+    cellText: string | null;
+    detail: string;
+    locatorValid: boolean;
+  }> {
+    return req(`/api/v1/evidence/${encodeURIComponent(evidenceId)}/table-cell`);
+  },
+
+  // -- §25.11 Value-of-Information ranking ----------------------------------
+  // VoIResponse is declared locally in ValueOfInformationView; keep loose.
+  absenceValueOfInformation(topN = 20): Promise<any> {
+    return req(`/api/v1/absence/value-of-information?top_n=${topN}`);
+  },
+
+  // -- §3.14 Missing-links board (corpus feed) ------------------------------
+  missingLinksBoard(
+    seedLabel?: string,
+    targetLabel?: string,
+    limit = 25,
+  ): Promise<{
+    method: 'gds' | 'in_process';
+    seed_label: string | null;
+    target_label: string | null;
+    min_similarity: number;
+    count: number;
+    predictions: {
+      a: { id: string; name: string; label: string | null };
+      b: { id: string; name: string; label: string | null };
+      similarity: number;
+      shared: number;
+      shared_via: string[];
+      reason: string;
+      confidence: number;
+    }[];
+  }> {
+    const q = new URLSearchParams({ limit: String(limit) });
+    if (seedLabel) q.set('seed_label', seedLabel);
+    if (targetLabel) q.set('target_label', targetLabel);
+    return req(`/api/v1/missing-links/board?${q.toString()}`);
+  },
 };
+
+// -- §7.5 Apples-to-apples normalized-unit result --------------------------
+export interface NormalizedCell {
+  label: string;
+  value_raw: number;
+  unit: string;
+  value_normalized: number | null;
+  normalized_unit: string | null;
+  normalization_method: string; // direct | converted | incompatible | unit_missing
+  note: string;
+}
+export interface NormalizeResult {
+  target_unit: string | null;
+  cells: NormalizedCell[];
+  all_comparable: boolean;
+  min: number | null;
+  max: number | null;
+  spread: number | null;
+  best_label: string | null;
+  worst_label: string | null;
+}
+
+// -- §7.3 Cross-scale hardness result --------------------------------------
+export interface HardnessScaleValue {
+  scale: string;
+  value: number | null;
+  is_source: boolean;
+}
+export interface HardnessEquivalents {
+  input: HardnessScaleValue;
+  equivalents: HardnessScaleValue[];
+  tensile_mpa: number | null;
+  approximate: boolean;
+  conversion_standard: string;
+  normalization_method: string;
+  notes: string[];
+}
+export interface HardnessCompareRow {
+  label: string;
+  original_value: number;
+  original_scale: string;
+  normalized_value: number | null;
+  normalized_scale: string;
+  hv: number | null;
+  tensile_mpa: number | null;
+  approximate: boolean;
+  note: string;
+}
+export interface HardnessCompareResult {
+  target_scale: string;
+  rows: HardnessCompareRow[];
+  hardest: string | null;
+  softest: string | null;
+  spread_hv: number | null;
+  conversion_standard: string;
+  normalization_method: string;
+}
 
 export interface MultimodalResult {
   model: string | null;
