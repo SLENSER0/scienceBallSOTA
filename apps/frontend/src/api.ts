@@ -74,6 +74,28 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface SourceTrust {
+  doc_id: string;
+  trust_score: number;
+  trust_tier: string; // high | medium | low | untrusted
+  freshness: string; // fresh | aging | stale | unknown
+  warnings: string[];
+}
+export interface TrustedSource {
+  title: string;
+  url: string;
+  year?: number | null;
+  trust: SourceTrust;
+  paper_id?: string;
+  id?: string; // review id (when routed to review)
+}
+export interface PendingSource {
+  id: string;
+  source: { title: string; url: string; snippet?: string; year?: number | null };
+  trust: SourceTrust;
+  status: string;
+}
+
 export const api = {
   authConfig(): Promise<AuthConfig> {
     return req('/api/v1/auth/config');
@@ -286,6 +308,25 @@ export const api = {
   },
   deepStatus(): Promise<{ available: boolean; engine: string }> {
     return req('/api/v1/research/deep/status');
+  },
+  // «Загрузить в граф»: run found sources through Source Trust, ingest high-trust,
+  // route low-trust to review. Returns {ingested:[...], review:[...]} with per-source trust.
+  promoteDeepSources(
+    sources: { title: string; url: string; snippet?: string; year?: number | null }[],
+  ): Promise<{ ingested: TrustedSource[]; review: TrustedSource[] }> {
+    return req('/api/v1/research/deep/promote', {
+      method: 'POST',
+      body: JSON.stringify({ sources }),
+    });
+  },
+  pendingSources(): Promise<{ items: PendingSource[] }> {
+    return req('/api/v1/research/sources/pending');
+  },
+  approveSource(id: string): Promise<{ approved: string; paper_id: string }> {
+    return req(`/api/v1/research/sources/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+  },
+  rejectSource(id: string): Promise<{ rejected: string }> {
+    return req(`/api/v1/research/sources/${encodeURIComponent(id)}/reject`, { method: 'POST' });
   },
   deepResearch(question: string): Promise<{
     question: string;

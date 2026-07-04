@@ -112,9 +112,11 @@ async def run_deep_research(question: str) -> dict[str, Any]:
     os.environ["OPENAI_API_KEY"] = s.llm_api_key.get_secret_value()
 
     _install_free_search()
+    from api_gateway.deep_search_tool import collected_sources, reset_found_sources
     from langchain_core.messages import HumanMessage
     from open_deep_research.deep_researcher import deep_researcher
 
+    reset_found_sources()
     _log.info("deep_research.start", model=s.llm_model_synth)
     result = await deep_researcher.ainvoke(
         {"messages": [HumanMessage(content=question)]},
@@ -126,6 +128,7 @@ async def run_deep_research(question: str) -> dict[str, Any]:
         "question": question,
         "report": report,
         "notes": notes,
+        "sources": collected_sources(),
         "engine": "open_deep_research",
         "model": s.llm_model_synth,
     }
@@ -181,9 +184,11 @@ async def stream_deep_research(question: str):  # type: ignore[no-untyped-def]
     os.environ["OPENAI_API_KEY"] = s.llm_api_key.get_secret_value()
 
     _install_free_search()
+    from api_gateway.deep_search_tool import collected_sources, reset_found_sources
     from langchain_core.messages import HumanMessage
     from open_deep_research.deep_researcher import deep_researcher
 
+    reset_found_sources()
     yield ("stage", {"node": "start", "label": "Запуск open_deep_research (реальный поиск)"})
     final_report = ""
     async for mode, chunk in deep_researcher.astream(
@@ -206,4 +211,5 @@ async def stream_deep_research(question: str):  # type: ignore[no-untyped-def]
             if token:
                 yield ("token", {"text": str(token)})
     yield ("report", {"text": final_report})
+    yield ("sources", {"items": collected_sources()})
     yield ("done", {"engine": "open_deep_research", "model": s.llm_model_synth})

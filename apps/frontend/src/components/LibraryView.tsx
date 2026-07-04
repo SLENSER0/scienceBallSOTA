@@ -5,17 +5,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookPlus,
   Brain,
+  Check,
   ChevronDown,
   ChevronRight,
+  DatabaseZap,
   ExternalLink,
   FlaskConical,
   Library,
   Loader2,
   Search,
+  ShieldCheck,
   Sparkles,
   TriangleAlert,
+  X,
 } from 'lucide-react';
-import { api } from '../api';
+import { api, type TrustedSource } from '../api';
 import { useStore } from '../store';
 import { CallHistory } from './CallHistory';
 import { pushCall } from '../lib/callHistory';
@@ -94,6 +98,10 @@ function LibrarySearchTab() {
     es.addEventListener('report', (e) => {
       const d = JSON.parse((e as MessageEvent).data);
       setDeep({ report: d.text ?? '' });
+    });
+    es.addEventListener('sources', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDeep({ sources: d.items ?? [] });
     });
     es.addEventListener('done', () => {
       setDeep({ running: false });
@@ -311,6 +319,141 @@ function DeepResearchPanel() {
       {deep.running && !deep.report && (
         <div className="font-mono text-[11px] text-faint">
           Анализ источников… отчёт появится по завершении (~2-3 мин).
+        </div>
+      )}
+
+      {/* «Загрузить в граф» + Source Trust gate + low-trust review */}
+      {!deep.running && deep.sources.length > 0 && <LoadToGraphPanel />}
+    </div>
+  );
+}
+
+type PromoteResult = { ingested: TrustedSource[]; review: TrustedSource[] };
+
+const TRUST_CHIP: Record<string, string> = {
+  high: 'border-verified/40 text-verified',
+  medium: 'border-copper/40 text-copper',
+  low: 'border-gap/40 text-gap',
+  untrusted: 'border-contradiction/40 text-contradiction',
+};
+const trustChip = (tier: string) => TRUST_CHIP[tier] ?? 'border-line text-faint';
+
+// «Загрузить в граф»: run each found source through Source Trust, ingest the trusted
+// ones and hold the low-trust ones for the user's add/reject decision (§23.27).
+function LoadToGraphPanel() {
+  const deep = useStore((s) => s.deep);
+  const setDeep = useStore((s) => s.setDeep);
+  const promote = deep.promote as PromoteResult | null;
+
+  const load = useMutation({
+    mutationFn: () =>
+      api.promoteDeepSources(
+        deep.sources.map((s) => ({ title: s.title, url: s.url, snippet: s.snippet, year: s.year ?? null })),
+      ),
+    onSuccess: (r) => setDeep({ promote: r }),
+  });
+  const approve = useMutation({
+    mutationFn: (id: string) => api.approveSource(id),
+    onSuccess: (_r, id) => {
+      if (!promote) return;
+      const moved = promote.review.find((x) => x.id === id);
+      setDeep({
+        promote: {
+          ingested: moved ? [...promote.ingested, moved] : promote.ingested,
+          review: promote.review.filter((x) => x.id !== id),
+        },
+      });
+    },
+  });
+  const reject = useMutation({
+    mutationFn: (id: string) => api.rejectSource(id),
+    onSuccess: (_r, id) => {
+      if (!promote) return;
+      setDeep({ promote: { ...promote, review: promote.review.filter((x) => x.id !== id) } });
+    },
+  });
+
+  return (
+    <div className="mt-3 rounded border border-copper/30 bg-surface/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs text-nickel">
+          <ShieldCheck size={14} className="text-copper" /> Доверие к источникам · найдено {deep.sources.length}
+        </div>
+        <button
+          onClick={() => load.mutate()}
+          disabled={load.isPending}
+          className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper hover:bg-copper/25 disabled:opacity-50"
+        >
+          {load.isPending ? <Loader2 size={13} className="animate-spin" /> : <DatabaseZap size={13} />}
+          Загрузить в граф
+        </button>
+      </div>
+      {load.isError && <div className="text-[11px] text-contradiction">не удалось загрузить</div>}
+
+      {promote && (
+        <div className="space-y-3">
+          {promote.ingested.length > 0 && (
+            <div>
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-faint">
+                в графе ({promote.ingested.length})
+              </div>
+              <div className="space-y-1">
+                {promote.ingested.map((r, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded border border-line/60 px-2.5 py-1.5 text-[12px]"
+                  >
+                    <Check size={12} className="shrink-0 text-verified" />
+                    <span className="truncate text-ink">{r.title}</span>
+                    <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
+                      {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
+                    </span>
+                    <span className="ml-auto font-mono text-[10px] text-faint">{r.trust.freshness}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {promote.review.length > 0 && (
+            <div>
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-gap">
+                на ревью — низкое доверие ({promote.review.length})
+              </div>
+              <div className="space-y-1.5">
+                {promote.review.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-2 rounded border border-gap/30 px-2.5 py-1.5 text-[12px]"
+                  >
+                    <span className="truncate text-ink" title={(r.trust.warnings ?? []).join(' · ')}>
+                      {r.title}
+                    </span>
+                    <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
+                      {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
+                    </span>
+                    <span className="ml-auto flex items-center gap-1">
+                      <button
+                        onClick={() => r.id && approve.mutate(r.id)}
+                        disabled={approve.isPending}
+                        className="rounded bg-verified/15 p-1 text-verified hover:bg-verified/25 disabled:opacity-50"
+                        title="Добавить в корпус"
+                      >
+                        <Check size={13} />
+                      </button>
+                      <button
+                        onClick={() => r.id && reject.mutate(r.id)}
+                        disabled={reject.isPending}
+                        className="rounded bg-contradiction/15 p-1 text-contradiction hover:bg-contradiction/25 disabled:opacity-50"
+                        title="Отклонить"
+                      >
+                        <X size={13} />
+                      </button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ to return this tool, so the vendored repo stays pristine.
 
 from __future__ import annotations
 
+import contextvars
 from typing import Annotated
 
 from langchain_core.tools import InjectedToolArg, tool
@@ -18,6 +19,36 @@ _DESC = (
     "Search the web for scientific sources. Accepts a list of search queries and "
     "returns titled results with real URLs and snippets to cite."
 )
+
+# Per-run collector of the structured hits the model saw, so the runner can offer a
+# machine-readable list of found sources for the «Загрузить в граф» button. Holds a
+# shared list set by ``reset_found_sources`` before a run; ``_ddg_search`` appends to
+# it (the same list object is visible across the search thread), and ``collected_sources``
+# reads it back, deduped by URL.
+_FOUND_SOURCES: contextvars.ContextVar[list[dict[str, str]] | None] = contextvars.ContextVar(
+    "sb_found_sources", default=None
+)
+
+
+def reset_found_sources() -> None:
+    """Start a fresh per-run source collector (call before running deep research)."""
+    _FOUND_SOURCES.set([])
+
+
+def collected_sources() -> list[dict[str, str]]:
+    """The structured sources found during the current run, deduped by URL."""
+    got = _FOUND_SOURCES.get()
+    if not got:
+        return []
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+    for h in got:
+        url = h.get("url", "")
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append(h)
+    return out
 
 
 def _ddg_search(queries: list[str], max_results: int) -> str:
@@ -38,11 +69,14 @@ def _ddg_search(queries: list[str], max_results: int) -> str:
                 continue
             if not hits:
                 blocks.append("(результатов нет)")
+            collector = _FOUND_SOURCES.get()
             for i, h in enumerate(hits, 1):
                 title = h.get("title", "").strip()
                 url = h.get("href") or h.get("url") or ""
                 body = (h.get("body") or "").strip()[:300]
                 blocks.append(f"{i}. {title}\n   URL: {url}\n   {body}")
+                if collector is not None and url:
+                    collector.append({"title": title, "url": url, "snippet": body, "query": q})
     return "\n".join(blocks) or "(нет результатов)"
 
 

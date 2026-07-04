@@ -282,11 +282,11 @@ export function SourceCatalogView() {
             onChange={(e) => setLab(e.target.value)}
             className="rounded border border-line/60 bg-transparent px-1.5 py-1 text-ink"
           >
-            <option value="" className="bg-panel text-ink">
+            <option value="" className="bg-surface text-ink">
               все лаборатории
             </option>
             {(facetsQ.data?.labs ?? []).map((v) => (
-              <option key={v} value={v} className="bg-panel text-ink">
+              <option key={v} value={v} className="bg-surface text-ink">
                 {v} ({facetsQ.data?.by_lab?.[v] ?? 0})
               </option>
             ))}
@@ -296,11 +296,11 @@ export function SourceCatalogView() {
             onChange={(e) => setOwner(e.target.value)}
             className="rounded border border-line/60 bg-transparent px-1.5 py-1 text-ink"
           >
-            <option value="" className="bg-panel text-ink">
+            <option value="" className="bg-surface text-ink">
               все владельцы
             </option>
             {(facetsQ.data?.owners ?? []).map((v) => (
-              <option key={v} value={v} className="bg-panel text-ink">
+              <option key={v} value={v} className="bg-surface text-ink">
                 {v}
               </option>
             ))}
@@ -310,11 +310,11 @@ export function SourceCatalogView() {
             onChange={(e) => setAccess(e.target.value)}
             className="rounded border border-line/60 bg-transparent px-1.5 py-1 text-ink"
           >
-            <option value="" className="bg-panel text-ink">
+            <option value="" className="bg-surface text-ink">
               любой доступ
             </option>
             {(facetsQ.data?.access ?? []).map((v) => (
-              <option key={v} value={v} className="bg-panel text-ink">
+              <option key={v} value={v} className="bg-surface text-ink">
                 {v}
               </option>
             ))}
@@ -324,11 +324,11 @@ export function SourceCatalogView() {
             onChange={(e) => setFreshness(e.target.value)}
             className="rounded border border-line/60 bg-transparent px-1.5 py-1 text-ink"
           >
-            <option value="" className="bg-panel text-ink">
+            <option value="" className="bg-surface text-ink">
               любая свежесть
             </option>
             {['fresh', 'aging', 'stale', 'unknown'].map((v) => (
-              <option key={v} value={v} className="bg-panel text-ink">
+              <option key={v} value={v} className="bg-surface text-ink">
                 {freshMeta(v).ru}
               </option>
             ))}

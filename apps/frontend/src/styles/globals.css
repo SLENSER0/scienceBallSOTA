@@ -41,6 +41,18 @@ body {
   background: transparent;
 }
 
+/* Native <select> option popups: force a solid dark background + bright ink text.
+   On this dark theme the translucent select bg otherwise bleeds into the OS-rendered
+   popup and options read as low-contrast gray-on-gray. Applies to every <select>. */
+select option,
+select optgroup {
+  background-color: #181c25;   /* surface */
+  color: #e9e6df;              /* ink */
+}
+select optgroup {
+  font-weight: 600;
+}
+
 @layer components {
   .panel {
     @apply bg-surface/80 border border-line rounded-lg backdrop-blur-sm;

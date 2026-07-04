@@ -258,6 +258,151 @@ def add_article(
     return {"paper_id": ops["paper_id"], "nodes": len(ops["nodes"]), "edges": len(ops["edges"])}
 
 
+class DeepSource(BaseModel):
+    title: str = ""
+    url: str = ""
+    snippet: str = ""
+    year: int | None = None
+
+
+class PromoteBody(BaseModel):
+    sources: list[DeepSource] = []
+
+
+def _source_summary(s: dict) -> dict:
+    return {"title": s.get("title") or s.get("url") or "источник", "url": s.get("url", ""), "year": s.get("year")}
+
+
+def _assess_source_trust(s: dict) -> dict:
+    """Run one found source through Source Trust (retraction/freshness/peer-review)."""
+    from datetime import UTC, datetime
+
+    from kg_common.manual_article import ManualArticle, article_id
+    from kg_retrievers.citation_trust import assess_citation
+
+    year = s.get("year")
+    age_days = None
+    if isinstance(year, int) and year > 0:
+        age_days = max(0.0, (datetime.now(UTC).year - year) * 365.25)
+    pid = article_id(ManualArticle(title=s.get("title", ""), url=s.get("url", "")))
+    ct = assess_citation(
+        {
+            "doc_id": pid,
+            "source_status": "active",  # a fresh web source; retraction is set later by curation
+            "peer_reviewed": False,  # web sources are not peer-reviewed until proven otherwise
+            "age_days": age_days,
+            "citation_count": 0,
+            "primary": False,
+        }
+    )
+    return {
+        "doc_id": pid,
+        "trust_score": round(ct.trust_score, 3),
+        "trust_tier": ct.trust_tier,
+        "freshness": ct.freshness_level,
+        "warnings": list(ct.warning_messages),
+    }
+
+
+def _ingest_source(s: dict) -> dict:
+    """Load one source into the graph as a :Paper (+ snippet chunk/evidence)."""
+    from kg_common.manual_article import ManualArticle, build_graph_ops
+
+    art = ManualArticle(
+        title=(s.get("title") or s.get("url") or "источник"),
+        year=s.get("year"),
+        url=s.get("url", ""),
+        abstract=s.get("snippet", ""),
+        source="deep-research",
+    )
+    ops = build_graph_ops(art)
+    store = get_store()
+    for node in ops["nodes"]:
+        props = dict(node["props"])
+        if node["label"] == "Paper":
+            props.setdefault("source_status", "active")
+        store.upsert_node(node["id"], node["label"], **props)
+    for edge in ops["edges"]:
+        store.upsert_edge(edge["src"], edge["dst"], edge["type"], **edge["props"])
+    return {"paper_id": ops["paper_id"], "nodes": len(ops["nodes"]), "edges": len(ops["edges"])}
+
+
+@router.post("/deep/promote")
+def promote_sources(
+    body: PromoteBody,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """«Загрузить в граф»: run every deep-research source through Source Trust, then
+    ingest high/medium-trust ones and route low/untrusted ones to the review queue."""
+    if role not in _CAN_ADD:
+        raise HTTPException(status_code=403, detail="role may not add sources")
+    from api_gateway import audit, source_review_store
+
+    ingested: list[dict] = []
+    review: list[dict] = []
+    for src in body.sources:
+        s = src.model_dump()
+        trust = _assess_source_trust(s)
+        if trust["trust_tier"] in ("low", "untrusted"):
+            sid = source_review_store.enqueue(s, trust)
+            review.append({"id": sid, **_source_summary(s), "trust": trust})
+        else:
+            res = _ingest_source(s)
+            ingested.append({**_source_summary(s), "trust": trust, **res})
+    audit.record(
+        "promote_sources", user=user, role=role,
+        detail={"ingested": len(ingested), "review": len(review)},
+    )
+    return {"ingested": ingested, "review": review}
+
+
+@router.get("/sources/pending")
+def pending_sources() -> dict:
+    """Low-trust sources awaiting the user's add/reject decision (§23.27)."""
+    from api_gateway import source_review_store
+
+    return {"items": source_review_store.list_pending()}
+
+
+@router.post("/sources/{sid}/approve")
+def approve_source(
+    sid: str,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """Approve a low-trust source → ingest it into the graph."""
+    if role not in _CAN_ADD:
+        raise HTTPException(status_code=403, detail="role may not approve sources")
+    from api_gateway import audit, source_review_store
+
+    it = source_review_store.get(sid)
+    if not it or it.get("status") != source_review_store.PENDING:
+        raise HTTPException(status_code=404, detail="pending source not found")
+    res = _ingest_source(it["source"])
+    source_review_store.set_status(sid, source_review_store.APPROVED)
+    audit.record("approve_source", user=user, role=role, detail={"id": sid, **res})
+    return {"approved": sid, **res}
+
+
+@router.post("/sources/{sid}/reject")
+def reject_source(
+    sid: str,
+    role: str = Depends(current_role),
+    user: str = Depends(current_user),
+) -> dict:
+    """Reject a low-trust source → drop it (never enters the corpus)."""
+    if role not in _CAN_ADD:
+        raise HTTPException(status_code=403, detail="role may not reject sources")
+    from api_gateway import audit, source_review_store
+
+    it = source_review_store.set_status(sid, source_review_store.REJECTED)
+    if not it:
+        raise HTTPException(status_code=404, detail="pending source not found")
+    audit.record("reject_source", user=user, role=role, detail={"id": sid})
+    return {"rejected": sid}
+
+
 @router.get("/articles")
 def recent_articles(limit: int = 20) -> dict:
     """Recently manually-added papers (source=manual/manual_add)."""

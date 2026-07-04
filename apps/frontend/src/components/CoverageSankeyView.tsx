@@ -259,7 +259,7 @@ export function CoverageSankeyView() {
               className="rounded border border-line/60 bg-transparent px-1.5 py-0.5 text-ink"
             >
               {[10, 15, 25, 40, 60].map((v) => (
-                <option key={v} value={v} className="bg-panel text-ink">
+                <option key={v} value={v} className="bg-surface text-ink">
                   {v}
                 </option>
               ))}
