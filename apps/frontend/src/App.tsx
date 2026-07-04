@@ -15,7 +15,6 @@ import {
   Radar,
   Target,
   Sparkles,
-  ScanSearch,
   Table2,
   Hexagon,
   Search,
@@ -201,11 +200,11 @@ const NAV: NavItem[] = [
   { id: 'corpusexplore', label: 'Поиск по корпусу', icon: Filter, group: 'knowledge' },
   { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
   { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
-  { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
+  { id: 'facttimemachine', label: 'Версионирование фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
   { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
 
-  { id: 'evidence-inspector', label: 'Инспектор доказательств', icon: ScanSearch, roles: INTERNAL, group: 'evidence' },
+  // { id: 'evidence-inspector', label: 'Инспектор доказательств', icon: ScanSearch, roles: INTERNAL, group: 'evidence' }, // скрыт: пуст на сиде (bbox нужен upload-сайдкар, deep-link не срабатывает); проверяемость теперь inline — клик по [n] → drawer. Роут/компонент в коде.
   { id: 'source-trust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL, group: 'evidence' },
 
   { id: 'curation-hub', label: 'Курирование', icon: ClipboardCheck, roles: CURATOR, group: 'curation' },
