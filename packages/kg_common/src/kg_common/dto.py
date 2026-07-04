@@ -152,6 +152,11 @@ class Citation(CamelModel):
     year: int | None = None
     geography: str | None = None
     as_of: str | None = None  # date of actualization — when the source was ingested (§ верификация)
+    # M10: four independently tracked dates (serialized camelCase for the frontend).
+    publication_date: str | None = None  # when the source itself was published
+    file_modified_date: str | None = None  # last-modified timestamp of the source file
+    ingestion_date: str | None = None  # when we loaded it into the graph
+    last_verified_at: str | None = None  # last human/verifier confirmation
 
 
 class AnswerPayload(CamelModel):

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Column, Integer, String, Table, and_, select
+from sqlalchemy import Column, Index, Integer, String, Table, and_, func, select
 
 from kg_common.storage.sql import SqlMetaStore, _dialect_insert, _metadata
 
@@ -105,6 +105,29 @@ collab_activity = Table(
     Column("project", String, nullable=False, default=""),
     Column("summary", String, nullable=False, default=""),
     Column("created_at", String, nullable=False, default=""),
+)
+
+# Secondary indexes on the hot read filters (§23.32). Every list_* query below
+# filters on a non-PK column, so without these each read is a full table scan as
+# the per-team tables grow; declared on the shared MetaData so migrate()'s
+# create_all builds them. Индексы под горячие фильтры чтения — index seek вместо
+# полного скана. No query/behavior change.
+Index(  # list_comments (comment threads) + _thread_participants fan-out
+    "ix_collab_comments_target",
+    collab_comments.c.target_type,
+    collab_comments.c.target_id,
+)
+Index(  # list_comments_for_investigation
+    "ix_collab_comments_investigation",
+    collab_comments.c.investigation_id,
+)
+Index(  # list_notifications + unread_count (notification center / badge poll)
+    "ix_collab_notifications_user",
+    collab_notifications.c.user_id,
+)
+Index(  # list_activity (activity feed, scoped by project/lab)
+    "ix_collab_activity_project",
+    collab_activity.c.project,
 )
 
 # Lifecycle statuses shared by comments and investigations (§23.32).
@@ -361,8 +384,20 @@ class CollaborationStore:
             return [self._row_to_notif(r) for r in conn.execute(q).all()]
 
     def unread_count(self, user_id: str) -> int:
-        """Count of unread notifications for the badge."""
-        return len(self.list_notifications(user_id, unread_only=True, limit=10_000))
+        """Count of unread notifications for the badge.
+
+        A single ``COUNT(*)`` aggregate (index-only against
+        ``ix_collab_notifications_user``) instead of materialising and mapping up
+        to 10k rows just to ``len()`` them — same number, no row objects built.
+        """
+        q = select(func.count()).select_from(collab_notifications).where(
+            and_(
+                collab_notifications.c.user_id == user_id,
+                collab_notifications.c.read == 0,
+            )
+        )
+        with self.engine.begin() as conn:
+            return int(conn.execute(q).scalar() or 0)
 
     def mark_read(self, notif_id: str, user_id: str) -> bool:
         """Mark one notification read (scoped to its owner). ``True`` if it existed."""

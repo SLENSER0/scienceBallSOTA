@@ -160,9 +160,15 @@ class IngestionPipeline:
         domains: Counter = Counter()
         llm_used = 0
 
-        # first pass to guess domain
+        # first pass to guess domain — cache each rule extraction keyed by chunk
+        # index so the main loop below reuses it instead of re-running the
+        # taxonomy scan on the same first-5 chunks (extract_rules is a pure
+        # function of the text; §6). / первый проход по доменам с кэшом извлечений.
+        rule_cache: dict[int, DocumentExtraction] = {}
         for ch in chunks[:5]:
-            for e in extract_rules(ch.text).entities:
+            ex0 = extract_rules(ch.text)
+            rule_cache[ch.index] = ex0
+            for e in ex0.entities:
                 entry = self.tax.by_id(e.canonical_name or "")
                 if entry and entry.domain:
                     domains[entry.domain] += 1
@@ -239,7 +245,10 @@ class IngestionPipeline:
                 self.store.upsert_edge(doc_id, chunk_id, "HAS_CHUNK", **self._prov())
                 self.stats.chunks += 1
 
-                ex = extract_rules(ch.text)
+                # reuse the domain-pass extraction for the first-5 chunks (same
+                # Chunk objects, unique sequential .index) — avoids a second
+                # taxonomy scan per chunk. / переиспользуем кэш из прохода по доменам.
+                ex = rule_cache[ch.index] if ch.index in rule_cache else extract_rules(ch.text)
                 if self.use_llm and llm_used < self.llm_max_chunks and len(ch.text) > 200:
                     from kg_extractors.llm_extractor import extract_llm
 
@@ -318,7 +327,11 @@ class IngestionPipeline:
 
                 vocab = default_property_vocab()
                 cand = f"prop:{m.property}" if m.property else ""
-                pid = cand if cand in vocab.all_ids() else vocab.canonical_for(m.property or "")
+                # O(1) validity check via the _by_id dict instead of rebuilding +
+                # linearly scanning all_ids() per measurement (cand is a valid
+                # property_id iff it has an entry). / проверка id за O(1).
+                valid = vocab.entry(cand) is not None
+                pid = cand if valid else vocab.canonical_for(m.property or "")
                 nm = normalize_measurement(m.value, m.unit, property_id=pid)
             self.store.upsert_node(
                 meas_id,

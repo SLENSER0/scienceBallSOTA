@@ -21,6 +21,8 @@ summary are returned alongside so the client community panel is self-contained.
 
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Query
 
 from api_gateway.deps import get_store
@@ -30,6 +32,37 @@ router = APIRouter(prefix="/api/v1/graph/corpus", tags=["graph-corpus"])
 # Community-summary artifact label written by detect_communities (§11); excluded
 # from the entity projection but mined for per-community text summaries.
 _FINDING = "Finding"
+
+# --- whole-corpus projection TTL cache (§17.9) -------------------------------
+# The overview is a pure function of the graph + query params between ingests, so
+# LargeGraphView's repeated re-fetches on control changes (edge_limit / min_degree
+# / cluster) recompute the identical heavy projection — a full edge read (up to
+# 200k rows), a bulk node-metadata read and Python degree/community aggregation —
+# against an unchanged graph. Within a short TTL we serve the last-built dict.
+# Кэш проекции всего корпуса на короткое время (чистая функция графа + параметров).
+_OVERVIEW_TTL_S = 45.0
+_OVERVIEW_CACHE_MAX = 128
+_overview_cache: dict[tuple, tuple[float, dict]] = {}
+
+
+def _cache_get(key: tuple) -> dict | None:
+    hit = _overview_cache.get(key)
+    if hit is not None and (time.monotonic() - hit[0]) < _OVERVIEW_TTL_S:
+        return hit[1]
+    return None
+
+
+def _cache_put(key: tuple, value: dict) -> dict:
+    now = time.monotonic()
+    # Bound memory: drop expired entries (then, if still full, the oldest) so an
+    # unusual spread of param combinations can't grow the cache without limit.
+    if len(_overview_cache) >= _OVERVIEW_CACHE_MAX:
+        for k in [k for k, (ts, _) in _overview_cache.items() if now - ts >= _OVERVIEW_TTL_S]:
+            _overview_cache.pop(k, None)
+        while len(_overview_cache) >= _OVERVIEW_CACHE_MAX:
+            _overview_cache.pop(next(iter(_overview_cache)), None)
+    _overview_cache[key] = (now, value)
+    return value
 
 
 def _has_communities(store) -> bool:  # type: ignore[no-untyped-def]
@@ -72,10 +105,23 @@ def overview(
     store = get_store()
 
     # Ensure community colouring exists (lazy, one-off, shared with the panel).
+    # Kept before the cache lookup so the clustering side effect always runs.
     if cluster and not _has_communities(store):
         from kg_retrievers.community import detect_communities
 
         detect_communities(store, min_size=2)
+
+    # Serve the last-built projection for this graph + param-set within the TTL.
+    cache_key = (
+        getattr(store, "db_path", None),
+        edge_limit,
+        min_degree,
+        cluster,
+        max_communities,
+    )
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
 
     # 1) Edges first — they define the visible node set and the render budget.
     edge_rows = store.rows(
@@ -107,19 +153,22 @@ def overview(
 
     keep = {nid for nid, d in degree.items() if d >= max(1, min_degree)}
     if not keep:
-        return {
-            "nodes": [],
-            "edges": [],
-            "communities": [],
-            "stats": {
-                "nodeCount": 0,
-                "edgeCount": 0,
-                "communityCount": 0,
-                "totalNodes": total.get("nodes", 0),
-                "totalEdges": total_edges,
-                "truncated": truncated,
+        return _cache_put(
+            cache_key,
+            {
+                "nodes": [],
+                "edges": [],
+                "communities": [],
+                "stats": {
+                    "nodeCount": 0,
+                    "edgeCount": 0,
+                    "communityCount": 0,
+                    "totalNodes": total.get("nodes", 0),
+                    "totalEdges": total_edges,
+                    "truncated": truncated,
+                },
             },
-        }
+        )
 
     # 2) Node metadata for exactly the touched ids (single bulk read).
     meta_rows = store.rows(
@@ -177,16 +226,19 @@ def overview(
     communities.sort(key=lambda c: c["size"], reverse=True)
     communities = communities[:max_communities]
 
-    return {
-        "nodes": nodes,
-        "edges": edges,
-        "communities": communities,
-        "stats": {
-            "nodeCount": len(nodes),
-            "edgeCount": len(edges),
-            "communityCount": len(comm_size),
-            "totalNodes": total.get("nodes", 0),
-            "totalEdges": total_edges,
-            "truncated": truncated,
+    return _cache_put(
+        cache_key,
+        {
+            "nodes": nodes,
+            "edges": edges,
+            "communities": communities,
+            "stats": {
+                "nodeCount": len(nodes),
+                "edgeCount": len(edges),
+                "communityCount": len(comm_size),
+                "totalNodes": total.get("nodes", 0),
+                "totalEdges": total_edges,
+                "truncated": truncated,
+            },
         },
-    }
+    )

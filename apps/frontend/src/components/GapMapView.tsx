@@ -23,6 +23,31 @@ const DOMAIN_RU: Record<string, string> = {
   electrometallurgy: 'Электромет',
 };
 
+// §M12 5-way gap taxonomy → badge colour. Copper = a true hole to fill; red = sources
+// disagree; amber = evidence is thin; slate = the fact is probably in a source but wasn't
+// extracted; green = actually known.
+const TAX5_COLOR: Record<string, string> = {
+  CONTRADICTED: '#E5484D',
+  WEAK_EVIDENCE: '#E0A23C',
+  POSSIBLE_EXTRACTION_GAP: '#8FA3B0',
+  TRUE_GAP: '#C87941',
+  KNOWN: '#3FB68B',
+};
+
+function Tax5Badge({ code, label }: { code?: string | null; label?: string | null }) {
+  if (!code) return null;
+  const c = TAX5_COLOR[code] ?? '#8FA3B0';
+  return (
+    <span
+      className="chip font-mono text-[10px]"
+      style={{ color: c, borderColor: c, backgroundColor: `${c}1A` }}
+      title={code}
+    >
+      {label ?? code}
+    </span>
+  );
+}
+
 export function GapMapView() {
   const gapMap = useStore((s) => s.gapMap);
 
@@ -88,6 +113,7 @@ function GapCard({ g, rank }: { g: PrioritizedGap; rank: number }) {
           <span className="chip text-faint border-line">не оценён</span>
           <span className="text-sm text-muted">{g.name}</span>
           {g.domain && <span className="chip text-faint">{DOMAIN_RU[g.domain] ?? g.domain}</span>}
+          <Tax5Badge code={g.taxonomy5} label={g.taxonomy5_ru} />
         </div>
         <div className="mt-1 font-mono text-[10px] text-faint">
           не удалось оценить — это не значит, что приоритет низкий
@@ -108,6 +134,7 @@ function GapCard({ g, rank }: { g: PrioritizedGap; rank: number }) {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-ink">{g.name}</span>
             {g.domain && <span className="chip text-faint">{DOMAIN_RU[g.domain] ?? g.domain}</span>}
+            <Tax5Badge code={g.taxonomy5} label={g.taxonomy5_ru} />
           </div>
           {g.rationale && <div className="mt-1 text-[13px] text-muted">{g.rationale}</div>}
           {g.action && (

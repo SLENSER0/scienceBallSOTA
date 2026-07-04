@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import queue
 import threading
 from pathlib import Path
 from typing import Any
@@ -90,6 +91,11 @@ _REL_COL_NAMES = {c for c, _ in REL_COLUMNS}
 class KuzuGraphStore:
     """Read-write graph store backed by an embedded Kuzu database."""
 
+    #: Number of dedicated read connections leased for read queries. Kuzu allows
+    #: concurrent reads over one Database (MVCC), so reads run over these instead
+    #: of serialising behind the single write connection's lock. / пул чтений.
+    _READ_POOL_SIZE = 4
+
     def __init__(self, db_path: str, *, read_only: bool = False) -> None:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self.db_path = db_path
@@ -97,8 +103,17 @@ class KuzuGraphStore:
         self._db = kuzu.Database(db_path, read_only=read_only)
         self._conn = kuzu.Connection(self._db)
         self._lock = threading.RLock()
+        self._tl = threading.local()  # per-thread "currently inside batch()" flag
         if not read_only:
             self.ensure_schema()
+        # Dedicated read connections: Kuzu supports concurrent reads over one
+        # Database via MVCC, so reads need not serialise behind the write lock.
+        # Each connection is leased from the queue and returned, so it is only
+        # ever used by one thread at a time (a single Kuzu Connection is not
+        # thread-safe). / соединения на чтение, по одному на поток за раз.
+        self._read_pool: queue.Queue[kuzu.Connection] = queue.Queue()
+        for _ in range(self._READ_POOL_SIZE):
+            self._read_pool.put(kuzu.Connection(self._db))
 
     # -- schema ----------------------------------------------------------
     def ensure_schema(self) -> None:
@@ -177,6 +192,7 @@ class KuzuGraphStore:
         """Group writes into one Kuzu transaction (~1.4x faster bulk upsert)."""
         with self._lock:
             self._conn.execute("BEGIN TRANSACTION")
+            self._tl.in_batch = True  # route this thread's reads to the write conn
             try:
                 yield
                 self._conn.execute("COMMIT")
@@ -184,20 +200,61 @@ class KuzuGraphStore:
                 with contextlib.suppress(Exception):
                     self._conn.execute("ROLLBACK")
                 raise
+            finally:
+                self._tl.in_batch = False
 
     # -- read ------------------------------------------------------------
+    def _read_rows(self, cypher: str, params: dict[str, Any] | None = None) -> list[list[Any]]:
+        """Run a read query and drain every row into a list.
+
+        Внутри batch() чтения идут по write-соединению (чтобы видеть собственные
+        незакоммиченные записи, как до оптимизации); вне batch() — по пулу
+        read-соединений, чтобы конкурентные чтения не сериализовались за write-локом.
+        """
+        # Reads issued inside this thread's own batch() must see the transaction's
+        # own uncommitted writes -> use the write connection, exactly as the
+        # previous single-connection store did. Pooled read connections only ever
+        # observe committed state (Kuzu MVCC snapshot), which is identical for any
+        # read that is not part of an open write transaction on the same thread.
+        if getattr(self._tl, "in_batch", False):
+            res = self.execute(cypher, params)
+            out: list[list[Any]] = []
+            while res.has_next():  # type: ignore[union-attr]
+                out.append(res.get_next())  # type: ignore[union-attr]
+            return out
+        conn = self._read_pool.get()
+        try:
+            res = conn.execute(cypher, params or {})
+            rows: list[list[Any]] = []
+            while res.has_next():  # type: ignore[union-attr]
+                rows.append(res.get_next())  # type: ignore[union-attr]
+            return rows
+        finally:
+            self._read_pool.put(conn)
+
     def rows(self, cypher: str, params: dict[str, Any] | None = None) -> list[list[Any]]:
-        res = self.execute(cypher, params)
-        out: list[list[Any]] = []
-        while res.has_next():  # type: ignore[union-attr]
-            out.append(res.get_next())  # type: ignore[union-attr]
-        return out
+        return self._read_rows(cypher, params)
 
     def get_node(self, node_id: str) -> dict[str, Any] | None:
-        res = self.execute("MATCH (n:Node {id:$id}) RETURN n", {"id": node_id})
-        if not res.has_next():  # type: ignore[union-attr]
-            return None
-        return self._node_dict(res.get_next()[0])  # type: ignore[union-attr]
+        r = self.rows("MATCH (n:Node {id:$id}) RETURN n", {"id": node_id})
+        return self._node_dict(r[0][0]) if r else None
+
+    def get_nodes(self, ids: list[str]) -> dict[str, dict[str, Any]]:
+        """Hydrate many nodes in ONE query — batched replacement for a get_node() loop.
+
+        Одним запросом ``WHERE n.id IN $ids`` вместо N+1 вызовов get_node().
+        Returns ``{id: node_dict}`` for the ids that exist; empty ``ids`` issues no
+        query and returns ``{}``. Result matches calling :meth:`get_node` per id.
+        """
+        if not ids:
+            return {}
+        out: dict[str, dict[str, Any]] = {}
+        for r in self.rows("MATCH (n:Node) WHERE n.id IN $ids RETURN n", {"ids": list(ids)}):
+            nd = self._node_dict(r[0])
+            nid = nd.get("id")
+            if nid:
+                out[nid] = nd
+        return out
 
     @staticmethod
     def _node_dict(raw: dict[str, Any]) -> dict[str, Any]:
@@ -231,6 +288,14 @@ class KuzuGraphStore:
         nodes = self.rows("MATCH (n:Node) RETURN count(n)")
         rels = self.rows("MATCH ()-[r:Rel]->() RETURN count(r)")
         return {"nodes": nodes[0][0] if nodes else 0, "rels": rels[0][0] if rels else 0}
+
+    def is_empty(self) -> bool:
+        """True if the graph has no nodes — cheap ``LIMIT 1`` existence probe.
+
+        Пусто ли хранилище: короткий скан с ``LIMIT 1`` вместо полного ``count(n)``
+        и без скана рёбер, который делает :meth:`counts`. Same node/no-node verdict.
+        """
+        return not self.rows("MATCH (n:Node) RETURN n LIMIT 1")
 
     def counts_by_label(self) -> dict[str, int]:
         rows = self.rows("MATCH (n:Node) RETURN n.label, count(n) ORDER BY count(n) DESC")
@@ -266,11 +331,9 @@ class KuzuGraphStore:
                 {"ids": node_ids},
             ):
                 ids.add(r[0])
-        nodes: list[GraphNode] = []
-        for nid in ids:
-            nd = self.get_node(nid)
-            if nd:
-                nodes.append(self.node_to_dto(nd))
+        # Hydrate ALL seed + expanded nodes in ONE query — was N+1 (get_node per
+        # id → up to ~500 serialized round-trips). / одним запросом вместо N+1.
+        nodes = [self.node_to_dto(nd) for nd in self.get_nodes(list(ids)).values()]
         return GraphResponse(nodes=nodes, edges=self.edges_among(ids))
 
     def edges_among(self, ids: set[str]) -> list[GraphEdge]:
@@ -316,5 +379,8 @@ class KuzuGraphStore:
 
     def close(self) -> None:
         with self._lock:
+            while not self._read_pool.empty():
+                with contextlib.suppress(queue.Empty, Exception):
+                    self._read_pool.get_nowait().close()
             self._conn.close()
             self._db.close()

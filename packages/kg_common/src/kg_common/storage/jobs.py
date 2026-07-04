@@ -26,6 +26,7 @@ from typing import Any
 from sqlalchemy import (
     Column,
     Float,
+    Index,
     Integer,
     String,
     Table,
@@ -55,6 +56,18 @@ jobs = Table(
     Column("created_at", String, nullable=False, default=""),
     Column("updated_at", String, nullable=False, default=""),
 )
+
+# -- indexes (§14.10 /ingest/jobs listing on the running path) ------------
+# ``list_jobs`` filters WHERE kind=? and/or status=? then ORDER BY created_at,
+# job_id (GET /ingest/jobs and batch_ingest's kind='batch-ingest' listing). Each
+# composite index leads with the equality-filter column and then carries the
+# exact sort keys (created_at, job_id), so the listing becomes an index
+# range-scan in created_at order instead of a full-table scan + filesort as the
+# jobs table grows one row per ingest/batch run. Обслуживает опрос статуса задач
+# без полного сканирования. ``create_all`` builds these idempotently alongside
+# the table; the create_job UPSERT (on_conflict_do_nothing on job_id) is unaffected.
+Index("ix_jobs_kind_created", jobs.c.kind, jobs.c.created_at, jobs.c.job_id)
+Index("ix_jobs_status_created", jobs.c.status, jobs.c.created_at, jobs.c.job_id)
 
 
 def _now() -> str:

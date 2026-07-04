@@ -150,10 +150,14 @@ def list_sessions(
     store = _chat()
     sessions = list(reversed(store.list_sessions(user)))  # store is oldest-first
     window = sessions[offset : offset + limit]
+    # One grouped timestamp query for the whole window instead of loading every
+    # message of every session just to read its last created_at (N+1 + over-fetch
+    # of the full AnswerPayload JSON). Sessions with no messages fall back to the
+    # session's own created_at, exactly as msgs[-1] vs s.created_at did before.
+    last_map = store.last_message_ats([s.session_id for s in window])
     items = []
     for s in window:
-        msgs = store.messages(s.session_id)
-        last_at = msgs[-1].created_at if msgs else s.created_at
+        last_at = last_map.get(s.session_id, s.created_at)
         items.append(
             {
                 "session_id": s.session_id,

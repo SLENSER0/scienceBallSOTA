@@ -26,6 +26,7 @@ from typing import Any
 from sqlalchemy import (
     Column,
     Float,
+    Index,
     String,
     Table,
     UniqueConstraint,
@@ -54,6 +55,27 @@ review_tasks = Table(
     Column("dedup_key", String, nullable=False, default=""),
     Column("created_at", String, nullable=False, default=""),
     UniqueConstraint("dedup_key", name="uq_review_dedup"),
+)
+
+# -- indexes (§16.4 queue polling on the running path) --------------------
+# Serve ``next_tasks`` (open-queue listing) + ``counts_by_status`` without a
+# full-table scan + filesort: WHERE status='open' ORDER BY priority desc,
+# created_at asc, task_id asc is covered by a composite index whose column
+# order matches the equality filter first, then the sort keys. Обслуживает
+# опрос очереди без полного сканирования таблицы. ``create_all`` builds these
+# alongside the table; the dedup UPSERT (on dedup_key) is unaffected.
+Index(
+    "ix_review_tasks_status_priority",
+    review_tasks.c.status,
+    review_tasks.c.priority.desc(),
+    review_tasks.c.created_at,
+    review_tasks.c.task_id,
+)
+# Per-reviewer worklist filter (``next_tasks(assignee=…)``): assignee + status.
+Index(
+    "ix_review_tasks_assignee_status",
+    review_tasks.c.assignee,
+    review_tasks.c.status,
 )
 
 

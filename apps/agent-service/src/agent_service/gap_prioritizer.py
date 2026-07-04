@@ -41,6 +41,8 @@ class PrioritizedGap:
     action: str
     scored: bool = True  # False = the model failed to score it (NOT a low priority)
     model: str | None = None
+    taxonomy5: str | None = None  # §M12 5-way code (TRUE_GAP / CONTRADICTED / …)
+    taxonomy5_ru: str | None = None  # RU label for the badge
 
 
 _SYSTEM = (
@@ -87,6 +89,9 @@ def _score_gap(g: dict[str, Any]) -> PrioritizedGap:
                 error=str(exc)[:100],
             )
     scored = bool(data.get("priority") is not None)
+    from kg_retrievers.gap_taxonomy5 import classify_gap_5way
+
+    tax5, tax5_ru = classify_gap_5way(g.get("type"), g.get("absence_confidence"))
     return PrioritizedGap(
         id=str(g.get("id")),
         name=str(g.get("name")),
@@ -101,6 +106,8 @@ def _score_gap(g: dict[str, Any]) -> PrioritizedGap:
         action=str(data.get("action", "")).strip(),
         scored=scored,
         model=model if scored else None,
+        taxonomy5=tax5,
+        taxonomy5_ru=tax5_ru,
     )
 
 

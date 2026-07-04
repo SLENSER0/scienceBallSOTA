@@ -29,6 +29,8 @@ the live Neo4j server profile used by the rest of the gap dashboard.
 
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -44,6 +46,55 @@ def _coverage_ratio(measured: int, gaps: int) -> float:
     return round(measured / denom, 4) if denom else 0.0
 
 
+# --- TTL memo for the two heavy full-graph aggregators -----------------------
+# RU: ``build_coverage_timeline`` делает 3 полных обхода графа, а
+# ``aggregate_gaps_by_owner`` — ещё один; единственный параметр ``owner_limit``
+# лишь режет уже посчитанный список и на тяжёлый расчёт не влияет. Панель
+# руководителя — только чтение, поэтому кэшируем результат обоих агрегаторов
+# (points, owners) на короткое TTL-окно, ключ — ``store.db_path`` (одинаков для
+# Kuzu и Neo4j). Короткая устареваемость допустима; всё остальное считается как
+# и раньше на каждый запрос поверх кэшированных списков.
+# EN: build_coverage_timeline runs 3 full-graph traversals and
+# aggregate_gaps_by_owner a 4th, while the only query param (owner_limit) merely
+# slices an already-computed list. Read-only management dashboard, so memoize the
+# (points, owners) tuple per ``store.db_path`` for a short TTL window; the cheap
+# per-request derivation (coverage_ratio / summary / ranking / slicing) is
+# unchanged and runs on every call over the cached lists.
+_CACHE_TTL_SECONDS = 30.0
+_cache_lock = threading.Lock()
+# db_path -> (expiry_monotonic, (timeline_points, owners))
+_cache: dict[str, tuple[float, tuple[list[Any], list[Any]]]] = {}
+
+
+def _coverage_aggregates(store: Any) -> tuple[list[Any], list[Any]]:
+    """Return ``(timeline_points, owners)`` via a short-lived TTL cache (§15.5).
+
+    On a miss, runs the two heavy full-graph aggregators once and memoizes their
+    result keyed on ``store.db_path`` for :data:`_CACHE_TTL_SECONDS`; on a hit the
+    cached lists are returned verbatim. All per-request derivation stays with the
+    caller, so the response is identical within a TTL window (RU: короткое окно
+    устаревания на read-only панели).
+    """
+    from kg_retrievers.coverage_matrix import (
+        aggregate_gaps_by_owner,
+        build_coverage_timeline,
+    )
+
+    key = getattr(store, "db_path", None) or str(id(store))
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit is not None and hit[0] > now:
+            return hit[1]
+    # Compute outside the lock (pure, read-only traversals): a concurrent miss at
+    # most recomputes redundantly, never returns a torn/partial result.
+    points = build_coverage_timeline(store)
+    owners = aggregate_gaps_by_owner(store)
+    with _cache_lock:
+        _cache[key] = (now + _CACHE_TTL_SECONDS, (points, owners))
+    return points, owners
+
+
 @router.get("/dashboard")
 def coverage_dashboard(
     owner_limit: int | None = Query(default=None, ge=1, le=500),
@@ -57,15 +108,13 @@ def coverage_dashboard(
     totals. Each timeline point gains a derived ``coverage_ratio``; the response also
     carries a roll-up ``summary`` for the dashboard header.
     """
-    from kg_retrievers.coverage_matrix import (
-        aggregate_gaps_by_owner,
-        build_coverage_timeline,
-    )
-
     store = get_store()
 
+    # Heavy full-graph aggregates (Panel 1 + Panel 2) come from a short TTL cache;
+    # everything below is cheap pure-Python derivation over the cached lists.
+    points, owners = _coverage_aggregates(store)
+
     # --- Panel 1: coverage over time (year buckets, ascending) ---------------
-    points = build_coverage_timeline(store)
     timeline: list[dict[str, Any]] = []
     total_papers = 0
     total_measured = 0
@@ -79,7 +128,6 @@ def coverage_dashboard(
         timeline.append(entry)
 
     # --- Panel 2: missing metadata by owner (lab / team / domain) ------------
-    owners = aggregate_gaps_by_owner(store)
     total_gaps = sum(g.gap_count for g in owners)
     # Worst offenders first (most missing metadata), then stable by owner key.
     ranked = sorted(owners, key=lambda g: (-g.gap_count, g.owner))

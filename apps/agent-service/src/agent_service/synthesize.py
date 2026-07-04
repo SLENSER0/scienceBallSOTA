@@ -20,11 +20,17 @@ SYSTEM = (
     "Ты — ассистент R&D по горно-металлургическим технологиям. Отвечай СТРОГО на "
     "основе предоставленных фактов (FACTS). Не придумывай данные. Каждое утверждение "
     "подкрепляй ссылкой вида [n] на источник из FACTS. Отвечай на языке вопроса "
-    "(русский или английский). Структурируй ответ:\n"
-    "1) Краткий вывод.\n2) Методы/решения: принцип, применимость, ключевые числовые "
-    "показатели с единицами, отечественная/зарубежная практика.\n"
-    "3) Консенсус и разногласия (если значения конфликтуют).\n"
-    "4) Что неизвестно / пробелы.\n5) Уровень достоверности.\n"
+    "(русский или английский). Структурируй ответ по разделам:\n"
+    "1) Краткий вывод.\n"
+    "2) Эксперименты и условия: что изучали и при каких режимах — температуры, "
+    "концентрации, скорости и прочие параметры.\n"
+    "3) Оборудование и материалы: используемые установки, реагенты и материалы.\n"
+    "4) Методы/решения: принцип, применимость, ключевые числовые показатели с "
+    "единицами, отечественная/зарубежная практика.\n"
+    "5) Публикации и источники: на какие работы опирается ответ.\n"
+    "6) Противоречия (если значения конфликтуют).\n"
+    "7) Незакрытые пробелы: чего в данных не хватает.\n"
+    "8) Уровень достоверности.\n"
     "Если фактов недостаточно — честно скажи об этом. Не выдумывай источники."
 )
 
@@ -42,6 +48,10 @@ def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
                     source_id=ev.get("doc_id") or ev["id"],
                     doc_id=ev.get("doc_id"),
                     page=ev.get("page"),
+                    # M6: surface table-cell coordinates so the UI can flag a «таблица» citation
+                    table_id=ev.get("table_id"),
+                    row_index=ev.get("row_index"),
+                    col_index=ev.get("col_index"),
                     text=ev.get("text"),
                     confidence=ev.get("confidence", 1.0),
                     evidence_strength=ev.get("evidence_strength"),
@@ -50,6 +60,11 @@ def assign_citations(retrieval: RetrievalResult) -> list[Citation]:
                 year=ev.get("year") or ev.get("source_year"),
                 geography=ev.get("practice_type") or ev.get("country"),
                 as_of=(ev.get("source_date") or "")[:10] or None,  # ISO date → YYYY-MM-DD
+                # M10: the four separated dates, each with a sensible fallback key.
+                publication_date=ev.get("publication_date") or ev.get("source_date"),
+                file_modified_date=ev.get("file_modified_date"),
+                ingestion_date=ev.get("ingestion_date") or ev.get("created_at"),
+                last_verified_at=ev.get("last_verified_at"),
             )
         )
     return citations
@@ -172,8 +187,35 @@ def _fallback_markdown(
     intent: QueryIntent, retrieval: RetrievalResult, cite: dict[str, str]
 ) -> str:
     lines = [f"## Ответ на запрос\n\n> {intent.raw}\n"]
+    # 1) Краткий вывод — extractive, straight from the graph facts (no LLM).
+    brief = _brief_conclusion(retrieval)
+    if brief:
+        lines.append("### Краткий вывод\n")
+        lines.append(brief + "\n")
+    # 2) Эксперименты и условия — наблюдаемые числовые показатели/режимы (facts).
+    if retrieval.facts:
+        lines.append("### Эксперименты и условия\n")
+        for f in retrieval.facts:
+            subj = f.subjects[0].get("name") if f.subjects else ""
+            n = f.node
+            prop = n.get("property_name") or n.get("name")
+            val = n.get("value_normalized")
+            unit = n.get("normalized_unit") or n.get("unit") or ""
+            evs = " ".join(cite.get(e["id"], "") for e in f.evidence)
+            lines.append(f"- {subj}: {prop} = {val} {unit} {evs}".rstrip())
+    # 3) Оборудование и материалы — условия применимости найденных решений.
+    appl_rows = [
+        (s.get("name"), "; ".join(a for a in s.get("applicability", []) if a))
+        for s in retrieval.solutions
+    ]
+    appl_rows = [(nm, ap) for nm, ap in appl_rows if ap]
+    if appl_rows:
+        lines.append("\n### Оборудование и материалы (условия применимости)\n")
+        for nm, ap in appl_rows:
+            lines.append(f"- **{nm}** — {ap}")
+    # 4) Методы/решения.
     if retrieval.solutions:
-        lines.append("### Найденные технологии/решения\n")
+        lines.append("\n### Найденные технологии/решения\n")
         for s in retrieval.solutions:
             metrics = ", ".join(
                 f"{m.get('name')} = {m.get('value_normalized')} {m.get('normalized_unit', '')}"

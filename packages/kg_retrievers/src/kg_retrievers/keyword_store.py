@@ -6,6 +6,7 @@ tokenization is lowercase word-splitting (Unicode aware).
 
 from __future__ import annotations
 
+import heapq
 import pickle
 import re
 from dataclasses import dataclass
@@ -69,7 +70,11 @@ class KeywordStore:
         if self._bm25 is None:
             return []
         scores = self._bm25.get_scores(tokenize(query))
-        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:limit]
+        # Partial top-k select (heap) instead of a full O(N log N) sort of the whole
+        # corpus — берём только ``limit`` лучших. ``heapq.nlargest`` is documented-
+        # equivalent to ``sorted(..., reverse=True)[:limit]`` and keeps the same stable
+        # tie-break (lower original index first), so hits are byte-for-byte identical.
+        ranked = heapq.nlargest(limit, range(len(scores)), key=lambda i: scores[i])
         return [
             KeywordHit(id=self.ids[i], score=float(scores[i]), payload=self.payloads[i])
             for i in ranked

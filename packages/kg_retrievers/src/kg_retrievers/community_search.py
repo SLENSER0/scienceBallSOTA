@@ -83,22 +83,50 @@ def _members(store: KuzuGraphStore, cid: int) -> list[str]:
     return [mid for mid, _ in _members_named(store, cid)]
 
 
+def _all_members_named(store: KuzuGraphStore) -> dict[int, list[tuple[str, str, str]]]:
+    """Все члены сообществ одним обходом, сгруппированные по community_id.
+
+    One grouped Node scan instead of C per-community scans: Kuzu has no secondary
+    index on ``community_id``, so calling :func:`_members_named` once per community
+    means C full-table scans per global query. This buckets every membered node in
+    a single pass into ``{cid: [(id, name, searchable_text), ...]}``, where
+    ``searchable_text = name + aliases + domain`` (identical to :func:`_members_named`).
+    Scan order is preserved, so per-cid member ordering matches the per-community query.
+    """
+    rows = store.rows(
+        "MATCH (n:Node) WHERE n.community_id IS NOT NULL AND n.label<>'Finding' "
+        "RETURN n.community_id, n.id, "
+        "coalesce(n.name,''), coalesce(n.aliases_text,''), coalesce(n.domain,'')",
+        {},
+    )
+    out: dict[int, list[tuple[str, str, str]]] = {}
+    for cid, mid, name, aliases, domain in rows:
+        searchable = " ".join(str(x) for x in (name, aliases, domain))
+        out.setdefault(int(cid), []).append((mid, str(name), searchable))
+    return out
+
+
 def global_search(store: KuzuGraphStore, query: str, *, limit: int = 3) -> GlobalAnswer:
     """Score community summaries against *query*, map-reduce the top ones."""
     q = _tokens(query)
+    # _ensure_summaries may run community detection (assigning community_id) the first
+    # time, so gather members *after* it — one grouped scan instead of C per-community
+    # scans + up to 8 get_node round-trips per hit (names already come back in the scan).
+    summaries = _ensure_summaries(store)
+    members_by_cid = _all_members_named(store)
     scored: list[CommunityHit] = []
-    for s in _ensure_summaries(store):
+    for s in summaries:
         cid = int(s["community_id"])
         text = s.get("summary") or ""
-        named = _members_named(store, cid)
+        members = members_by_cid.get(cid, [])
         # match the query against the summary *and* every member's name/alias/domain,
         # so thematic terms hit the cluster even if absent from the 5-name summary.
-        searchable = _tokens(text) | {t for _, nm in named for t in _tokens(nm)}
+        searchable = _tokens(text) | {t for _, _, st in members for t in _tokens(st)}
         overlap = len(q & searchable)
         if overlap == 0:
             continue
-        member_ids = [mid for mid, _ in named]
-        names = [(store.get_node(m) or {}).get("name", m) for m in member_ids[:8]]
+        member_ids = [mid for mid, _, _ in members]
+        names = [(nm or mid) for mid, nm, _ in members[:8]]
         scored.append(
             CommunityHit(
                 community_id=cid,

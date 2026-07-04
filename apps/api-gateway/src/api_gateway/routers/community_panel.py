@@ -45,6 +45,25 @@ def _members(store, cid: int) -> list[list]:  # type: ignore[no-untyped-def]
     )
 
 
+def _members_by_community(store) -> dict[int, list[list]]:  # type: ignore[no-untyped-def]
+    """All clustered members grouped by ``community_id`` in ONE graph scan (§17.9).
+
+    Заменяет N+1 (по одному полному скану ``n.community_id=$c`` на каждую общину — а у
+    Kuzu/Neo4j нет вторичного индекса по ``community_id``) единственным сканом всех
+    кластеризованных узлов. Каждый член отдаётся в том же виде ``[id, name, domain,
+    label]``, что и :func:`_members`, поэтому вызывающая логика не меняется.
+    """
+    rows = store.rows(
+        "MATCH (n:Node) WHERE n.community_id IS NOT NULL AND n.label<>$f "
+        "RETURN n.community_id, n.id, coalesce(n.name,''), coalesce(n.domain,''), n.label",
+        {"f": _FINDING},
+    )
+    grouped: dict[int, list[list]] = {}
+    for cid_raw, nid, name, domain, label in rows:
+        grouped.setdefault(int(cid_raw), []).append([nid, name, domain, label])
+    return grouped
+
+
 @router.get("/summaries")
 def summaries(
     limit: int = Query(default=30, ge=1, le=200),
@@ -66,10 +85,13 @@ def summaries(
         detect_communities(store, min_size=min_size)
         rows = _read_summaries(store)
 
+    # One batched scan of all clustered members (was: one full scan per community).
+    members_by_cid = _members_by_community(store)
+
     communities: list[dict] = []
     for cid_raw, name, text in rows:
         cid = int(cid_raw)
-        members = _members(store, cid)
+        members = members_by_cid.get(cid, [])
         if len(members) < min_size:
             continue
         domains = sorted({str(d) for _, _, d, _ in members if d})

@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from sqlalchemy import inspect
 
 from kg_common.storage.chat_sessions import ChatMessage, ChatSession, ChatStore
 
@@ -101,6 +102,56 @@ def test_empty_session_has_no_messages(store: ChatStore) -> None:
     store.create_session("s", user_id="u")
     assert store.messages("s") == []
     assert store.messages("does-not-exist") == []
+
+
+def test_migrate_creates_hot_query_indexes(store: ChatStore) -> None:
+    """The composite indexes backing the hot per-session queries are created."""
+    insp = inspect(store.engine)
+    msg_idx = {i["name"]: i["column_names"] for i in insp.get_indexes("chat_messages")}
+    sess_idx = {i["name"]: i["column_names"] for i in insp.get_indexes("chat_sessions")}
+    assert msg_idx.get("ix_chat_messages_session_seq") == ["session_id", "seq"]
+    assert sess_idx.get("ix_chat_sessions_user_created") == ["user_id", "created_at"]
+
+
+def test_last_message_ats_matches_per_session_loop(store: ChatStore) -> None:
+    """Batched last_message_ats == old per-session ``messages()[-1].created_at``."""
+    store.create_session("s1", user_id="u")
+    store.create_session("s2", user_id="u")
+    store.create_session("empty", user_id="u")  # no messages -> absent from map
+    store.add_message("s1", "user", "a", "s1m0")
+    store.add_message("s1", "assistant", "b", "s1m1")
+    store.add_message("s2", "user", "c", "s2m0")
+
+    ids = ["s1", "s2", "empty"]
+    batched = store.last_message_ats(ids)
+    # reference: the pre-optimization per-session loop over messages()
+    expected = {
+        sid: store.messages(sid)[-1].created_at
+        for sid in ids
+        if store.messages(sid)  # empty session contributes nothing (as before)
+    }
+    assert batched == expected
+    assert "empty" not in batched  # no rows -> caller falls back to session.created_at
+
+
+def test_last_message_ats_empty_input(store: ChatStore) -> None:
+    assert store.last_message_ats([]) == {}
+
+
+def test_last_message_ats_only_requested_sessions(store: ChatStore) -> None:
+    """The IN-filter scopes the aggregate to the requested session ids only."""
+    store.create_session("a", user_id="u")
+    store.create_session("b", user_id="u")
+    store.add_message("a", "user", "x", "a0")
+    store.add_message("b", "user", "y", "b0")
+    got = store.last_message_ats(["a"])
+    assert set(got) == {"a"}
+
+
+def test_create_session_returning_row_matches_get_session(store: ChatStore) -> None:
+    """create_session (RETURNING, one round-trip) returns the persisted row."""
+    created = store.create_session("s", user_id="u", title="t")
+    assert created == store.get_session("s")  # identical to the SELECT round-trip
 
 
 def test_concurrent_add_message_no_duplicate_seq(tmp_path) -> None:

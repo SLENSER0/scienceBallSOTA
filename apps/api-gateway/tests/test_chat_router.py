@@ -162,6 +162,24 @@ def test_list_newest_first_and_paging(client: TestClient) -> None:
     assert nxt[0]["session_id"] == s1
 
 
+def test_list_last_message_at_reflects_last_turn(client: TestClient) -> None:
+    """list_sessions' batched last_message_at == the session's last message created_at."""
+    h = _login(client, "quinn")
+    empty_sid = _new_session(client, h, "empty")
+    active_sid = _new_session(client, h, "active")
+    _new_message(client, h, active_sid, "первый вопрос")
+
+    hist = client.get(f"/api/v1/chat/sessions/{active_sid}", headers=h).json()["messages"]
+    last_msg_at = hist[-1]["created_at"]
+
+    listed = client.get("/api/v1/chat/sessions", headers=h).json()["sessions"]
+    by_id = {s["session_id"]: s for s in listed}
+    # session with messages -> last_message_at is the last turn's timestamp
+    assert by_id[active_sid]["last_message_at"] == last_msg_at
+    # empty session -> falls back to the session's own created_at
+    assert by_id[empty_sid]["last_message_at"] == by_id[empty_sid]["created_at"]
+
+
 def test_post_message_persists(client: TestClient) -> None:
     h = _login(client, "frank")
     sid = _new_session(client, h, "F")

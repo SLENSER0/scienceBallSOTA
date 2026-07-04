@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import inspect
 
-from kg_common.storage.jobs import Job, JobStore
+from kg_common.storage.jobs import Job, JobStore, jobs
 
 
 @pytest.fixture
@@ -79,6 +80,31 @@ def test_list_filter_by_status_and_kind(store: JobStore) -> None:
     assert {j.job_id for j in store.list_jobs(kind="ingest")} == {"a", "b"}
     assert {j.job_id for j in store.list_jobs(status="running", kind="ingest")} == {"b"}
     assert store.list_jobs(status="queued", kind="reindex") == []
+
+
+def test_list_jobs_indexes_declared_and_created(store: JobStore) -> None:
+    """The composite indexes covering list_jobs (filter + ORDER BY) exist (§14.10).
+
+    Perf-only optimization: verify the declared column order matches the query
+    shape (equality-filter column first, then the created_at, job_id sort keys)
+    and that migrate()/create_all built them in the real SQLite catalog.
+    """
+    by_name = {ix.name: [c.name for c in ix.columns] for ix in jobs.indexes}
+    assert by_name["ix_jobs_kind_created"] == ["kind", "created_at", "job_id"]
+    assert by_name["ix_jobs_status_created"] == ["status", "created_at", "job_id"]
+
+    created = {ix["name"] for ix in inspect(store.engine).get_indexes("jobs")}
+    assert {"ix_jobs_kind_created", "ix_jobs_status_created"} <= created
+
+
+def test_list_jobs_sort_order_preserved(store: JobStore) -> None:
+    """Indexing must not change results: list_jobs stays sorted (created_at, job_id)."""
+    for jid in ("j3", "j1", "j2"):
+        store.create_job(jid, kind="ingest", total=1)
+    keys = [(j.created_at, j.job_id) for j in store.list_jobs(kind="ingest")]
+    assert keys == sorted(keys)
+    # filtered listings return the same rows as before, just via the index range-scan
+    assert {j.job_id for j in store.list_jobs(status="queued")} == {"j1", "j2", "j3"}
 
 
 def test_failed_carries_error(store: JobStore) -> None:

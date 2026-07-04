@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from kg_retrievers.gap_taxonomy5 import classify_gap_5way
+
 from api_gateway.deps import get_store
 
 router = APIRouter(prefix="/api/v1", tags=["gaps"])
@@ -24,10 +26,20 @@ def list_gaps(gap_type: str | None = None, domain: str | None = None, limit: int
         f"RETURN g.id, g.name, g.gap_type, g.domain LIMIT {int(limit)}",
         params,
     )
-    return {
-        "count": len(rows),
-        "gaps": [{"id": r[0], "name": r[1], "type": r[2], "domain": r[3]} for r in rows],
-    }
+    gaps = []
+    for r in rows:
+        code, ru = classify_gap_5way(r[2], None)
+        gaps.append(
+            {
+                "id": r[0],
+                "name": r[1],
+                "type": r[2],
+                "domain": r[3],
+                "taxonomy5": code,
+                "taxonomy5_ru": ru,
+            }
+        )
+    return {"count": len(rows), "gaps": gaps}
 
 
 @router.get("/gaps/ranked")
@@ -47,6 +59,8 @@ def gaps_ranked(limit: int = 50) -> dict:
         g = {"id": r[0], "name": r[1], "gap_type": r[2], "domain": r[3], "absence_confidence": ac}
         g["score"] = round(gap_priority_score(g), 4)
         g["next_experiment"] = next_experiment_hint(g)
+        code, ru = classify_gap_5way(g["gap_type"], g.get("absence_confidence"))
+        g["taxonomy5"], g["taxonomy5_ru"] = code, ru
         gaps.append(g)
     gaps.sort(key=lambda x: x["score"], reverse=True)
     return {"count": len(gaps), "gaps": gaps}

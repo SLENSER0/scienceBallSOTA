@@ -234,6 +234,63 @@ def test_pipeline_normal_measurement_in_range() -> None:
         store.close()
 
 
+def test_pipeline_extracts_rules_once_per_chunk(monkeypatch) -> None:
+    # perf (behavior-preserving): the domain-guess pass caches its rule extraction
+    # for the first 5 chunks so the main ingest loop reuses it instead of running
+    # extract_rules (a taxonomy-wide scan) a second time on the same chunks. So
+    # extract_rules must fire exactly once per chunk — not chunk + min(5, chunks).
+    import ingestion_service.pipeline as pipe_mod
+
+    real_extract = pipe_mod.extract_rules
+    calls = {"n": 0}
+
+    def counting(text: str):
+        calls["n"] += 1
+        return real_extract(text)
+
+    monkeypatch.setattr(pipe_mod, "extract_rules", counting)
+
+    long_text = " ".join(f"{SAMPLE} Параграф номер {i}." for i in range(40))
+    pages = [(p, long_text) for p in range(1, 7)]
+
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    doc = ParsedDoc(
+        path="x.txt",
+        title="Кэш",
+        doc_type="article",
+        file_hash="cache1",
+        lang="ru",
+        pages=pages,
+        country="russia",
+        year=2023,
+    )
+    try:
+        res = pipe_mod.IngestionPipeline(store).ingest(doc)
+        assert res["status"] == "ok"
+        # exercises both cache hits (first 5 chunks) and misses (the rest)
+        assert res["chunks"] > 5
+        # one extract_rules per chunk — no redundant second pass on chunks[:5]
+        assert calls["n"] == res["chunks"]
+    finally:
+        store.close()
+
+
+def test_property_id_validity_lookup_matches_all_ids() -> None:
+    # perf (behavior-preserving): `cand in vocab.all_ids()` (rebuilds a tuple of
+    # every id + linear scan, per measurement) is replaced by
+    # `vocab.entry(cand) is not None` (an O(1) dict lookup). The two predicates
+    # must agree — cand is a valid property_id iff it has an entry.
+    from kg_extractors.property_vocab import default_property_vocab
+
+    vocab = default_property_vocab()
+    all_ids = vocab.all_ids()
+    assert all_ids  # non-empty controlled vocabulary
+    candidates = [*all_ids, all_ids[0], "prop:__does_not_exist__", "", "prop:", "hardness"]
+    for cand in candidates:
+        assert (vocab.entry(cand) is not None) == (cand in all_ids)
+
+
 def test_merge_dedups_rule_and_llm_extractions() -> None:
     # §6.13: the pipeline _merge now dedups + fuses instead of concatenating
     from ingestion_service.pipeline import _merge

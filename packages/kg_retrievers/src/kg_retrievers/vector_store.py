@@ -6,6 +6,7 @@ chunk passages with payload for semantic retrieval and evidence assembly.
 
 from __future__ import annotations
 
+import functools
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -15,6 +16,19 @@ from kg_retrievers.embeddings import dim, embed, embed_one
 
 _log = get_logger("vector_store")
 _NS = uuid.UUID("6f9619ff-8b86-d011-b42d-00c04fc964ff")
+
+
+@functools.lru_cache(maxsize=256)
+def _embed_query(q: str) -> tuple[float, ...]:
+    """Memoized query embedding — кэш эмбеддинга запроса (query-path only).
+
+    The embedding model is deterministic, so caching identical query text is
+    behavior-preserving: a repeat query skips the ~2.5s CPU model inference and
+    reuses the in-memory vector. Only the read/search path is cached; indexing
+    goes through :func:`embed` (batched) and is untouched. Returned as an
+    immutable tuple so the cache value cannot be mutated by callers.
+    """
+    return tuple(embed_one(q))
 
 
 @dataclass
@@ -74,7 +88,7 @@ class VectorStore:
         return n
 
     def search(self, query: str, limit: int = 8) -> list[VectorHit]:
-        vec = embed_one(query)
+        vec = list(_embed_query(query))
         if not vec:
             return []
         res = self.client.query_points(self.collection, query=vec, limit=limit, with_payload=True)

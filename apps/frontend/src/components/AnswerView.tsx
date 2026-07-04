@@ -120,6 +120,14 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
                   <span className="metric mt-0.5 text-copper">{c.marker}</span>
                   <span className="flex-1 text-muted group-hover:text-ink">
                     {c.sourceTitle || c.evidence.text?.slice(0, 90) || 'источник'}
+                    {c.evidence.tableId && (
+                      <span
+                        className="ml-1.5 rounded bg-copper/15 px-1 py-0.5 font-mono text-[9px] uppercase tracking-wide text-copper"
+                        title={`табличная ячейка ${c.evidence.tableId}${c.evidence.rowIndex != null ? ` · строка ${c.evidence.rowIndex}` : ''}${c.evidence.colIndex != null ? ` · столбец ${c.evidence.colIndex}` : ''}`}
+                      >
+                        таблица
+                      </span>
+                    )}
                     <span className="ml-2 font-mono text-[10px] text-faint">
                       {c.evidence.evidenceStrength}
                       {c.geography ? ` · ${practiceLabel(c.geography)}` : ''}
@@ -127,6 +135,17 @@ export function AnswerView({ answer }: { answer: AnswerPayload }) {
                       {c.evidence.page ? ` · стр.${c.evidence.page}` : ''}
                       {c.asOf ? ` · актуал. ${c.asOf}` : ''}
                     </span>
+                    {(c.publicationDate || c.ingestionDate || c.lastVerifiedAt) && (
+                      <span className="mt-0.5 block font-mono text-[10px] text-faint">
+                        {[
+                          c.publicationDate ? `публикация ${c.publicationDate}` : null,
+                          c.ingestionDate ? `загружено ${c.ingestionDate}` : null,
+                          c.lastVerifiedAt ? `проверено ${c.lastVerifiedAt}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    )}
                   </span>
                   <FileText size={13} className="mt-0.5 text-faint group-hover:text-copper" />
                 </button>

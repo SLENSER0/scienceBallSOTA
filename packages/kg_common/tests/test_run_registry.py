@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import inspect
 
 from kg_common.storage.run_registry import PipelineRun, RunRegistry
 
@@ -125,3 +126,30 @@ def test_invalid_status_rejected(reg: RunRegistry) -> None:
     reg.record_run("run:1", kind="ingest", started_at=T10)
     with pytest.raises(ValueError):
         reg.finish_run("run:1", finished_at=T11, status="bogus")
+
+
+def test_started_at_index_created_by_migrate(reg: RunRegistry) -> None:
+    """migrate() materialises the started_at index backing recent()'s ORDER BY (§9.7).
+
+    Perf-only optimisation: the index must exist on the exact column recent() sorts by,
+    proving :meth:`RunRegistry.migrate` (``create_all``) actually created it.
+    """
+    indexes = inspect(reg.engine).get_indexes("pipeline_runs")
+    by_name = {ix["name"]: ix for ix in indexes}
+    assert "ix_pipeline_runs_started" in by_name
+    assert by_name["ix_pipeline_runs_started"]["column_names"] == ["started_at"]
+
+
+def test_recent_ordering_unchanged_with_index(reg: RunRegistry) -> None:
+    """The index is behaviour-preserving: recent() still returns the identical order.
+
+    Includes a started_at tie (T10) to lock in the ``run_id DESC`` secondary tie-break.
+    """
+    reg.record_run("run:1", kind="ingest", started_at=T10)
+    reg.record_run("run:2", kind="ingest", started_at=T10)  # tie on started_at
+    reg.record_run("run:3", kind="ingest", started_at=T11)
+    reg.record_run("run:4", kind="ingest", started_at=T09)
+
+    # newest started_at first; ties broken by descending run_id (run:2 before run:1)
+    assert [r.run_id for r in reg.recent()] == ["run:3", "run:2", "run:1", "run:4"]
+    assert [r.run_id for r in reg.recent(limit=2)] == ["run:3", "run:2"]

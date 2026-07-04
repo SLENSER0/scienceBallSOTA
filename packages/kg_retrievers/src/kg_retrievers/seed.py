@@ -125,6 +125,12 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
             confidence=0.9,
             source_year=_yr,
             source_date=f"{_yr}-06-01",
+            # M10: four independently tracked dates so the citation card can show
+            # «публикация … · загружено … · проверено …» instead of a single date.
+            publication_date=f"{_yr}-06-01",
+            file_modified_date=f"{_yr}-07-02",
+            ingestion_date="2026-07-01",
+            last_verified_at="2026-07-03",
             **_prov(),
         )
         return nid
@@ -685,6 +691,48 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     e(l_cu, ev_fs, "SUPPORTED_BY", confidence=0.85, evidence_ids=[ev_fs])
     # link the measurement to its dated Paper so year-window filtering applies
     e(l_cu, p_fs, "SUPPORTED_BY", confidence=0.85, evidence_ids=[ev_fs])
+
+    # =====================================================================
+    # M6: table-cell evidence — извлечение Ni 98.6% cited from a table cell, so an
+    # answer about nickel electrowinning can surface a «таблица» citation chip.
+    # Wired to the existing catholyte-circulation solution `ew` (nickel EW).
+    # =====================================================================
+    ni_rec = make_id("Measurement", "nickel recovery table cell")
+    n(
+        ni_rec,
+        "Measurement",
+        name="Извлечение Ni (табл.)",
+        property_name="recovery",
+        value_normalized=98.6,
+        normalized_unit="percent",
+        domain="electrometallurgy",
+        confidence=0.9,
+        **_prov(),
+    )
+    ev_tbl = make_id("Evidence", "ni-ew-2021.pdf:ni-recovery-table")
+    n(
+        ev_tbl,
+        "Evidence",
+        text="Таблица 3: извлечение Ni 98.6%",
+        doc_id="ni-ew-2021.pdf",
+        page=6,
+        source_type="table_cell",
+        table_id="T1",
+        row_index=2,
+        col_index=1,
+        evidence_strength="peer_reviewed",
+        confidence=0.9,
+        source_year=2021,
+        source_date="2021-06-01",
+        publication_date="2021-06-01",
+        file_modified_date="2021-07-02",
+        ingestion_date="2026-07-01",
+        last_verified_at="2026-07-03",
+        **_prov(),
+    )
+    e(ni_rec, ew, "ABOUT_REGIME", confidence=0.9, evidence_ids=[ev_tbl])
+    e(ni_rec, ev_tbl, "SUPPORTED_BY", confidence=0.9, evidence_ids=[ev_tbl])
+    e(ew, p_ni, "SUPPORTED_BY", confidence=0.9, evidence_ids=[ev_tbl])
 
     # Experts / labs
     lab = make_id("Lab", "hydrometallurgy lab")

@@ -51,6 +51,9 @@ export interface EvidenceRef {
   sourceId: string;
   docId?: string | null;
   page?: number | null;
+  tableId?: string | null; // M6: table-cell provenance
+  rowIndex?: number | null;
+  colIndex?: number | null;
   text?: string | null;
   confidence: number;
   evidenceStrength?: string | null;
@@ -63,6 +66,11 @@ export interface Citation {
   year?: number | null;
   geography?: string | null;
   asOf?: string | null; // date of actualization (source ingest date)
+  // M10: four independently tracked dates.
+  publicationDate?: string | null;
+  fileModifiedDate?: string | null;
+  ingestionDate?: string | null;
+  lastVerifiedAt?: string | null;
 }
 
 export interface AnswerTable {
@@ -223,6 +231,10 @@ export interface PrioritizedGap {
   action: string;
   scored: boolean;
   model?: string | null;
+  // §M12 5-way gap taxonomy. Emitted verbatim (snake_case) by the prioritized SSE stream
+  // (asdict of a dataclass — no camelCase conversion), so the keys stay snake_case here.
+  taxonomy5?: string | null;
+  taxonomy5_ru?: string | null;
 }
 
 // -- §17.9 GraphRAG community summaries -------------------------------------

@@ -12,7 +12,12 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from agent_service.evidence_assembler import assemble_evidence
+from agent_service.evidence_assembler import (
+    _order_key,
+    _refs_by_node,
+    _row_to_ref,
+    assemble_evidence,
+)
 
 from kg_retrievers.graph_store import KuzuGraphStore
 
@@ -209,3 +214,91 @@ def test_empty_node_ids_returns_empty(store: KuzuGraphStore) -> None:
     assert result.citations == ()
     assert result.by_document == {}
     assert result.as_dict() == {"citations": [], "by_document": {}, "count": 0}
+
+
+# ---------------------------------------------------------------------------
+# Batched fetch (N+1 → single query) is behaviour-preserving (§13.14)
+# ---------------------------------------------------------------------------
+# Reference implementation of the OLD per-node fetch: one query per node id. The
+# batched _refs_by_node must reproduce exactly this mapping.
+_OLD_SUPPORTED_BY_Q = (
+    "MATCH (f:Node {id:$id})-[:Rel {type:'SUPPORTED_BY'}]->(e:Node {label:'Evidence'}) "
+    "RETURN e.id, e.doc_id, e.page, e.text, e.evidence_strength, e.confidence"
+)
+
+
+def _old_refs_for_node(store: KuzuGraphStore, node_id: str):  # type: ignore[no-untyped-def]
+    """Pre-batch behaviour: a separate SUPPORTED_BY query per fact node (the N+1)."""
+    refs = [_row_to_ref(row, node_id) for row in store.rows(_OLD_SUPPORTED_BY_Q, {"id": node_id})]
+    refs.sort(key=_order_key)
+    return refs
+
+
+def _ref_tuple(ref):  # type: ignore[no-untyped-def]
+    """Value view of an EvidenceRef for order-sensitive equality across the two paths."""
+    return (
+        ref.evidence_id,
+        ref.source_id,
+        ref.doc_id,
+        ref.page,
+        ref.text,
+        ref.evidence_strength,
+        ref.confidence,
+    )
+
+
+def _seed_second_fact(store: KuzuGraphStore) -> str:
+    """A second, independent Claim SUPPORTED_BY its own span; returns the fact id."""
+    fact = "claim:ni-temp"
+    store.upsert_node(fact, "Claim", name="оптимальная температура")
+    _seed_evidence(store, "ev:c", doc_id="doc:paper3", page=4, text="температура 60 C")
+    store.upsert_edge(fact, "ev:c", "SUPPORTED_BY", confidence=0.7, evidence_ids=["ev:c"])
+    return fact
+
+
+def test_refs_by_node_matches_per_node_loop(store: KuzuGraphStore) -> None:
+    # Batched grouping over the whole set == the old query-per-node mapping, order-exact.
+    fact_a = _seed_fact_with_two_evidence(store)
+    fact_b = _seed_second_fact(store)
+    node_ids = [fact_a, fact_b, "claim:missing"]  # includes a node with no evidence
+
+    batched = _refs_by_node(store, node_ids)
+    expected = {nid: _old_refs_for_node(store, nid) for nid in node_ids}
+
+    # A node with no SUPPORTED_BY edges is simply absent from the grouping (old loop
+    # returned [] for it; both yield no citations downstream).
+    assert set(batched) == {fact_a, fact_b}
+    for nid in (fact_a, fact_b):
+        assert [_ref_tuple(r) for r in batched[nid]] == [_ref_tuple(r) for r in expected[nid]]
+
+
+def test_multi_node_grouping_attributes_source_id(store: KuzuGraphStore) -> None:
+    # Each fact's spans stay attributed to that fact under the single batched read.
+    fact_a = _seed_fact_with_two_evidence(store)
+    fact_b = _seed_second_fact(store)
+    result = assemble_evidence(store, [fact_a, fact_b])
+    assert result.count == 3  # two spans from A + one from B, all distinct docs
+    by_source: dict[str, set[str]] = {}
+    for c in result.citations:
+        by_source.setdefault(c.evidence.source_id, set()).add(c.evidence.doc_id)
+    assert by_source == {
+        fact_a: {"doc:paper1", "doc:paper2"},
+        fact_b: {"doc:paper3"},
+    }
+
+
+def test_multi_node_dedups_span_shared_across_facts(store: KuzuGraphStore) -> None:
+    # Same (doc,page,text) span supporting two different facts is one citation, and the
+    # first fact in node_ids order wins the citation (dedup order preserved).
+    fact_a = "claim:a"
+    fact_b = "claim:b"
+    store.upsert_node(fact_a, "Claim", name="факт A")
+    store.upsert_node(fact_b, "Claim", name="факт B")
+    _seed_evidence(store, "ev:sa", doc_id="doc:shared", page=2, text="общий довод")
+    _seed_evidence(store, "ev:sb", doc_id="doc:shared", page=2, text="общий довод")
+    store.upsert_edge(fact_a, "ev:sa", "SUPPORTED_BY", confidence=0.9)
+    store.upsert_edge(fact_b, "ev:sb", "SUPPORTED_BY", confidence=0.9)
+
+    result = assemble_evidence(store, [fact_a, fact_b])
+    assert result.count == 1
+    assert result.citations[0].evidence.source_id == fact_a  # first claim keeps the span
