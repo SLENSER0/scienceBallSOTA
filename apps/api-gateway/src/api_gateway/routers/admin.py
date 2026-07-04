@@ -51,8 +51,6 @@ _DOMAINS = [
     "pyrometallurgy",
     "environment",
     "water_treatment",
-    "waste_processing",
-    "mineral_processing",
     "electrometallurgy",
 ]
 

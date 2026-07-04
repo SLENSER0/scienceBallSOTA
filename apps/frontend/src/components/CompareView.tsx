@@ -7,6 +7,14 @@ import { pushCall } from '../lib/callHistory';
 
 type Cell = { value?: number; unit?: string; gap?: boolean; evidence_ids?: string[] };
 
+// Visible domestic-vs-foreign split (jury ask): map raw practice_type enum → отеч./заруб.
+const PRACTICE_LABELS: Record<string, { short: string; domestic: boolean }> = {
+  russia: { short: 'отеч.', domestic: true },
+  cis: { short: 'отеч. (СНГ)', domestic: true },
+  foreign: { short: 'заруб.', domestic: false },
+  global: { short: 'заруб. (глоб.)', domestic: false },
+};
+
 // Flatten a comparison cell to plain text for CSV (§17.16).
 function cellText(v: unknown): string {
   if (v && typeof v === 'object') {
@@ -144,7 +152,19 @@ export function CompareView() {
 }
 
 function CellValue({ value }: { value: unknown }) {
-  if (typeof value === 'string') return <span className="text-ink/90">{value}</span>;
+  if (typeof value === 'string') {
+    const pr = PRACTICE_LABELS[value.toLowerCase()];
+    if (pr)
+      return (
+        <span
+          className={`chip ${pr.domestic ? 'border-verified/40 text-verified' : 'border-copper/40 text-copper'}`}
+          title={`Практика: ${value}`}
+        >
+          {pr.short}
+        </span>
+      );
+    return <span className="text-ink/90">{value}</span>;
+  }
   const cell = value as Cell;
   if (!cell || typeof cell !== 'object') return <span className="text-faint">—</span>;
   if (cell.gap)

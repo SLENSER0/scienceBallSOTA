@@ -70,6 +70,7 @@ export function AskView() {
       else if (type === 'brief') setBrief((d.text as string) ?? '');
       else if (type === 'evidence') acc.citations = (d.citations as Citation[]) ?? [];
       else if (type === 'gap') acc.gaps = [...acc.gaps, d as { name?: string; type?: string }];
+      else if (type === 'table') acc.table = d as { columns: string[]; rows: Record<string, string>[] };
       else if (type === 'token') acc.answerMarkdown += (d.text as string) ?? '';
       else if (type === 'done') {
         acc.confidence = (d.confidence as number) ?? null;

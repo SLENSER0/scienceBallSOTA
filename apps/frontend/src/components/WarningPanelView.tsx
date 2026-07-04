@@ -162,7 +162,7 @@ export function WarningPanelView() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && query.trim()) run('query');
               }}
-              placeholder="Вопрос (напр. «твёрдость Al-Cu после старения 180°C 2ч»)"
+              placeholder="Вопрос (напр. «методы обессоливания воды сульфаты 200–300 мг/л TDS ≤1000 мг/дм³»)"
               className="min-w-[16rem] flex-1 rounded-lg border border-line bg-base px-3 py-2 text-sm outline-none focus:border-copper/60"
             />
             <button

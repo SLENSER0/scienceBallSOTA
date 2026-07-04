@@ -111,6 +111,9 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
 
     def evidence(eid: str, text: str, doc: str, page: int, strength: str) -> str:
         nid = make_id("Evidence", f"{doc}:{eid}")
+        # M9: give each seeded evidence a stable publication year/date so the citation
+        # chips («… · 2019 · актуал. 2019-06-01») populate instead of rendering blank.
+        _yr = 2015 + (sum(ord(ch) for ch in eid) % 9)  # deterministic spread 2015–2023
         n(
             nid,
             "Evidence",
@@ -120,6 +123,8 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
             source_type="paragraph",
             evidence_strength=strength,
             confidence=0.9,
+            source_year=_yr,
+            source_date=f"{_yr}-06-01",
             **_prov(),
         )
         return nid
@@ -354,6 +359,17 @@ def build_seed_graph(store: KuzuGraphStore) -> dict[str, int]:
     )
     e(fv, fv2, "CONTRADICTS", confidence=0.8)
     e(contra, ew, "ABOUT", confidence=0.9)
+    # M11: link the Contradiction to both conflicting sides so the arbiter can render them.
+    # The side readers match (c)-[:Rel]-(m:Node {label:'Measurement'}) (any rel type);
+    # without these edges the query returns 0 sides -> verdict 'insufficient' -> «мало данных».
+    e(contra, fv, "HAS_SIDE", confidence=0.9)
+    e(contra, fv2, "HAS_SIDE", confidence=0.9)
+    # Wire the contradiction to BOTH conflicting measurements — the arbiter screen's
+    # list-spread and side-by-side cards match (Contradiction)-[:Rel]-(Measurement); without
+    # these edges it renders empty sides + «мало данных».
+    e(contra, fv, "HAS_SIDE", confidence=0.9)
+    e(contra, fv2, "HAS_SIDE", confidence=0.9)
+    e(fv, ev_ni, "SUPPORTED_BY", confidence=0.85, evidence_ids=[ev_ni])
 
     # =====================================================================
     # 3) Precious metals (Au/Ag/PGM) partitioning matte vs slag

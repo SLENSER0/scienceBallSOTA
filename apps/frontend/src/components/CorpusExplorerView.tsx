@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { BookMarked, Filter, SlidersHorizontal } from 'lucide-react';
+import { BookMarked, Filter } from 'lucide-react';
 import { FacetSearchView } from './FacetSearchView';
-import { RangeFacetsView } from './RangeFacetsView';
 import { GlossaryView } from './GlossaryView';
 
 // «Поиск по корпусу» — единый раздел вместо трёх пунктов меню: фасетный поиск
@@ -10,11 +9,10 @@ import { GlossaryView } from './GlossaryView';
 // рендерится как есть (все трое заполняют h-full и скроллятся внутри своей области),
 // поэтому поведение и код компонентов не меняются.
 
-type Tab = 'facets' | 'ranges' | 'glossary';
+type Tab = 'facets' | 'glossary';
 
 const TABS: { id: Tab; label: string; icon: typeof Filter }[] = [
   { id: 'facets', label: 'Фасетный поиск', icon: Filter },
-  { id: 'ranges', label: 'Диапазоны', icon: SlidersHorizontal },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked },
 ];
 
@@ -48,7 +46,6 @@ export function CorpusExplorerView() {
 
       <div className="min-h-0 flex-1">
         {tab === 'facets' && <FacetSearchView />}
-        {tab === 'ranges' && <RangeFacetsView />}
         {tab === 'glossary' && <GlossaryView />}
       </div>
     </div>

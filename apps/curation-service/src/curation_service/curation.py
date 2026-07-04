@@ -89,6 +89,15 @@ class CurationService:
         before = self.store.get_node(node_id)
         if before is None:
             raise KeyError(node_id)
+        # Normalize UI verbs ("approved"/"approve"/"accept") to the canonical
+        # "accepted" review state so review_status, the verified flag AND the
+        # audit action (ACCEPT vs REJECT) are all recorded correctly.
+        status = {
+            "approved": "accepted",
+            "approve": "accepted",
+            "accept": "accepted",
+            "reject": "rejected",
+        }.get(status, status)
         self.store.upsert_node(
             node_id,
             before["label"],

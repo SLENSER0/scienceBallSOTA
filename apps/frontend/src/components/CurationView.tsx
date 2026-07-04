@@ -10,6 +10,7 @@ import { api } from '../api';
 const STATUS_STYLE: Record<string, string> = {
   pending: 'text-gap border-gap/40',
   approved: 'text-verified border-verified/40',
+  accepted: 'text-verified border-verified/40',
   rejected: 'text-contradiction border-contradiction/40',
   reviewed: 'text-copper border-copper/40',
 };

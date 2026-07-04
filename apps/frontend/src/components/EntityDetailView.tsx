@@ -14,7 +14,6 @@ const TYPES = [
   { label: 'Material', ru: 'Материалы' },
   { label: 'ProcessingRegime', ru: 'Режимы' },
   { label: 'Equipment', ru: 'Оборудование' },
-  { label: 'Property', ru: 'Свойства' },
   { label: 'Gap', ru: 'Пробелы' },
   { label: 'Contradiction', ru: 'Противоречия' },
   { label: 'Paper', ru: 'Публикации' },
