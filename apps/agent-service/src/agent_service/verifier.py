@@ -105,4 +105,69 @@ def apply_verification(store: KuzuGraphStore, answer: AnswerPayload) -> AnswerPa
         cap = min(cap, max(0.25, 0.45 - 0.05 * n_bad))
     if cap < 1.0:
         answer.confidence = round(min(answer.confidence, cap), 4)
+
+    # §23.27 source-trust penalty. The trust engine (kg_retrievers.citation_trust)
+    # already fuses retraction / freshness / peer-review into a per-warning
+    # multiplicative confidence penalty; here we finally apply it to the LIVE answer.
+    # Each citation is enriched with its source node's metadata; the grounding-capped
+    # confidence is used as the base so the two guardrails stack. A retracted source
+    # that is the primary support bites hardest.
+    trust_inputs = _citation_trust_inputs(store, answer.citations)
+    if trust_inputs:
+        from kg_retrievers.citation_trust import assess_answer
+
+        trust = assess_answer(trust_inputs, base_confidence=float(answer.confidence))
+        answer.confidence = round(trust.adjusted_confidence, 4)
+        answer.trust_report = trust.as_dict()
     return answer
+
+
+_PEER_STRENGTHS = frozenset({"peer_reviewed", "peer-reviewed", "peerreviewed"})
+_DAYS_PER_YEAR = 365.25
+
+
+def _citation_trust_inputs(
+    store: KuzuGraphStore, citations: Any
+) -> list[dict[str, Any]]:
+    """Build citation dicts for :func:`citation_trust.assess_answer`, enriched with
+    each source node's metadata (source_status / age_days / peer_reviewed /
+    citation_count). Mirrors the source-trust router's ``_source_meta_from_store``
+    but reads from the agent's own store. The first citation (marker ``[1]``) is the
+    primary support, so a retracted primary triggers the full penalty (§23.27)."""
+    from datetime import UTC, datetime
+
+    now_year = datetime.now(UTC).year
+    out: list[dict[str, Any]] = []
+    for i, c in enumerate(citations or []):
+        doc_id = getattr(getattr(c, "evidence", None), "doc_id", None)
+        if not doc_id:
+            continue
+        rec: dict[str, Any] = {
+            "doc_id": doc_id,
+            "primary": i == 0 or getattr(c, "marker", "") == "[1]",
+        }
+        node = None
+        try:
+            node = store.get_node(doc_id)
+        except Exception:  # pragma: no cover - store defensiveness
+            node = None
+        year = node.get("year") if node else None
+        if not isinstance(year, int) or year <= 0:
+            year = getattr(c, "year", None)
+        if isinstance(year, int) and year > 0:
+            rec["age_days"] = max(0.0, (now_year - year) * _DAYS_PER_YEAR)
+        if node:
+            status = node.get("source_status")
+            if not status and node.get("retracted") is True:
+                status = "retracted"
+            if status:
+                rec["source_status"] = str(status)
+            strength = str(node.get("evidence_strength") or "").strip().lower()
+            review = str(node.get("review_status") or "").strip().lower()
+            if strength in _PEER_STRENGTHS or review == "accepted":
+                rec["peer_reviewed"] = True
+            cc = node.get("citation_count")
+            if isinstance(cc, int):
+                rec["citation_count"] = cc
+        out.append(rec)
+    return out

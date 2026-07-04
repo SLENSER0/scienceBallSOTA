@@ -172,6 +172,10 @@ class AnswerPayload(CamelModel):
     parsed_query: dict[str, Any] | None = None
     used_models: list[str] = Field(default_factory=list)
     verifier_report: dict[str, Any] | None = None
+    # §23.27 source-trust breakdown: base vs trust-adjusted confidence, per-warning
+    # penalties (retracted/deprecated/stale/unreviewed), min source trust and whether
+    # a retracted source is a primary support. Populated by the verifier.
+    trust_report: dict[str, Any] | None = None
     # Chain-of-thought from reasoning-capable OSS models (DeepSeek-V4-Flash, GLM-5.2),
     # surfaced in the UI as a collapsible «thinking» panel. Empty for plain models.
     reasoning: str = ""
