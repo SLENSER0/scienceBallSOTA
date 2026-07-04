@@ -198,7 +198,18 @@ export function ClusterMap3DView() {
     setHidden(new Set()); setSolo(-1);
   };
 
-  if (err) return <div style={{ padding: 24, color: '#e0666e' }}>Не удалось загрузить карту: {err}. Постройте её: <code>uv run python scripts/precompute_cluster_map.py</code></div>;
+  if (err)
+    return (
+      <div style={{ padding: 24, color: '#e0666e', fontSize: 13, lineHeight: 1.6 }}>
+        Не удалось загрузить карту: {err}.
+        <br />
+        {err.includes('404') ? (
+          <>Эндпоинт <code>/api/v1/cluster-map</code> не смонтирован — перезапустите бэкенд (:8002) на текущем коде.</>
+        ) : (
+          <>Постройте карту: <code>RUNTIME_PROFILE=server uv run python scripts/precompute_cluster_map.py</code></>
+        )}
+      </div>
+    );
   if (!data) return <div style={{ padding: 24, opacity: 0.7 }}>Загрузка карты тем корпуса…</div>;
 
   const wrap: CSSProperties = { position: 'relative', width: '100%', flex: 1, minHeight: 260, borderRadius: 12, overflow: 'hidden', background: '#0a0c10' };
