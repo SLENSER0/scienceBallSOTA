@@ -1,271 +1,189 @@
-"""Feature routers, attached by the API gateway app factory."""
+"""Feature routers, attached by the API gateway app factory.
+
+Router mounting is *resilient*: every router module is imported and included
+individually, so a single broken feature router (e.g. a missing transitive
+import) is skipped-and-logged instead of taking down the ENTIRE API. This kills a
+recurring demo-killer where one bad import inside the monolithic
+``from api_gateway.routers import (...)`` block made ``attach_routers`` raise and
+the app mount *zero* routers (every path 404s).
+"""
 
 from __future__ import annotations
 
+import importlib
+
 from fastapi import FastAPI
+
+try:  # structlog is the project logger; fall back to stdlib so a logging hiccup
+    import structlog  # can never itself sink router mounting.
+
+    _log = structlog.get_logger("api-gateway")
+except Exception:  # pragma: no cover - defensive
+    import logging
+
+    _log = logging.getLogger("api-gateway")
+
+# (module, router-attribute names) in MOUNT ORDER. Order matters — earlier
+# routers win on any path clash:
+#   * er_candidates + entity_resolve /entities/* precede search.py /entities/{id}
+#   * absence GET /gaps/absence precedes gaps.py /gaps/{gap_id}
+#   * er_metrics (/admin) + graph_legend (/graph) mount after admin/graph so the
+#     earlier routes win.
+# Do NOT reorder without re-checking those precedence constraints.
+_ROUTERS: list[tuple[str, tuple[str, ...]]] = [
+    ("auth", ("router",)),
+    ("query", ("router",)),
+    ("comparison", ("router",)),
+    ("notifications", ("router",)),
+    ("graph", ("router", "entities_router")),
+    ("er_candidates", ("router",)),
+    ("entity_resolve", ("router",)),
+    ("search", ("router",)),
+    ("evidence", ("router",)),
+    ("admin", ("router",)),
+    ("export", ("router",)),
+    ("absence", ("router",)),
+    ("gaps", ("router",)),
+    ("curation", ("router",)),
+    ("ingest", ("router",)),
+    ("views", ("router",)),
+    ("chat", ("router",)),
+    ("experiments", ("router",)),
+    ("graph_ext", ("router",)),
+    ("research", ("router",)),
+    ("documents", ("router",)),
+    ("advise", ("router",)),
+    ("contradictions", ("router",)),
+    ("insights", ("router",)),
+    # --- batch 1 roadmap features ---
+    ("table_cell", ("router",)),
+    ("mp_authority", ("router",)),
+    ("voi", ("router",)),
+    ("evidence_pack", ("router",)),
+    ("figures", ("router",)),
+    ("benchmark", ("router",)),
+    ("agent_reasoning", ("router",)),
+    ("agent_timeline", ("router",)),
+    ("coverage_heatmap", ("router",)),
+    ("community_panel", ("router",)),
+    ("hardness", ("router",)),
+    ("apples", ("router",)),
+    ("hitl", ("router",)),
+    ("chat_absence", ("router",)),
+    ("link_prediction", ("router",)),
+    ("missing_links", ("router",)),
+    ("gap_closure", ("router",)),
+    ("source_trust", ("router",)),
+    ("corpus_overview", ("router",)),
+    ("entity_resolution", ("router",)),
+    ("gds_live", ("router",)),
+    ("similarity_links", ("router",)),
+    # --- batch 2 roadmap features ---
+    ("graph_path", ("router",)),
+    ("coverage_sankey", ("router",)),
+    ("suspect_values", ("router",)),
+    ("mlflow_ui", ("router",)),
+    ("gliner_ner", ("router",)),
+    ("similar_materials", ("router",)),
+    ("similar_embeddings", ("router",)),
+    ("demo_run", ("router",)),
+    ("extraction_eval", ("router",)),
+    ("community_cluster_graph", ("router",)),
+    ("rag_checks", ("router",)),
+    ("evidence_bbox", ("router",)),
+    ("run_transparency", ("router",)),
+    ("quality_board", ("router",)),
+    ("arbiter_resolve", ("router",)),
+    ("graph_encoding", ("router",)),
+    ("kg_health", ("router",)),
+    ("prose_claims", ("router",)),
+    ("property_graph", ("router",)),
+    ("unit_provenance", ("router",)),
+    ("agent_trace", ("router",)),
+    ("edge_anomalies", ("router",)),
+    # --- batch 3 roadmap features ---
+    ("batch_ingest", ("router",)),
+    ("citation_provenance", ("router",)),
+    ("confidence_fusion", ("router",)),
+    ("er_eval", ("router",)),
+    ("evidence_inspector", ("router",)),
+    ("experiment_extract", ("router",)),
+    ("extractor_run", ("router",)),
+    ("figure_captions", ("router",)),
+    ("graph_integrity", ("router",)),
+    ("graph_templates", ("router",)),
+    ("highlight_search", ("router",)),
+    ("ingest_pipeline", ("router",)),
+    ("merge_undo", ("router",)),
+    ("ocr", ("router",)),
+    ("ops_dashboards", ("router",)),
+    ("rerank_live", ("router",)),
+    ("subgraph_ask", ("router",)),
+    ("table_versions", ("router",)),
+    ("unit_review", ("router",)),
+    ("warning_panel", ("router",)),
+    # --- batch 4 roadmap features ---
+    ("arbiter_evidence", ("router",)),
+    ("chat_subgraph_attach", ("router",)),
+    ("contradiction_scan", ("router",)),
+    ("coverage_dashboard", ("router",)),
+    ("curation_diff_reagraph", ("router",)),
+    ("curation_graph_diff", ("router",)),
+    ("definition_of_done", ("router",)),
+    ("extraction_recall_eval", ("router",)),
+    ("facet_search", ("router",)),
+    ("fact_versions", ("router",)),
+    ("golden_dataset", ("router",)),
+    ("langgraph_studio", ("router",)),
+    ("long_term_memory", ("router",)),
+    ("new_document_sensor", ("router",)),
+    ("pipeline_lineage", ("router",)),
+    ("pipeline_lineage_emission", ("router",)),
+    ("range_facets", ("router",)),
+    ("ranking_explain", ("router",)),
+    ("regression_gate", ("router",)),
+    ("retrieval_eval_dashboard", ("router",)),
+    ("review_task_gen", ("router",)),
+    ("source_catalog", ("router",)),
+    ("verifier_gate", ("router",)),
+    # --- batch 5 roadmap features (final) ---
+    ("collaboration", ("router",)),
+    ("confidence_calibration", ("router",)),
+    ("crosslingual_search", ("router",)),
+    ("dagster_asset_graph", ("router",)),
+    ("entity_timeline", ("router",)),
+    ("er_metrics", ("router",)),
+    ("expert_feedback", ("router",)),
+    ("graph_legend", ("router",)),
+    ("i18n", ("router",)),
+    ("materials_ner", ("router",)),
+    ("pipeline_dag", ("router",)),
+    ("property_term_review", ("router",)),
+]
 
 
 def attach_routers(app: FastAPI) -> None:
-    from api_gateway.routers import (
-        absence,
-        admin,
-        advise,
-        agent_reasoning,
-        agent_timeline,
-        # batch 2
-        agent_trace,
-        apples,
-        # batch 4
-        arbiter_evidence,
-        arbiter_resolve,
-        auth,
-        # batch 3
-        batch_ingest,
-        benchmark,
-        chat,
-        chat_absence,
-        chat_subgraph_attach,
-        citation_provenance,
-        # batch 5 (final)
-        collaboration,
-        community_cluster_graph,
-        community_panel,
-        comparison,
-        confidence_calibration,
-        confidence_fusion,
-        contradiction_scan,
-        contradictions,
-        corpus_overview,
-        coverage_dashboard,
-        coverage_heatmap,
-        coverage_sankey,
-        crosslingual_search,
-        curation,
-        curation_diff_reagraph,
-        curation_graph_diff,
-        dagster_asset_graph,
-        definition_of_done,
-        demo_run,
-        documents,
-        edge_anomalies,
-        entity_resolution,
-        entity_resolve,
-        entity_timeline,
-        er_candidates,
-        er_eval,
-        er_metrics,
-        evidence,
-        evidence_bbox,
-        evidence_inspector,
-        evidence_pack,
-        experiment_extract,
-        experiments,
-        expert_feedback,
-        export,
-        extraction_eval,
-        extraction_recall_eval,
-        extractor_run,
-        facet_search,
-        fact_versions,
-        figure_captions,
-        figures,
-        gap_closure,
-        gaps,
-        gds_live,
-        gliner_ner,
-        golden_dataset,
-        graph,
-        graph_encoding,
-        graph_ext,
-        graph_integrity,
-        graph_legend,
-        graph_path,
-        graph_templates,
-        hardness,
-        highlight_search,
-        hitl,
-        i18n,
-        ingest,
-        ingest_pipeline,
-        insights,
-        kg_health,
-        langgraph_studio,
-        link_prediction,
-        long_term_memory,
-        materials_ner,
-        merge_undo,
-        missing_links,
-        mlflow_ui,
-        mp_authority,
-        new_document_sensor,
-        notifications,
-        ocr,
-        ops_dashboards,
-        pipeline_dag,
-        pipeline_lineage,
-        pipeline_lineage_emission,
-        property_graph,
-        property_term_review,
-        prose_claims,
-        quality_board,
-        query,
-        rag_checks,
-        range_facets,
-        ranking_explain,
-        regression_gate,
-        rerank_live,
-        research,
-        retrieval_eval_dashboard,
-        review_task_gen,
-        run_transparency,
-        search,
-        similar_embeddings,
-        similar_materials,
-        similarity_links,
-        source_catalog,
-        source_trust,
-        subgraph_ask,
-        suspect_values,
-        table_cell,
-        table_versions,
-        unit_provenance,
-        unit_review,
-        verifier_gate,
-        views,
-        voi,
-        warning_panel,
-    )
+    """Import + include every feature router, skipping (and logging) any that fail.
 
-    app.include_router(auth.router)
-    app.include_router(query.router)
-    app.include_router(comparison.router)
-    app.include_router(notifications.router)
-    app.include_router(graph.router)
-    app.include_router(graph.entities_router)
-    # er_candidates + entity_resolve /entities/* static routes precede search.py /entities/{id}
-    app.include_router(er_candidates.router)
-    app.include_router(entity_resolve.router)
-    app.include_router(search.router)
-    app.include_router(evidence.router)
-    app.include_router(admin.router)
-    app.include_router(export.router)
-    # absence GET /gaps/absence must precede gaps.py's /gaps/{gap_id}
-    app.include_router(absence.router)
-    app.include_router(gaps.router)
-    app.include_router(curation.router)
-    app.include_router(ingest.router)
-    app.include_router(views.router)
-    app.include_router(chat.router)
-    app.include_router(experiments.router)
-    app.include_router(graph_ext.router)
-    app.include_router(research.router)
-    app.include_router(documents.router)
-    app.include_router(advise.router)
-    app.include_router(contradictions.router)
-    app.include_router(insights.router)
-    # --- batch 1 roadmap features (er_candidates already mounted above) ---
-    app.include_router(table_cell.router)
-    app.include_router(mp_authority.router)
-    app.include_router(voi.router)
-    app.include_router(evidence_pack.router)
-    app.include_router(figures.router)
-    app.include_router(benchmark.router)
-    app.include_router(agent_reasoning.router)
-    app.include_router(agent_timeline.router)
-    app.include_router(coverage_heatmap.router)
-    app.include_router(community_panel.router)
-    app.include_router(hardness.router)
-    app.include_router(apples.router)
-    app.include_router(hitl.router)
-    app.include_router(chat_absence.router)
-    app.include_router(link_prediction.router)
-    app.include_router(missing_links.router)
-    app.include_router(gap_closure.router)
-    app.include_router(source_trust.router)
-    app.include_router(corpus_overview.router)
-    app.include_router(entity_resolution.router)
-    app.include_router(gds_live.router)
-    app.include_router(similarity_links.router)
-    # --- batch 2 roadmap features ---
-    app.include_router(graph_path.router)
-    app.include_router(coverage_sankey.router)
-    app.include_router(suspect_values.router)
-    app.include_router(mlflow_ui.router)
-    app.include_router(gliner_ner.router)
-    app.include_router(similar_materials.router)
-    app.include_router(similar_embeddings.router)
-    app.include_router(demo_run.router)
-    app.include_router(extraction_eval.router)
-    app.include_router(community_cluster_graph.router)
-    app.include_router(rag_checks.router)
-    app.include_router(evidence_bbox.router)
-    app.include_router(run_transparency.router)
-    app.include_router(quality_board.router)
-    app.include_router(arbiter_resolve.router)
-    app.include_router(graph_encoding.router)
-    app.include_router(kg_health.router)
-    app.include_router(prose_claims.router)
-    app.include_router(property_graph.router)
-    app.include_router(unit_provenance.router)
-    app.include_router(agent_trace.router)
-    app.include_router(edge_anomalies.router)
-    # --- batch 3 roadmap features ---
-    app.include_router(batch_ingest.router)
-    app.include_router(citation_provenance.router)
-    app.include_router(confidence_fusion.router)
-    app.include_router(er_eval.router)
-    app.include_router(evidence_inspector.router)
-    app.include_router(experiment_extract.router)
-    app.include_router(extractor_run.router)
-    app.include_router(figure_captions.router)
-    app.include_router(graph_integrity.router)
-    app.include_router(graph_templates.router)
-    app.include_router(highlight_search.router)
-    app.include_router(ingest_pipeline.router)
-    app.include_router(merge_undo.router)
-    app.include_router(ocr.router)
-    app.include_router(ops_dashboards.router)
-    app.include_router(rerank_live.router)
-    app.include_router(subgraph_ask.router)
-    app.include_router(table_versions.router)
-    app.include_router(unit_review.router)
-    app.include_router(warning_panel.router)
-    # --- batch 4 roadmap features ---
-    app.include_router(arbiter_evidence.router)
-    app.include_router(chat_subgraph_attach.router)
-    app.include_router(contradiction_scan.router)
-    app.include_router(coverage_dashboard.router)
-    app.include_router(curation_diff_reagraph.router)
-    app.include_router(curation_graph_diff.router)
-    app.include_router(definition_of_done.router)
-    app.include_router(extraction_recall_eval.router)
-    app.include_router(facet_search.router)
-    app.include_router(fact_versions.router)
-    app.include_router(golden_dataset.router)
-    app.include_router(langgraph_studio.router)
-    app.include_router(long_term_memory.router)
-    app.include_router(new_document_sensor.router)
-    app.include_router(pipeline_lineage.router)
-    app.include_router(pipeline_lineage_emission.router)
-    app.include_router(range_facets.router)
-    app.include_router(ranking_explain.router)
-    app.include_router(regression_gate.router)
-    app.include_router(retrieval_eval_dashboard.router)
-    app.include_router(review_task_gen.router)
-    app.include_router(source_catalog.router)
-    app.include_router(verifier_gate.router)
-    # --- batch 5 roadmap features (final) ---
-    # er_metrics uses /admin prefix and graph_legend uses /graph — mounted after
-    # admin.router / graph.router (registered early) so existing routes win on any clash.
-    app.include_router(collaboration.router)
-    app.include_router(confidence_calibration.router)
-    app.include_router(crosslingual_search.router)
-    app.include_router(dagster_asset_graph.router)
-    app.include_router(entity_timeline.router)
-    app.include_router(er_metrics.router)
-    app.include_router(expert_feedback.router)
-    app.include_router(graph_legend.router)
-    app.include_router(i18n.router)
-    app.include_router(materials_ner.router)
-    app.include_router(pipeline_dag.router)
-    app.include_router(property_term_review.router)
+    A broken feature router (missing dependency, import error) is isolated: it is
+    logged and skipped so the rest of the API still mounts. Previously one bad
+    import in the batch collapsed the whole gateway to 0 routers.
+    """
+    mounted = 0
+    skipped: list[str] = []
+    for mod_name, attrs in _ROUTERS:
+        try:
+            mod = importlib.import_module(f"api_gateway.routers.{mod_name}")
+            for attr in attrs:
+                app.include_router(getattr(mod, attr))
+            mounted += 1
+        except Exception as exc:  # noqa: BLE001 — one bad router must not sink the app
+            skipped.append(mod_name)
+            _log.warning("api-gateway.router_skipped", module=mod_name, error=str(exc))
+    if skipped:
+        _log.warning(
+            "api-gateway.routers_degraded",
+            mounted=mounted,
+            skipped=len(skipped),
+            modules=skipped,
+        )
