@@ -114,6 +114,39 @@ class GraphRetriever:
             for r in rows:
                 nd = self.store._node_dict(r[0])
                 found[nd["id"]] = nd
+
+        # 4) chunk-grounded candidates: when taxonomy/alias matching is thin, ground the
+        # query on the real 52k-chunk corpus — match chunks whose text contains query
+        # terms, then expand to candidate nodes via the (abundant) Chunk-[MENTIONS]->node
+        # edges. This lets a topic that isn't in the taxonomy still surface on-topic
+        # solutions/materials/regimes. Guarded on a thin taxonomy match so the extra
+        # (unindexed) chunk scan only runs when it's actually needed.
+        if len(found) < MAX_CANDIDATES:
+            content_terms: set[str] = set(terms)
+            for tok in intent.raw.lower().split():
+                tok = tok.strip(".,;:!?()«»\"'—")
+                if len(tok) >= 5:
+                    content_terms.add(tok)
+            ts = list(content_terms)[:8]
+            if ts:
+                where = " OR ".join(f"toLower(c.text) CONTAINS $t{i}" for i in range(len(ts)))
+                params: dict[str, Any] = {f"t{i}": t for i, t in enumerate(ts)}
+                params["k"] = 200
+                chunk_ids = [
+                    r[0]
+                    for r in self.store.rows(
+                        f'MATCH (c:Node {{label:"Chunk"}}) WHERE {where} RETURN c.id LIMIT $k',
+                        params,
+                    )
+                ]
+                if chunk_ids:
+                    for r in self.store.rows(
+                        "MATCH (c:Node)-[e:Rel]-(n:Node) WHERE c.id IN $ids AND e.type='MENTIONS' "
+                        "AND n.label IN $labels RETURN n, count(*) AS m ORDER BY m DESC LIMIT $top",
+                        {"ids": chunk_ids, "labels": CANDIDATE_LABELS, "top": MAX_CANDIDATES},
+                    ):
+                        nd = self.store._node_dict(r[0])
+                        found.setdefault(nd["id"], nd)  # taxonomy candidates stay first
         return list(found.values())
 
     # -- numeric filtering ----------------------------------------------
@@ -219,6 +252,51 @@ class GraphRetriever:
             "MATCH (a:Node {id:$id})-[e:Rel]-(b:Node) RETURN b, e.type", {"id": node_id}
         ):
             out.append((self.store._node_dict(r[0]), r[1]))
+        return out
+
+    def _chunk_evidence(self, intent: QueryIntent, limit: int = 6) -> list[dict[str, Any]]:
+        """Top corpus chunks matching the query, as citable evidence (real Chunk nodes).
+
+        Promotes the corpus itself into evidence so the answer cites clean chunk prose.
+        The taxonomy/candidate path alone surfaces few — often OCR-junk — Evidence nodes,
+        which starves citations despite a rich 52k-chunk corpus. Chunk ids are real graph
+        nodes (ground in the verifier) and their text is full prose (passes the clean
+        gate). Ranked by how many distinct query terms a chunk contains.
+        """
+        terms: set[str] = set()
+        for e in intent.entities:
+            for t in (e.canonical_ru, e.canonical_en, *e.aliases):
+                if t and len(t) >= 4:
+                    terms.add(t.lower())
+        for tok in intent.raw.lower().split():
+            tok = tok.strip(".,;:!?()«»\"'—")
+            if len(tok) >= 5:
+                terms.add(tok)
+        ts = list(terms)[:8]
+        if not ts:
+            return []
+        where = " OR ".join(f"toLower(c.text) CONTAINS $t{i}" for i in range(len(ts)))
+        score = " + ".join(
+            f"(CASE WHEN toLower(c.text) CONTAINS $t{i} THEN 1 ELSE 0 END)" for i in range(len(ts))
+        )
+        params: dict[str, Any] = {f"t{i}": t for i, t in enumerate(ts)}
+        params["lim"] = limit
+        out: list[dict[str, Any]] = []
+        for r in self.store.rows(
+            f'MATCH (c:Node {{label:"Chunk"}}) WHERE {where} '
+            f"RETURN c.id, c.text, c.doc_id, c.page, {score} AS s ORDER BY s DESC LIMIT $lim",
+            params,
+        ):
+            out.append(
+                {
+                    "id": r[0],
+                    "text": r[1],
+                    "doc_id": r[2],
+                    "page": r[3],
+                    "confidence": 0.7,
+                    "evidence_strength": "unverified",
+                }
+            )
         return out
 
     def retrieve(self, intent: QueryIntent) -> RetrievalResult:
@@ -344,6 +422,10 @@ class GraphRetriever:
 
         # hydrate evidence / gaps / contradictions (capped)
         res.evidence = self._load_nodes(set(list(ev_ids)[:MAX_EVIDENCE]))
+        # Promote top corpus chunks to evidence so the answer cites clean chunk prose,
+        # not just the sparse (often OCR-junk) candidate Evidence nodes — chunk-first so
+        # readable corpus text leads the citation list.
+        res.evidence = self._chunk_evidence(intent) + res.evidence
         res.gaps = self._load_nodes(set(list(gap_ids)[:MAX_GAPS]))
         res.contradictions = self._load_nodes(set(list(contra_ids)[:MAX_CONTRADICTIONS]))
 
