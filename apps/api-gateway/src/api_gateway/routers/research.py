@@ -258,6 +258,38 @@ def add_article(
     return {"paper_id": ops["paper_id"], "nodes": len(ops["nodes"]), "edges": len(ops["edges"])}
 
 
+class AnalyzeBody(BaseModel):
+    question: str
+    image: str | None = None  # optional base64 data URI: data:image/png;base64,...
+
+
+class RunBody(BaseModel):
+    question: str
+    queries: list[str] = []
+
+
+@router.post("/analyze")
+def analyze_gaps(body: AnalyzeBody, role: str = Depends(current_role)) -> dict:
+    """Step 1 of gap-informed research: enrich (optionally with an image), read what the
+    corpus HAS, and return what's MISSING / on-what-to-focus + web-search queries."""
+    from api_gateway.gap_research import analyze
+
+    if not body.question.strip():
+        raise HTTPException(status_code=422, detail="question is required")
+    return analyze(get_store(), body.question, body.image)
+
+
+@router.post("/run")
+def run_research(body: RunBody, role: str = Depends(current_role)) -> dict:
+    """Step 2: web-search the focus queries, collect real sources, synthesize a cited
+    report. The returned sources feed «Загрузить в граф» → source-trust → review."""
+    from api_gateway.gap_research import run
+
+    if not body.question.strip():
+        raise HTTPException(status_code=422, detail="question is required")
+    return run(body.question, body.queries)
+
+
 class DeepSource(BaseModel):
     title: str = ""
     url: str = ""
