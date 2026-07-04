@@ -71,6 +71,45 @@ def test_confidence_tracks_clean_support() -> None:
     assert len({c_empty, c_junky, c_rich}) == 3
 
 
+def test_numeric_only_evidence_is_answered_not_refused() -> None:
+    # Regression (adversarial-verify): measurement-dense evidence must NOT trip the
+    # out-of-coverage refusal — it's a real answer for a metallurgy corpus.
+    intent = QueryIntent(raw="Степень извлечения никеля и pH осаждения")
+    retr = RetrievalResult(
+        intent=intent,
+        evidence=[
+            _ev("e1", "Извлечение Ni 92 %, Cu 88 % при pH 6,5 и температуре 80 °C."),
+            _ev("e2", "Осаждение гидроксидов при pH 9, остаточная концентрация Ni 0,01 мг/л."),
+        ],
+    )
+    ans = build_answer(intent, retr, use_llm=False)
+    assert "грунтованный отказ" not in ans.answer_markdown  # NOT a refusal
+    assert len(ans.citations) == 2  # both measurement spans cited
+    assert ans.confidence > 0.1  # a real answer sits above the refusal floor
+
+
+def test_structured_table_cell_survives_short_text() -> None:
+    # A short table cell («148 HV») is valid provenance via its table coords, even
+    # though it's too short to read as prose.
+    intent = QueryIntent(raw="твёрдость сплава HV")
+    cell = {"id": "e1", "text": "148 HV", "table_id": "t1", "row_index": 2, "confidence": 0.9}
+    retr = RetrievalResult(intent=intent, evidence=[cell])
+    ans = build_answer(intent, retr, use_llm=False)
+    assert "грунтованный отказ" not in ans.answer_markdown
+    assert len(ans.citations) == 1
+
+
+def test_named_source_without_text_keeps_confidence() -> None:
+    # A structured source with a clean name but no text must not be treated as junk
+    # and drag confidence toward zero (clean_fraction regression).
+    intent = QueryIntent(raw="Патентные решения по электроэкстракции никеля")
+    named = {"id": "e1", "name": "Патент RU 2 700 000 (электроэкстракция Ni)", "confidence": 0.8}
+    retr = RetrievalResult(intent=intent, evidence=[named])
+    ans = build_answer(intent, retr, use_llm=False)
+    assert len(ans.citations) == 1
+    assert ans.confidence >= 0.15
+
+
 def test_gaps_are_scoped_to_the_question() -> None:
     intent = QueryIntent(raw="Техногенный гипс: источники и переработка")
     retr = RetrievalResult(

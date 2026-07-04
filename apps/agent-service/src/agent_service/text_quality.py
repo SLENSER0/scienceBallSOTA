@@ -21,7 +21,7 @@ from collections.abc import Iterable
 
 # A PDF glyph-fallback artifact: the extractor could not map a glyph and emitted
 # its raw character id, e.g. «(cid:20)». A dead giveaway of unusable OCR text.
-_CID_RE = re.compile(r"\(cid:\s*\d+\s*\)")
+_CID_RE = re.compile(r"\(\s*cid\s*:\s*\d+\s*\)", re.IGNORECASE)
 
 # 6+ dotted leaders — a table-of-contents / index row («. . . . . .»), not prose.
 _DOTTED_LEADER_RE = re.compile(r"(?:\.\s?){6,}")
@@ -53,20 +53,25 @@ def is_clean_text(text: str | None) -> bool:
         return False
     if _SHATTERED_RE.search(t):
         return False
-    # Letter density: real prose is mostly letters + spaces; a low ratio means the
-    # span is mostly symbols / digits / punctuation noise.
-    letters = sum(ch.isalpha() for ch in t)
-    if letters / len(t) < 0.5:
+    # Informative density: real evidence is mostly letters + DIGITS + spaces. Counting
+    # digits as informative (not just letters) is essential for a metallurgy corpus,
+    # where measurement-dense spans («КПД 92 %, расход 3,7 кг/т, T=65 °C») are the
+    # substance of the answer — a letters-only ratio wrongly junked them. A low
+    # alphanumeric ratio still means symbol/punctuation noise. Threshold stays ≤0.5.
+    informative = sum(ch.isalnum() for ch in t)
+    if informative / len(t) < 0.5:
         return False
     # Broken word-spacing: OCR that splits words balloons the space ratio well past
     # normal prose (~0.14–0.18 for RU/EN). 0.34 is a wide, safe margin.
     if t.count(" ") / len(t) > 0.34:
         return False
     # Shattered tokens: OCR that fragments words leaves many tiny «tokens»
-    # («при мно гок ратн ом …»). Real prose averages ~5-6 chars/word; a mean token
-    # length under 3 over enough tokens is a reliable shatter signal.
-    tokens = t.split()
-    return not (len(tokens) >= 6 and sum(len(w) for w in tokens) / len(tokens) < 3.0)
+    # («при мно гок ратн ом …»). Measure the mean length of *alphabetic* tokens only,
+    # so numeric tokens («92», «3,7», «65») don't fake a shatter in measurement prose.
+    alpha_tokens = [w for w in t.split() if any(c.isalpha() for c in w)]
+    if len(alpha_tokens) < 6:
+        return True
+    return sum(len(w) for w in alpha_tokens) / len(alpha_tokens) >= 3.0
 
 
 def clean_fraction(texts: Iterable[str | None]) -> float:

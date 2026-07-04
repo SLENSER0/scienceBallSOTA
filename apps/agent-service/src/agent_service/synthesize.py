@@ -56,8 +56,14 @@ def _citable_evidence(retrieval: RetrievalResult) -> list[dict[str, Any]]:
         if ev.get("id") == "restricted:notice":
             continue
         text = ev.get("text") or ""
+        # Keep a span with junk text only if it still carries real provenance: a
+        # structured table cell (table_id / row_index — short cells like «148 HV» are
+        # not prose but are valid citations) or a meaningful source name. Otherwise a
+        # present-but-unreadable text (``(cid:NN)`` etc.) is dropped.
         if text and not is_clean_text(text):
-            continue
+            structured = ev.get("table_id") is not None or ev.get("row_index") is not None
+            if not structured and not is_clean_text(ev.get("name") or ""):
+                continue
         out.append(ev)
     return out
 
@@ -131,16 +137,22 @@ def _calibrated_confidence(
     support = len(citable) + len(facts) + len(sols) + len(_clean_passages(retrieval))
     if support == 0:
         return 0.1  # corpus does not cover this question — a grounded refusal
-    confs = [ev.get("confidence", 0.6) for ev in citable] or [0.5]
+    confs = [c for ev in citable if (c := ev.get("confidence")) is not None] or [0.5]
     mean_conf = sum(confs) / len(confs)
-    all_text = [ev.get("text") for ev in retrieval.evidence if ev.get("id") != "restricted:notice"]
+    # Readable fraction is judged over spans that actually carry text; structured /
+    # named sources with no text (patents, standards) aren't "junk" and must not drag
+    # cf toward 0 — that would silently cut a legitimate answer's confidence by ~45%.
+    real_ev = (ev for ev in retrieval.evidence if ev.get("id") != "restricted:notice")
+    all_text = [t for t in (ev.get("text") for ev in real_ev) if t]
     cf = clean_fraction(all_text) if all_text else 1.0
     quantity = min(1.0, support / 6.0)  # a couple of signals shouldn't read as certain
     base = mean_conf * quantity * (0.55 + 0.45 * cf)
     base *= 1.0 - 0.05 * min(len(rel_gaps), 4)  # up to −20 % for many open gaps
     if retrieval.contradictions:
         base *= 0.85
-    return round(max(0.05, min(0.9, base)), 2)
+    # Floor a real (support>0) answer ABOVE the 0.1 grounded-refusal level, so a
+    # thinly-supported real answer never reads as less certain than «no data».
+    return round(max(0.15, min(0.9, base)), 2)
 
 
 def _out_of_coverage_markdown(intent: QueryIntent, retrieval: RetrievalResult) -> str:
@@ -368,9 +380,12 @@ def _fallback_markdown(
     if retrieval.gaps:
         lines.append("\n### 🔍 Пробелы в знаниях\n")
         lines += [f"- {g.get('name')}" for g in retrieval.gaps]
-    if retrieval.evidence:
+    # Only the citable set — symmetric with build_context/assign_citations — so OCR
+    # junk and the RBAC notice never leak into the fallback (no-LLM) answer body.
+    citable = _citable_evidence(retrieval)
+    if citable:
         lines.append("\n### Источники\n")
-        for ev in retrieval.evidence:
+        for ev in citable:
             m = cite.get(ev["id"], "")
             lines.append(f"- {m} {(ev.get('text') or ev.get('name') or '')[:160]}")
     if not retrieval.solutions and not retrieval.facts:
