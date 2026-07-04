@@ -69,6 +69,13 @@ import {
   TrendingDown,
   ClipboardCheck,
   BadgeCheck,
+  Languages,
+  ThumbsUp,
+  Atom,
+  BookOpenCheck,
+  CalendarClock,
+  ArrowRightLeft,
+  Users,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -178,6 +185,19 @@ import { ReviewTaskGenView } from './components/ReviewTaskGenView';
 import { SourceCatalogView } from './components/SourceCatalogView';
 import { SubgraphChatAttachView } from './components/SubgraphChatAttachView';
 import { VerifierGateView } from './components/VerifierGateView';
+// -- Batch-5 feature screens ------------------------------------------------
+import { CollaborationView } from './components/CollaborationView';
+import { ConfidenceCalibrationView } from './components/ConfidenceCalibrationView';
+import { CrossLingualSearchView } from './components/CrossLingualSearchView';
+import { DagsterAssetGraphView } from './components/DagsterAssetGraphView';
+import { ERMetricsView } from './components/ERMetricsView';
+import { EntityTimelineView } from './components/EntityTimelineView';
+import { ExpertFeedbackView } from './components/ExpertFeedbackView';
+import { GraphLegendView } from './components/GraphLegendView';
+import { LocaleSwitcherView } from './components/LocaleSwitcherView';
+import { MaterialsNerView } from './components/MaterialsNerView';
+import { PipelineAgentDagView } from './components/PipelineAgentDagView';
+import { PropertyTermReviewView } from './components/PropertyTermReviewView';
 
 const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
 const CURATOR = ['curator', 'project_manager', 'admin'];
@@ -327,6 +347,20 @@ const NAV: NavItem[] = [
   { id: 'ltmemory', label: 'Память ассистента', icon: Brain, roles: INTERNAL, group: 'agent' },
   { id: 'dod', label: 'Definition of Done', icon: ClipboardCheck, roles: ANALYST, group: 'admin' },
   { id: 'sourcecatalog', label: 'Каталог источников', icon: Library, roles: ANALYST, group: 'admin' },
+
+  // -- Batch-5 feature screens ----------------------------------------------
+  { id: 'crosslingual', label: 'Кросс-язычный поиск', icon: ArrowRightLeft, group: 'qa' },
+  { id: 'graphlegend', label: 'Легенда графа', icon: Shapes, group: 'graph' },
+  { id: 'entitytimeline', label: 'Timeline сущности', icon: CalendarClock, group: 'graph' },
+  { id: 'materialsner', label: 'Материаловедческий NER', icon: Atom, roles: INTERNAL, group: 'data' },
+  { id: 'dagsterassets', label: 'Asset-граф Dagster', icon: Workflow, roles: INTERNAL, group: 'data' },
+  { id: 'calibration', label: 'Калибровка уверенности', icon: Gauge, roles: ANALYST, group: 'quality' },
+  { id: 'expertfeedback', label: 'Экспертный фидбэк → регрессии', icon: ThumbsUp, roles: ANALYST, group: 'quality' },
+  { id: 'propertytermreview', label: 'Новые термины свойств', icon: BookOpenCheck, roles: CURATOR, group: 'curation' },
+  { id: 'collaboration', label: 'Совместные расследования', icon: Users, roles: CURATOR, group: 'agent' },
+  { id: 'pipelineagentdag', label: 'DAG конвейера и агента', icon: Share2, roles: INTERNAL, group: 'agent' },
+  { id: 'ermetrics', label: 'Метрики ER (наблюдаемость)', icon: Gauge, roles: ANALYST, group: 'admin' },
+  { id: 'localeswitcher', label: 'Язык интерфейса (i18n)', icon: Languages, roles: ANALYST, group: 'admin' },
 ];
 
 export function App() {
@@ -581,6 +615,19 @@ export function App() {
           {view === 'sourcecatalog' && <SourceCatalogView />}
           {view === 'subgraphchat' && <SubgraphChatAttachView />}
           {view === 'verifiergate' && <VerifierGateView />}
+          {/* -- Batch-5 feature screens -- */}
+          {view === 'crosslingual' && <CrossLingualSearchView />}
+          {view === 'graphlegend' && <GraphLegendView />}
+          {view === 'entitytimeline' && <EntityTimelineView />}
+          {view === 'materialsner' && <MaterialsNerView />}
+          {view === 'dagsterassets' && <DagsterAssetGraphView />}
+          {view === 'calibration' && <ConfidenceCalibrationView />}
+          {view === 'expertfeedback' && <ExpertFeedbackView />}
+          {view === 'propertytermreview' && <PropertyTermReviewView />}
+          {view === 'collaboration' && <CollaborationView />}
+          {view === 'pipelineagentdag' && <PipelineAgentDagView />}
+          {view === 'ermetrics' && <ERMetricsView />}
+          {view === 'localeswitcher' && <LocaleSwitcherView />}
         </main>
       </div>
 

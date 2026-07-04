@@ -105,7 +105,20 @@ export type View =
   | 'reviewtaskgen'
   | 'sourcecatalog'
   | 'subgraphchat'
-  | 'verifiergate';
+  | 'verifiergate'
+  // -- Batch-5 feature screens ---------------------------------------------
+  | 'collaboration'
+  | 'calibration'
+  | 'crosslingual'
+  | 'dagsterassets'
+  | 'ermetrics'
+  | 'entitytimeline'
+  | 'expertfeedback'
+  | 'graphlegend'
+  | 'localeswitcher'
+  | 'materialsner'
+  | 'pipelineagentdag'
+  | 'propertytermreview';
 
 interface AppState {
   view: View;

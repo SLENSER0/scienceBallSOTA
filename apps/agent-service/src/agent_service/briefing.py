@@ -108,8 +108,10 @@ def generate_briefing(store: Any) -> dict[str, Any]:
         briefing = llm.complete(
             _prompt(snap),
             system=_BRIEF_SYSTEM,
+            # The 6-section RU briefing (Cyrillic is token-heavy) was being cut off
+            # mid-«Рекомендации» at 1400 — give it real headroom to finish.
             model=get_settings().llm_model_synth,
-            max_tokens=1400,
+            max_tokens=4000,
         )
         model = llm.used_models[-1] if llm.used_models else None
     except Exception as exc:
