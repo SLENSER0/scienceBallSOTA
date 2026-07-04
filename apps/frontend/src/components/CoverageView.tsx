@@ -12,23 +12,38 @@ const LABEL: Record<string, string> = {
   electrometallurgy: 'Электрометаллургия',
 };
 
-export function CoverageView() {
+export function CoverageView({ embedded = false }: { embedded?: boolean } = {}) {
   const { data, isLoading } = useQuery({ queryKey: ['coverage'], queryFn: api.coverage });
+
+  const grid = (
+    <>
+      {isLoading && <div className="font-mono text-sm text-faint">загрузка…</div>}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {data?.domains
+          .slice()
+          .sort((a, b) => b.sources + b.measurements - (a.sources + a.measurements))
+          .map((d) => (
+            <DomainCard key={d.domain} d={d} />
+          ))}
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section>
+        <div className="mb-3 text-sm text-nickel">Покрытие знаний по направлениям</div>
+        {grid}
+      </section>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-5xl">
         <div className="eyebrow mb-1">дашборд руководителя</div>
         <h2 className="mb-5 font-display text-2xl font-semibold">Покрытие знаний по направлениям</h2>
-        {isLoading && <div className="font-mono text-sm text-faint">загрузка…</div>}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data?.domains
-            .slice()
-            .sort((a, b) => b.sources + b.measurements - (a.sources + a.measurements))
-            .map((d) => (
-              <DomainCard key={d.domain} d={d} />
-            ))}
-        </div>
+        {grid}
       </div>
     </div>
   );

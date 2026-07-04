@@ -34,8 +34,6 @@ import {
   GitFork,
   Wand2,
   Share2,
-  Lightbulb,
-  Compass,
   Table2,
   Spline,
   Hexagon,
@@ -74,7 +72,6 @@ import {
   Atom,
   BookOpenCheck,
   CalendarClock,
-  ArrowRightLeft,
   Users,
 } from 'lucide-react';
 import { api } from './api';
@@ -188,7 +185,6 @@ import { VerifierGateView } from './components/VerifierGateView';
 // -- Batch-5 feature screens ------------------------------------------------
 import { CollaborationView } from './components/CollaborationView';
 import { ConfidenceCalibrationView } from './components/ConfidenceCalibrationView';
-import { CrossLingualSearchView } from './components/CrossLingualSearchView';
 import { DagsterAssetGraphView } from './components/DagsterAssetGraphView';
 import { ERMetricsView } from './components/ERMetricsView';
 import { EntityTimelineView } from './components/EntityTimelineView';
@@ -243,13 +239,17 @@ const NAV: NavItem[] = [
   { id: 'compare', label: 'Сравнение технологий', icon: Columns3, group: 'qa' },
   { id: 'library', label: 'Библиотека · deep-research', icon: Library, roles: INTERNAL, group: 'qa' },
 
-  { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: INTERNAL, group: 'gaps' },
+  // Раздел схлопнут 9→3: «Карта пробелов» — единый хаб (приоритеты пробелов +
+  // сводка противоречий + очередь ревью, слита из бывш. «Пробелы и риски»).
+  // Скрытые дубли ниже закомментированы — вернуть в меню = раскомментировать строку
+  // (сами экраны в коде и роутинге живы, доступны программно).
   { id: 'gapmap', label: 'Карта пробелов', icon: Target, roles: INTERNAL, group: 'gaps' },
   { id: 'gapmatrix', label: 'Матрица пробелов', icon: Grid3x3, roles: INTERNAL, group: 'gaps' },
-  { id: 'gapplan', label: 'План экспериментов', icon: FlaskConical, roles: INTERNAL, group: 'gaps' },
-  { id: 'absence', label: 'Карта неизвестного', icon: Compass, roles: INTERNAL, group: 'gaps' },
-  { id: 'voi', label: 'Ценность информации', icon: Lightbulb, roles: INTERNAL, group: 'gaps' },
   { id: 'contradictions', label: 'Противоречия (арбитр)', icon: GitCompareArrows, roles: INTERNAL, group: 'gaps' },
+  // { id: 'gapplan', label: 'План экспериментов', icon: FlaskConical, roles: INTERNAL, group: 'gaps' }, // убрано по запросу (план закрытия пробелов)
+  // { id: 'gaps', label: 'Пробелы и риски', icon: TriangleAlert, roles: INTERNAL, group: 'gaps' }, // → слито в «Карта пробелов»
+  // { id: 'absence', label: 'Карта неизвестного', icon: Compass, roles: INTERNAL, group: 'gaps' },
+  // { id: 'voi', label: 'Ценность информации', icon: Lightbulb, roles: INTERNAL, group: 'gaps' }, // дубль «Карты неизвестного»
 
   { id: 'coverage', label: 'Покрытие по доменам', icon: LayoutGrid, group: 'knowledge' },
   { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
@@ -324,8 +324,8 @@ const NAV: NavItem[] = [
   { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: CURATOR, group: 'admin' },
 
   // -- Batch-4 feature screens ----------------------------------------------
-  { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' },
-  { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' },
+  // { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
+  // { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
   { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' },
   { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' },
   { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
@@ -349,7 +349,6 @@ const NAV: NavItem[] = [
   { id: 'sourcecatalog', label: 'Каталог источников', icon: Library, roles: ANALYST, group: 'admin' },
 
   // -- Batch-5 feature screens ----------------------------------------------
-  { id: 'crosslingual', label: 'Кросс-язычный поиск', icon: ArrowRightLeft, group: 'qa' },
   { id: 'graphlegend', label: 'Легенда графа', icon: Shapes, group: 'graph' },
   { id: 'entitytimeline', label: 'Timeline сущности', icon: CalendarClock, group: 'graph' },
   { id: 'materialsner', label: 'Материаловедческий NER', icon: Atom, roles: INTERNAL, group: 'data' },
@@ -616,7 +615,6 @@ export function App() {
           {view === 'subgraphchat' && <SubgraphChatAttachView />}
           {view === 'verifiergate' && <VerifierGateView />}
           {/* -- Batch-5 feature screens -- */}
-          {view === 'crosslingual' && <CrossLingualSearchView />}
           {view === 'graphlegend' && <GraphLegendView />}
           {view === 'entitytimeline' && <EntityTimelineView />}
           {view === 'materialsner' && <MaterialsNerView />}

@@ -11,28 +11,17 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { api } from '../api';
+import { CoverageView } from './CoverageView';
+import { MaterialCoverageHeatmapView } from './MaterialCoverageHeatmapView';
 
 // Командный центр (agentic dashboard). The hard numbers of the knowledge graph at a
-// glance — size, per-domain coverage + risk, top technologies — plus an analyst agent's
-// narrative «state of knowledge» briefing written over that snapshot (DeepSeek).
-
-const DOMAIN_RU: Record<string, string> = {
-  hydrometallurgy: 'Гидрометаллургия',
-  pyrometallurgy: 'Пирометаллургия',
-  environment: 'Экология',
-  waste_processing: 'Переработка отходов',
-  water_treatment: 'Водоочистка',
-  mineral_processing: 'Обогащение',
-  electrometallurgy: 'Электрометаллургия',
-  unknown: 'Без домена',
-  'без домена': 'Без домена',
-};
+// glance — size, top technologies, per-domain coverage + the material×property coverage
+// heatmap embedded inline — plus an analyst agent's narrative «state of knowledge»
+// briefing written over that snapshot (DeepSeek).
 
 export function DashboardView() {
   const q = useQuery({ queryKey: ['briefing'], queryFn: api.briefing, staleTime: 5 * 60_000 });
   const snap = q.data?.snapshot;
-  const domains = (snap?.coverage.by_domain ?? []).filter((d) => d.domain !== 'без домена');
-  const maxSrc = Math.max(1, ...domains.map((d) => d.sources));
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -79,28 +68,9 @@ export function DashboardView() {
               </div>
             </div>
 
-            {/* Domain coverage bars */}
+            {/* Покрытие по доменам — полный раздел, встроенный в обзор */}
             <div className="panel mt-5 p-4">
-              <div className="mb-3 text-sm text-nickel">Покрытие по доменам</div>
-              <div className="space-y-1.5">
-                {domains.map((d) => (
-                  <div key={d.domain} className="flex items-center gap-2">
-                    <span className="w-40 shrink-0 truncate text-xs text-muted">
-                      {DOMAIN_RU[d.domain] ?? d.domain}
-                    </span>
-                    <div className="h-3 flex-1 overflow-hidden rounded-sm bg-line/60">
-                      <div
-                        className={`h-full rounded-sm ${d.risk === 'high' ? 'bg-contradiction/60' : 'bg-copper/60'}`}
-                        style={{ width: `${Math.max(3, (d.sources / maxSrc) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="metric w-24 shrink-0 text-right text-[11px] text-nickel">
-                      {d.sources} ист.
-                      {d.risk === 'high' && <span className="ml-1 text-contradiction">риск</span>}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <CoverageView embedded />
             </div>
 
             {/* Top technologies */}
@@ -114,6 +84,11 @@ export function DashboardView() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            {/* Покрытие материал × свойство — тепловая карта, встроенная в обзор */}
+            <div className="panel mt-5 p-4">
+              <MaterialCoverageHeatmapView embedded />
             </div>
           </>
         )}

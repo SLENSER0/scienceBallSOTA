@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnswerPayload, GraphNode } from './types';
+import type { AnswerPayload, GraphNode, PrioritizedGap } from './types';
 
 export type View =
   | 'chat'
@@ -109,7 +109,6 @@ export type View =
   // -- Batch-5 feature screens ---------------------------------------------
   | 'collaboration'
   | 'calibration'
-  | 'crosslingual'
   | 'dagsterassets'
   | 'ermetrics'
   | 'entitytimeline'
@@ -140,7 +139,22 @@ interface AppState {
   deep: DeepResearchState;
   setDeep: (patch: Partial<DeepResearchState>) => void;
   resetDeep: (question: string) => void;
+  // Gap-map agentic prioritization — cached in the store so leaving the tab and
+  // coming back shows the already-computed cards instantly instead of re-running
+  // the whole per-gap agent stream from scratch (same «pages disappear» fix as deep).
+  gapMap: GapMapState;
+  setGapMap: (patch: Partial<GapMapState>) => void;
+  resetGapMap: () => void;
 }
+
+export type GapMapPhase = 'idle' | 'running' | 'done';
+export interface GapMapState {
+  phase: GapMapPhase;
+  gaps: PrioritizedGap[];
+  done: number;
+  total: number;
+}
+const EMPTY_GAPMAP: GapMapState = { phase: 'idle', gaps: [], done: 0, total: 0 };
 
 export interface DeepStage {
   node: string;
@@ -211,4 +225,7 @@ export const useStore = create<AppState>((set) => ({
   deep: EMPTY_DEEP,
   setDeep: (patch) => set((s) => ({ deep: { ...s.deep, ...patch } })),
   resetDeep: (question) => set({ deep: { ...EMPTY_DEEP, question, running: true } }),
+  gapMap: EMPTY_GAPMAP,
+  setGapMap: (patch) => set((s) => ({ gapMap: { ...s.gapMap, ...patch } })),
+  resetGapMap: () => set({ gapMap: { ...EMPTY_GAPMAP } }),
 }));

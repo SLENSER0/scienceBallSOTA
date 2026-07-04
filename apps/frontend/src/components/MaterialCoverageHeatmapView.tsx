@@ -88,7 +88,7 @@ function coveredStyle(count: number, max: number): React.CSSProperties {
   };
 }
 
-export function MaterialCoverageHeatmapView() {
+export function MaterialCoverageHeatmapView({ embedded = false }: { embedded?: boolean } = {}) {
   const q = useQuery({
     queryKey: ['coverage-heatmap'],
     queryFn: () => cmFetch<MatrixResp>('/api/v1/coverage/matrix?material_limit=60'),
@@ -111,18 +111,27 @@ export function MaterialCoverageHeatmapView() {
   const max = q.data?.max_evidence ?? 0;
   const summary = q.data?.summary;
 
-  return (
-    <div className="h-full overflow-y-auto px-6 py-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="eyebrow mb-1">карта покрытия · тепловая карта</div>
-        <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
-          <Grid3x3 size={22} className="text-copper" /> Покрытие: материал × свойство
-        </h1>
-        <p className="mt-1 text-sm text-faint">
-          Плотность измерений по паре «материал × свойство». Ярче ячейка — больше
-          доказательств; пунктирная полая ячейка — пробел (свойство не измерено).
-          Клик по ячейке раскрывает измерения и пробелы для пары.
-        </p>
+  const header = embedded ? (
+    <div className="mb-3 flex items-center gap-2 text-sm text-nickel">
+      <Grid3x3 size={16} className="text-copper" /> Покрытие: материал × свойство
+    </div>
+  ) : (
+    <>
+      <div className="eyebrow mb-1">карта покрытия · тепловая карта</div>
+      <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
+        <Grid3x3 size={22} className="text-copper" /> Покрытие: материал × свойство
+      </h1>
+      <p className="mt-1 text-sm text-faint">
+        Плотность измерений по паре «материал × свойство». Ярче ячейка — больше
+        доказательств; пунктирная полая ячейка — пробел (свойство не измерено). Клик по
+        ячейке раскрывает измерения и пробелы для пары.
+      </p>
+    </>
+  );
+
+  const inner = (
+    <>
+      {header}
 
         {q.isLoading ? (
           <div className="mt-10 flex items-center gap-2 font-mono text-sm text-faint">
@@ -204,8 +213,15 @@ export function MaterialCoverageHeatmapView() {
           </>
         )}
 
-        {sel && <CellDrill cell={sel} onClose={() => setSel(null)} />}
-      </div>
+      {sel && <CellDrill cell={sel} onClose={() => setSel(null)} />}
+    </>
+  );
+
+  if (embedded) return <section>{inner}</section>;
+
+  return (
+    <div className="h-full overflow-y-auto px-6 py-6">
+      <div className="mx-auto max-w-6xl">{inner}</div>
     </div>
   );
 }
