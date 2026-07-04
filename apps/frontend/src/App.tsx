@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
-  LayoutGrid,
   Network,
   BookMarked,
   TriangleAlert,
@@ -30,10 +29,8 @@ import {
   Gauge,
   Waypoints,
   GitFork,
-  Wand2,
   Share2,
   Table2,
-  Spline,
   Hexagon,
   MapPin,
   ScanText,
@@ -262,16 +259,17 @@ const NAV: NavItem[] = [
   // { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' }, // убрано — легенда лучше inline на графе
 
   { id: 'entities', label: 'Сущности (детали)', icon: Boxes, group: 'graph' },
+  { id: 'simembed', label: 'Похожие (эмбеддинги)', icon: Hexagon, group: 'graph' }, // перемещено к «Сущности»
   { id: 'largegraph', label: 'Клубок корпуса (WebGL)', icon: Waypoints, group: 'graph' },
-  { id: 'livegds', label: 'Живой GDS', icon: Wand2, roles: INTERNAL, group: 'graph' },
   { id: 'graphpath', label: 'Путь между сущностями', icon: Route, roles: INTERNAL, group: 'graph' },
   { id: 'graphtemplates', label: 'Шаблоны запросов', icon: Code2, roles: INTERNAL, group: 'graph' },
   { id: 'subgraphask', label: 'Спросить о подграфе', icon: Lasso, roles: INTERNAL, group: 'graph' },
   { id: 'linkpred', label: 'Предсказание связей', icon: GitFork, roles: INTERNAL, group: 'graph' },
-  { id: 'simlinks', label: 'Вероятные связи', icon: Share2, roles: INTERNAL, group: 'graph' },
-  { id: 'missinglinks', label: 'Неявные связи', icon: Spline, roles: INTERNAL, group: 'graph' },
-  { id: 'similarMaterials', label: 'Похожие материалы', icon: Layers, roles: INTERNAL, group: 'graph' },
-  { id: 'simembed', label: 'Похожие (эмбеддинги)', icon: Hexagon, group: 'graph' },
+  // Убрано по запросу (для демо — узкое внутреннее ML-тулинг):
+  // { id: 'livegds', label: 'Живой GDS', icon: Wand2, roles: INTERNAL, group: 'graph' },
+  // { id: 'simlinks', label: 'Вероятные связи', icon: Share2, roles: INTERNAL, group: 'graph' },
+  // { id: 'missinglinks', label: 'Неявные связи', icon: Spline, roles: INTERNAL, group: 'graph' },
+  // { id: 'similarMaterials', label: 'Похожие материалы', icon: Layers, roles: INTERNAL, group: 'graph' },
 
   { id: 'evidenceinspector', label: 'Инспектор evidence', icon: Search, roles: INTERNAL, group: 'evidence' },
   { id: 'evidencebbox', label: 'Bbox-цитаты', icon: MapPin, roles: INTERNAL, group: 'evidence' },
@@ -326,12 +324,12 @@ const NAV: NavItem[] = [
   // -- Batch-4 feature screens ----------------------------------------------
   // { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
   // { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
-  { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' },
+  // { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' }, // убрано — покрытие уже в «Обзоре»
   // { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' }, // → «Поиск по корпусу»
   { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
   // { id: 'rangefacets', label: 'Диапазонные фасеты', icon: SlidersHorizontal, group: 'knowledge' }, // → «Поиск по корпусу»
   { id: 'graphdiff', label: 'Diff графа (курирование)', icon: GitCompareArrows, roles: CURATOR, group: 'graph' },
-  { id: 'subgraphchat', label: 'Чат с подграфом', icon: Lasso, roles: INTERNAL, group: 'graph' },
+  // { id: 'subgraphchat', label: 'Чат с подграфом', icon: Lasso, roles: INTERNAL, group: 'graph' }, // убрано по запросу
   { id: 'newdocsensor', label: 'Сенсор новых документов', icon: FolderInput, roles: INTERNAL, group: 'data' },
   { id: 'pipelineemission', label: 'Эмиссия линиджа', icon: Radio, roles: INTERNAL, group: 'data' },
   { id: 'pipelinelineage', label: 'Линидж конвейера', icon: GitBranch, roles: INTERNAL, group: 'data' },
@@ -349,7 +347,7 @@ const NAV: NavItem[] = [
   { id: 'sourcecatalog', label: 'Каталог источников', icon: Library, roles: ANALYST, group: 'admin' },
 
   // -- Batch-5 feature screens ----------------------------------------------
-  { id: 'graphlegend', label: 'Легенда графа', icon: Shapes, group: 'graph' },
+  // { id: 'graphlegend', label: 'Легенда графа', icon: Shapes, group: 'graph' }, // убрано по запросу
   { id: 'entitytimeline', label: 'Timeline сущности', icon: CalendarClock, group: 'graph' },
   { id: 'materialsner', label: 'Материаловедческий NER', icon: Atom, roles: INTERNAL, group: 'data' },
   { id: 'dagsterassets', label: 'Asset-граф Dagster', icon: Workflow, roles: INTERNAL, group: 'data' },
