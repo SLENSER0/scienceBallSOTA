@@ -303,6 +303,31 @@ export interface MaterialsProjectBadgeData {
   url: string | null;
 }
 
+// -- §4.7 Search highlight (<em>-фрагменты по полю совпадения) --------------
+export interface HighlightFragment {
+  html: string; // экранированный текст + теги <em>…</em>
+  matched_terms: string[];
+}
+export interface HighlightHit {
+  id: string;
+  name: string | null;
+  type: string | null;
+  doc_id: string | null;
+  page: number | null;
+  domain: string | null;
+  review_status: string | null;
+  score: number;
+  field: string; // text | name | aliases_text | canonical_name
+  fragments: HighlightFragment[];
+}
+export interface HighlightSearchResponse {
+  query: string;
+  count: number;
+  pre_tag: string;
+  post_tag: string;
+  results: HighlightHit[];
+}
+
 // -- §13.11 Похожие материалы (node similarity, Mode D) --------------------
 export interface SimilarMaterialAttr {
   id: string;

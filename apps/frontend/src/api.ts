@@ -11,6 +11,7 @@ import type {
   EvidenceContext,
   GlossaryTerm,
   GraphResponse,
+  HighlightSearchResponse,
   LineageRun,
   MaterialsProjectBadgeData,
   NodeRow,
@@ -693,6 +694,61 @@ export const api = {
   ): Promise<import('./components/SuspectValuesView').SuspectMeasurement> {
     return req(`/api/v1/suspect-values/measurement/${encodeURIComponent(id)}`);
   },
+
+  // == Batch-3 feature endpoints ============================================
+
+  // -- §6.13 Confidence-fusion в оркестраторе -------------------------------
+  confidenceFuse(
+    facts: {
+      label: string | null;
+      unit: string | null;
+      rule?: { confidence: number; value: number | null };
+      ml?: { confidence: number; value: number | null };
+      llm?: { confidence: number; value: number | null };
+    }[],
+  ): Promise<ConfidenceFuseResult> {
+    return req<ConfidenceFuseResult>('/api/v1/confidence-fusion/fuse', {
+      method: 'POST',
+      body: JSON.stringify({ facts }),
+    });
+  },
+  confidenceFusionLive(limit = 4000): Promise<ConfidenceFusionLive> {
+    return req<ConfidenceFusionLive>(`/api/v1/confidence-fusion/live?limit=${limit}`);
+  },
+
+  // -- §6.9 ExperimentExtract (LLM structured extraction) -------------------
+  experimentExtractStatus(): Promise<{ llm_available: boolean; model: string; prose_chunks: number; note: string }> {
+    return req('/api/v1/experiment-extract/status');
+  },
+  experimentExtractChunks(limit = 30): Promise<{ chunks: { chunk_id: string; doc_id: string; text: string; page: number | null }[]; error?: string }> {
+    return req(`/api/v1/experiment-extract/chunks?limit=${limit}`);
+  },
+  experimentExtractRun(payload: { chunk_id?: string; text?: string; max_repairs?: number }): Promise<Record<string, unknown>> {
+    return req('/api/v1/experiment-extract/extract', { method: 'POST', body: JSON.stringify(payload) });
+  },
+
+  // -- §8.9 Undo merge / обратимость (merged_from) --------------------------
+  mergeHistory(limit = 100): Promise<Record<string, unknown>> {
+    return req(`/api/v1/curation/merges?limit=${limit}`);
+  },
+  undoMerge(eventId: string, reason = ''): Promise<Record<string, unknown>> {
+    return req(`/api/v1/curation/merges/${encodeURIComponent(eventId)}/undo`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  // -- §4.7 Search highlight (<em>-фрагменты по полю совпадения) ------------
+  searchHighlight(
+    q: string,
+    opts?: { limit?: number; fragmentSize?: number; fragments?: number },
+  ): Promise<HighlightSearchResponse> {
+    const p = new URLSearchParams({ q });
+    if (opts?.limit) p.set('limit', String(opts.limit));
+    if (opts?.fragmentSize) p.set('fragment_size', String(opts.fragmentSize));
+    if (opts?.fragments) p.set('fragments', String(opts.fragments));
+    return req<HighlightSearchResponse>(`/api/v1/search/highlight?${p.toString()}`);
+  },
 };
 
 // -- §7.5 Apples-to-apples normalized-unit result --------------------------
@@ -776,4 +832,51 @@ export interface UploadResult {
   chunks: number;
   graph: GraphResponse;
   node_count: number;
+}
+
+// -- §6.13 Confidence-fusion в оркестраторе --------------------------------
+export interface FusedFactReview {
+  action: string; // auto_accept | review | reject
+  action_ru: string;
+  priority: number;
+  reasons: string[];
+  needs_review: boolean;
+}
+export interface FusedFact {
+  id: string | null;
+  label: string | null;
+  sources: string[];
+  layer_confidences: Record<string, number>;
+  fused_confidence: number;
+  agreement_boost: boolean;
+  reconciled_value: number | null;
+  unit: string | null;
+  chosen_layer: string | null;
+  conflict: boolean;
+  spread: number;
+  review: FusedFactReview;
+  explanation: string;
+}
+export interface ConfidenceFuseResult {
+  total: number;
+  auto_accept: number;
+  review: number;
+  reject: number;
+  boosted: number;
+  conflicts: number;
+  facts: FusedFact[];
+}
+export interface ConfidenceFusionLiveCluster {
+  property_name: string | null;
+  material: string | null;
+  unit: string | null;
+  n_members: number;
+  fusion: FusedFact;
+}
+export interface ConfidenceFusionLive {
+  total_measurements: number;
+  multi_layer_clusters: number;
+  conflicts: number;
+  boosted: number;
+  clusters: ConfidenceFusionLiveCluster[];
 }

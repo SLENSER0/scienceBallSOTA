@@ -46,6 +46,16 @@ import {
   GitBranch,
   Palette,
   HeartPulse,
+  Highlighter,
+  Quote,
+  Lasso,
+  Undo2,
+  Ruler,
+  FileStack,
+  Search,
+  Code2,
+  Wrench,
+  ShieldAlert,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -109,9 +119,32 @@ import { QualityBoardView } from './components/QualityBoardView';
 import { RagChecksView } from './components/RagChecksView';
 import { TargetPictureDemoView } from './components/TargetPictureDemoView';
 import { UnitProvenanceView } from './components/UnitProvenanceView';
+// -- Batch-3 feature screens ------------------------------------------------
+import { SearchHighlightView } from './components/SearchHighlightView';
+import { GraphIntegrityView } from './components/GraphIntegrityView';
+import { UnitReviewView } from './components/UnitReviewView';
+import { ExtractorRunLineageView } from './components/ExtractorRunLineageView';
+import { WarningPanelView } from './components/WarningPanelView';
+import { ProvenanceCitationsView } from './components/ProvenanceCitationsView';
+import { OpsDashboardsView } from './components/OpsDashboardsView';
+import { SubgraphAskView } from './components/SubgraphAskView';
+import { GraphQueryTemplatesView } from './components/GraphQueryTemplatesView';
+import { FigureCaptionEvidenceView } from './components/FigureCaptionEvidenceView';
+import { OcrBranchView } from './components/OcrBranchView';
+import { BatchIngestView } from './components/BatchIngestView';
+import { IngestPipelineView } from './components/IngestPipelineView';
+import { ConfidenceFusionView } from './components/ConfidenceFusionView';
+import { ErEvalView } from './components/ErEvalView';
+import { RerankLiveView } from './components/RerankLiveView';
+import { ExperimentExtractView } from './components/ExperimentExtractView';
+import { MentionResolverView } from './components/MentionResolverView';
+import { MergeUndoView } from './components/MergeUndoView';
+import { EvidenceInspectorView } from './components/EvidenceInspectorView';
+import { TableCorrectionView } from './components/TableCorrectionView';
 
 const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
 const CURATOR = ['curator', 'project_manager', 'admin'];
+const ANALYST = ['analyst', 'curator', 'project_manager', 'admin'];
 
 const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[] = [
   { id: 'dashboard', label: 'Обзор', icon: Radar },
@@ -177,6 +210,29 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   { id: 'ragchecks', label: 'RAGAS / DeepEval', icon: ShieldCheck, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'suspects', label: 'Подозрительные значения', icon: TriangleAlert, roles: CURATOR },
   { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR },
+
+  // -- Batch-3 feature screens ----------------------------------------------
+  { id: 'searchhl', label: 'Подсветка в поиске', icon: Highlighter },
+  { id: 'subgraphask', label: 'Спросить о подграфе', icon: Lasso, roles: INTERNAL },
+  { id: 'graphtemplates', label: 'Шаблоны запросов', icon: Code2, roles: INTERNAL },
+  { id: 'figcaptions', label: 'Подписи как evidence', icon: Quote, roles: INTERNAL },
+  { id: 'evidenceinspector', label: 'Инспектор evidence', icon: Search, roles: INTERNAL },
+  { id: 'provcitations', label: 'Провенанс цитат', icon: ShieldCheck, roles: INTERNAL },
+  { id: 'warnings', label: 'Панель предупреждений', icon: ShieldAlert, roles: INTERNAL },
+  { id: 'confidencefusion', label: 'Слияние уверенности', icon: Layers, roles: INTERNAL },
+  { id: 'extractorrun', label: 'Прогоны экстрактора', icon: Fingerprint, roles: INTERNAL },
+  { id: 'experimentextract', label: 'ExperimentExtract', icon: FlaskConical, roles: ANALYST },
+  { id: 'reranklive', label: 'Reranker (live)', icon: Layers, roles: ANALYST },
+  { id: 'ereval', label: 'Качество ER', icon: ShieldCheck, roles: ANALYST },
+  { id: 'opsdash', label: 'Ops-дашборды', icon: Gauge, roles: ANALYST },
+  { id: 'ocr', label: 'OCR сканов', icon: ScanText, roles: INTERNAL },
+  { id: 'batchingest', label: 'Пакетный приём', icon: FileStack, roles: INTERNAL },
+  { id: 'ingestpipeline', label: 'Конвейер приёма', icon: Workflow, roles: INTERNAL },
+  { id: 'mentionresolve', label: 'Резолвер упоминаний', icon: Target, roles: CURATOR },
+  { id: 'mergeundo', label: 'Откат слияний', icon: Undo2, roles: CURATOR },
+  { id: 'tablecorrection', label: 'Правка таблиц', icon: Wrench, roles: CURATOR },
+  { id: 'unitreview', label: 'Единицы на ревью', icon: Ruler, roles: CURATOR },
+  { id: 'graphintegrity', label: 'Целостность графа', icon: ShieldCheck, roles: CURATOR },
 ];
 
 export function App() {
@@ -317,6 +373,28 @@ export function App() {
           {view === 'ragchecks' && <RagChecksView />}
           {view === 'suspects' && <SuspectValuesView />}
           {view === 'kghealth' && <KgHealthView />}
+          {/* -- Batch-3 feature screens -- */}
+          {view === 'searchhl' && <SearchHighlightView />}
+          {view === 'subgraphask' && <SubgraphAskView />}
+          {view === 'graphtemplates' && <GraphQueryTemplatesView />}
+          {view === 'figcaptions' && <FigureCaptionEvidenceView />}
+          {view === 'evidenceinspector' && <EvidenceInspectorView />}
+          {view === 'provcitations' && <ProvenanceCitationsView />}
+          {view === 'warnings' && <WarningPanelView />}
+          {view === 'confidencefusion' && <ConfidenceFusionView />}
+          {view === 'extractorrun' && <ExtractorRunLineageView />}
+          {view === 'experimentextract' && <ExperimentExtractView />}
+          {view === 'reranklive' && <RerankLiveView />}
+          {view === 'ereval' && <ErEvalView />}
+          {view === 'opsdash' && <OpsDashboardsView />}
+          {view === 'ocr' && <OcrBranchView />}
+          {view === 'batchingest' && <BatchIngestView />}
+          {view === 'ingestpipeline' && <IngestPipelineView />}
+          {view === 'mentionresolve' && <MentionResolverView />}
+          {view === 'mergeundo' && <MergeUndoView />}
+          {view === 'tablecorrection' && <TableCorrectionView />}
+          {view === 'unitreview' && <UnitReviewView />}
+          {view === 'graphintegrity' && <GraphIntegrityView />}
         </main>
       </div>
 

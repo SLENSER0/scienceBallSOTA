@@ -59,7 +59,29 @@ export type View =
   | 'qualityboard'
   | 'ragchecks'
   | 'targetdemo'
-  | 'unitprov';
+  | 'unitprov'
+  // -- Batch-3 feature screens ---------------------------------------------
+  | 'searchhl'
+  | 'graphintegrity'
+  | 'unitreview'
+  | 'extractorrun'
+  | 'warnings'
+  | 'provcitations'
+  | 'opsdash'
+  | 'subgraphask'
+  | 'graphtemplates'
+  | 'figcaptions'
+  | 'ocr'
+  | 'batchingest'
+  | 'ingestpipeline'
+  | 'confidencefusion'
+  | 'ereval'
+  | 'reranklive'
+  | 'experimentextract'
+  | 'mentionresolve'
+  | 'mergeundo'
+  | 'evidenceinspector'
+  | 'tablecorrection';
 
 interface AppState {
   view: View;
