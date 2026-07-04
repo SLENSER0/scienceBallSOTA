@@ -167,6 +167,12 @@ export interface DeepStage {
   node: string;
   label: string;
 }
+export interface DeepSource {
+  title: string;
+  url: string;
+  snippet?: string;
+  year?: number | null;
+}
 export interface DeepResearchState {
   question: string;
   running: boolean;
@@ -176,6 +182,8 @@ export interface DeepResearchState {
   report: string;
   engine: string;
   error: string;
+  sources: DeepSource[]; // machine-readable found sources (for «Загрузить в граф»)
+  promote: unknown | null; // last promote result {ingested, review} — persists across tabs
 }
 const EMPTY_DEEP: DeepResearchState = {
   question: '',
@@ -186,6 +194,8 @@ const EMPTY_DEEP: DeepResearchState = {
   report: '',
   engine: '',
   error: '',
+  sources: [],
+  promote: null,
 };
 
 // Restore a persisted session so a reload keeps the user signed in.
