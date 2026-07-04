@@ -14,6 +14,8 @@ import {
 import { api } from '../api';
 import type { AdvisorCandidate } from '../types';
 import { AgentProgress } from './AgentProgress';
+import { CallHistory } from './CallHistory';
+import { pushCall } from '../lib/callHistory';
 
 // Agentic Technology Advisor — the platform doesn't just search, it REASONS: one agent
 // per candidate technology (GLM-5.2, in parallel) scores fit against the user's
@@ -54,6 +56,7 @@ export function AdvisorView() {
 
   const run = (query: string) => {
     if (!query.trim()) return;
+    pushCall('advisor', query.trim(), { geography: geo });
     esRef.current?.close();
     setPhase('running');
     setConstraints('');
@@ -172,6 +175,14 @@ export function AdvisorView() {
                 </button>
               ))}
             </div>
+            <CallHistory
+              feature="advisor"
+              onPick={(e) => {
+                setQ(e.label);
+                if (typeof e.payload?.geography === 'string') setGeo(e.payload.geography);
+                run(e.label);
+              }}
+            />
           </div>
         )}
 

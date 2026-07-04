@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { useStore } from '../store';
+import { CallHistory } from './CallHistory';
+import { pushCall } from '../lib/callHistory';
 import { DocumentUpload } from './DocumentUpload';
 import { MultimodalPanel } from './MultimodalPanel';
 
@@ -46,6 +48,7 @@ export function LibraryView() {
   const esRef = useRef<EventSource | null>(null);
 
   const startDeep = (q: string) => {
+    if (q.trim()) pushCall('deep-research', q.trim());
     esRef.current?.close();
     resetDeep(q);
     const es = new EventSource(`/api/v1/research/deep/stream?question=${encodeURIComponent(q)}`);
@@ -122,6 +125,16 @@ export function LibraryView() {
             </button>
           </div>
 
+          {!deep.running && (
+            <CallHistory
+              feature="deep-research"
+              title="История deep-research"
+              onPick={(e) => {
+                setQuestion(e.label);
+                startDeep(e.label);
+              }}
+            />
+          )}
           <DeepResearchPanel />
           {deep.error && (
             <div className="mt-2 text-xs text-contradiction">Ошибка: {deep.error}</div>

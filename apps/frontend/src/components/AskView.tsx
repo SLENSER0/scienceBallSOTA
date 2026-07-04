@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Bookmark, Loader2 } from 'lucide-react';
 import { api } from '../api';
+import { CallHistory } from './CallHistory';
+import { pushCall } from '../lib/callHistory';
 import { useStore } from '../store';
 import { AnswerView } from './AnswerView';
 import { GraphPanel } from './GraphPanel';
@@ -41,7 +43,9 @@ export function AskView() {
   });
 
   const submit = (text: string) => {
-    if (text.trim()) ask.mutate(text.trim());
+    if (!text.trim()) return;
+    pushCall('ask', text.trim(), { geography: geo });
+    ask.mutate(text.trim());
   };
 
   return (
@@ -124,6 +128,15 @@ export function AskView() {
                   </button>
                 ))}
               </div>
+
+              <CallHistory
+                feature="ask"
+                onPick={(e) => {
+                  setQ(e.label);
+                  if (typeof e.payload?.geography === 'string') setGeo(e.payload.geography);
+                  submit(e.label);
+                }}
+              />
 
               {(views.data?.views.length ?? 0) > 0 && (
                 <div className="mt-6">

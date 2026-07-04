@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowRight, CircleCheck, CircleSlash, Download, Loader2 } from 'lucide-react';
 import { api } from '../api';
+import { CallHistory } from './CallHistory';
+import { pushCall } from '../lib/callHistory';
 
 type Cell = { value?: number; unit?: string; gap?: boolean; evidence_ids?: string[] };
 
@@ -37,6 +39,12 @@ const EXAMPLES = [
 export function CompareView() {
   const [q, setQ] = useState('');
   const cmp = useMutation({ mutationFn: (query: string) => api.comparison(query) });
+  const runCompare = (query: string) => {
+    const t = query.trim();
+    if (!t) return;
+    pushCall('compare', t);
+    cmp.mutate(t);
+  };
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -53,7 +61,7 @@ export function CompareView() {
             className="min-h-[48px] flex-1 resize-none bg-transparent px-3 py-2 text-sm text-ink placeholder:text-faint focus:outline-none"
           />
           <button
-            onClick={() => q.trim() && cmp.mutate(q.trim())}
+            onClick={() => runCompare(q)}
             disabled={cmp.isPending || !q.trim()}
             className="btn-copper mb-1 mr-1 flex items-center gap-1.5"
           >
@@ -69,13 +77,20 @@ export function CompareView() {
                 key={ex}
                 onClick={() => {
                   setQ(ex);
-                  cmp.mutate(ex);
+                  runCompare(ex);
                 }}
                 className="rounded-md border border-line bg-surface/40 px-3 py-2 text-left text-sm text-muted hover:border-copper/40 hover:text-ink"
               >
                 {ex}
               </button>
             ))}
+            <CallHistory
+              feature="compare"
+              onPick={(e) => {
+                setQ(e.label);
+                runCompare(e.label);
+              }}
+            />
           </div>
         )}
 
