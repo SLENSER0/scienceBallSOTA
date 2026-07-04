@@ -171,16 +171,18 @@ export function ClusterMap3DView() {
       e.preventDefault();
       view.current.zoom = Math.max(0.4, Math.min(6, view.current.zoom * (e.deltaY < 0 ? 1.1 : 0.9)));
     };
+    const leave = () => setTip(null);
     cv.addEventListener('pointerdown', down);
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointermove', move);
-    cv.addEventListener('pointerleave', () => setTip(null));
+    cv.addEventListener('pointerleave', leave);
     cv.addEventListener('wheel', wheel, { passive: false });
     return () => {
       cancelAnimationFrame(raf); ro.disconnect();
       cv.removeEventListener('pointerdown', down);
       cv.removeEventListener('pointerup', up);
       cv.removeEventListener('pointermove', move);
+      cv.removeEventListener('pointerleave', leave);
       cv.removeEventListener('wheel', wheel);
     };
   }, [data, active]);
@@ -211,6 +213,13 @@ export function ClusterMap3DView() {
       </div>
     );
   if (!data) return <div style={{ padding: 24, opacity: 0.7 }}>Загрузка карты тем корпуса…</div>;
+  if (!data.total || !data.points.length)
+    return (
+      <div style={{ padding: 24, opacity: 0.75, fontSize: 13, lineHeight: 1.6 }}>
+        В корпусе нет проиндексированных чанков для карты. Постройте её:{' '}
+        <code>RUNTIME_PROFILE=server uv run python scripts/precompute_cluster_map.py</code>
+      </div>
+    );
 
   const wrap: CSSProperties = { position: 'relative', width: '100%', flex: 1, minHeight: 260, borderRadius: 12, overflow: 'hidden', background: '#0a0c10' };
   const legend: CSSProperties = { position: 'absolute', top: 12, right: 12, width: 260, maxHeight: 'calc(100% - 90px)', overflow: 'auto', background: 'rgba(16,18,24,.86)', border: '1px solid #262b35', borderRadius: 10, padding: 8, backdropFilter: 'blur(8px)', color: '#e9edf3', fontSize: 12.5 };
@@ -249,7 +258,7 @@ export function ClusterMap3DView() {
           <button onClick={reset} style={btn(false)}>сброс вида</button>
         </div>
         {tip && (
-          <div style={{ position: 'fixed', left: Math.min(tip.x + 14, innerWidth - 320), top: tip.y + 14, zIndex: 50, maxWidth: 300, pointerEvents: 'none', background: '#12151b', border: '1px solid #262b35', borderRadius: 9, padding: '8px 10px', color: '#e9edf3', fontSize: 12.5, boxShadow: '0 4px 16px rgba(0,0,0,.5)' }}>
+          <div style={{ position: 'fixed', left: Math.min(tip.x + 14, innerWidth - 320), top: Math.min(tip.y + 14, innerHeight - 110), zIndex: 50, maxWidth: 300, pointerEvents: 'none', background: '#12151b', border: '1px solid #262b35', borderRadius: 9, padding: '8px 10px', color: '#e9edf3', fontSize: 12.5, boxShadow: '0 4px 16px rgba(0,0,0,.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, marginBottom: 4 }}>
               <span style={{ width: 9, height: 9, borderRadius: 2, background: colorOf(tip.c) }} />{tip.label}
             </div>

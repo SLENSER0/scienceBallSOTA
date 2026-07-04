@@ -61,8 +61,13 @@ def _kmeans(emb: np.ndarray, k: int, iters: int, seed: int) -> np.ndarray:
     centers[0] = emb[rng.integers(n)]
     d2 = ((emb - centers[0]) ** 2).sum(1)
     for i in range(1, k):  # k-means++ seeding
-        p = d2 / d2.sum()
-        centers[i] = emb[rng.choice(n, p=p)]
+        s = float(d2.sum())
+        if not np.isfinite(s) or s <= 0.0:
+            # Degenerate: fewer distinct points than k (all remaining coincide with a
+            # chosen center) → weighted choice would be 0/0=NaN. Fall back to uniform.
+            centers[i] = emb[rng.integers(n)]
+        else:
+            centers[i] = emb[rng.choice(n, p=d2 / s)]
         d2 = np.minimum(d2, ((emb - centers[i]) ** 2).sum(1))
     labels = np.zeros(n, dtype=np.int32)
     for _ in range(iters):
@@ -91,7 +96,14 @@ def build_topic_map(
     a symmetric cube for the viewer; ``c`` is the cluster id, ``t`` a short hover text.
     """
     emb = np.asarray(vectors, dtype=np.float32)
-    n = emb.shape[0]
+    # Drop non-finite rows (NaN/inf) so they don't poison normalization or the
+    # k-means++ probabilities — one bad vector would otherwise 500 the whole build.
+    if emb.ndim == 2 and emb.size:
+        finite = np.isfinite(emb).all(axis=1)
+        if not finite.all():
+            emb = emb[finite]
+            texts = [t for t, ok in zip(texts, finite, strict=False) if ok]
+    n = emb.shape[0] if emb.ndim == 2 else 0
     if n == 0:
         return {"points": [], "clusters": [], "total": 0, "shown": 0, "var3d": 0.0, "k": 0}
     k = max(2, min(k, n))
@@ -108,7 +120,10 @@ def build_topic_map(
     coords = embc @ top3
     scale = np.percentile(np.abs(coords), 99, axis=0) + 1e-9
     coords = np.clip(coords / scale, -1.3, 1.3)
-    var3d = float(evals[::-1][:3].sum() / evals.sum() * 100.0)
+    tot = float(evals.sum())
+    # tot==0 when every (surviving) vector is identical → 0/0; report 0% not NaN
+    # (NaN would break JSON serialisation of the payload).
+    var3d = float(evals[::-1][:3].sum() / tot * 100.0) if tot > 0 else 0.0
 
     # distinctiveness-weighted term labels (presence per chunk, per cluster)
     cluster_tf = [Counter() for _ in range(k)]
