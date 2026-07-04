@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterator
 from typing import Any
 
 from kg_common import get_logger, get_settings
@@ -94,6 +95,45 @@ class LLMClient:
         )
         self.used_models.append(mdl)
         return (resp.choices[0].message.content or "").strip()
+
+    def complete_stream(
+        self,
+        user: str,
+        *,
+        system: str | None = None,
+        model: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int = 1600,
+    ) -> Iterator[str]:
+        """Yield answer text deltas as the model generates them (OpenAI stream=True).
+
+        Lets a caller surface a brief conclusion in seconds and fill in the rest live,
+        instead of blocking ~15 s for the whole completion.
+        """
+        mdl = model or self._settings.llm_model_synth
+        if not is_oss_model(mdl):
+            raise ValueError(f"Model '{mdl}' is not on the OSS allowlist (ADR-0006).")
+        messages: list[dict[str, str]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": user})
+        stream = self._client.chat.completions.create(
+            model=mdl,
+            messages=messages,  # type: ignore[arg-type]
+            temperature=self._settings.llm_temperature if temperature is None else temperature,
+            max_tokens=max_tokens,
+            stream=True,
+            extra_body={"provider": {"sort": "throughput", "allow_fallbacks": True}},
+        )
+        self.used_models.append(mdl)
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            piece = getattr(delta, "content", None) if delta else None
+            if piece:
+                yield piece
 
     def complete_with_reasoning(
         self,

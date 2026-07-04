@@ -223,22 +223,37 @@ class Neo4jGraphStore:
                 ids.add(nd["id"])
         return GraphResponse(nodes=list(nodes.values()), edges=self.edges_among(ids))
 
+    # A query answer's graph payload is capped: a 1800-node subgraph is unrenderable
+    # in the UI and (pre-fix) cost one round-trip PER node to hydrate. Seeds are kept
+    # whole; expansion fills up to the cap.
+    _MAX_SUBGRAPH_NODES = 160
+    _MAX_SEEDS = 70  # keep room for 1-hop neighbours so the graph stays connected
+
     def subgraph_from_ids(self, node_ids: list[str], expand: int = 1) -> GraphResponse:
-        """Build a payload from seed node ids, optionally expanding N hops."""
-        ids: set[str] = set(node_ids)
-        if expand > 0 and node_ids:
+        """Build a payload from seed node ids, optionally expanding N hops (bounded)."""
+        seeds = list(dict.fromkeys(node_ids))  # de-dup, keep order
+        ids: list[str] = seeds[: self._MAX_SEEDS]
+        seen: set[str] = set(ids)
+        if expand > 0 and ids and len(ids) < self._MAX_SUBGRAPH_NODES:
+            # Expand from the (capped) seeds so their neighbours connect the graph;
+            # without this the payload is a scatter of unconnected seed nodes.
             for r in self.rows(
                 f"MATCH (a:Node)-[:Rel*1..{max(1, min(expand, 3))}]-(b:Node) "
-                "WHERE a.id IN $ids RETURN DISTINCT b.id LIMIT 500",
-                {"ids": node_ids},
+                "WHERE a.id IN $ids RETURN DISTINCT b.id LIMIT $lim",
+                {"ids": ids, "lim": self._MAX_SUBGRAPH_NODES},
             ):
-                ids.add(r[0])
+                if r[0] not in seen:
+                    seen.add(r[0])
+                    ids.append(r[0])
+                    if len(ids) >= self._MAX_SUBGRAPH_NODES:
+                        break
+        # Hydrate ALL nodes in ONE query — was N+1 (get_node per id → ~1800 round-trips).
         nodes: list[GraphNode] = []
-        for nid in ids:
-            nd = self.get_node(nid)
-            if nd:
+        for r in self.rows("MATCH (n:Node) WHERE n.id IN $ids RETURN n", {"ids": ids}):
+            nd = self._node_dict(r[0])
+            if nd.get("id"):
                 nodes.append(self.node_to_dto(nd))
-        return GraphResponse(nodes=nodes, edges=self.edges_among(ids))
+        return GraphResponse(nodes=nodes, edges=self.edges_among(set(ids)))
 
     def edges_among(self, ids: set[str]) -> list[GraphEdge]:
         if not ids:

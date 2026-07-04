@@ -95,6 +95,60 @@ export const api = {
       }),
     });
   },
+  // Streaming query: retrieval artifacts (graph/citations/gaps) arrive first, then the
+  // answer streams token-by-token. onEvent(type, data) fires per SSE frame. Returns an
+  // abort fn. POST (not EventSource, which is GET-only) → manual SSE parse of the body.
+  queryStream(
+    query: string,
+    opts: QueryOptions,
+    onEvent: (type: string, data: unknown) => void,
+  ): () => void {
+    const ctrl = new AbortController();
+    (async () => {
+      const res = await fetch('/api/v1/query/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          query,
+          role: opts.role ?? 'researcher',
+          use_llm: opts.useLlm ?? true,
+          geography: opts.geography && opts.geography !== 'all' ? opts.geography : null,
+        }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        onEvent('error', { message: `${res.status} ${res.statusText}` });
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split('\n\n');
+        buf = frames.pop() ?? ''; // keep the trailing partial frame
+        for (const frame of frames) {
+          let ev = 'message';
+          let data = '';
+          for (const line of frame.split('\n')) {
+            if (line.startsWith('event:')) ev = line.slice(6).trim();
+            else if (line.startsWith('data:')) data += line.slice(5).trim();
+          }
+          if (!data) continue;
+          try {
+            onEvent(ev, JSON.parse(data));
+          } catch {
+            /* ignore malformed frame */
+          }
+        }
+      }
+    })().catch((e) => {
+      if ((e as Error)?.name !== 'AbortError') onEvent('error', { message: String(e) });
+    });
+    return () => ctrl.abort();
+  },
   coverage(): Promise<{ domains: CoverageDomain[] }> {
     return req('/api/v1/admin/coverage');
   },
@@ -494,7 +548,8 @@ export const api = {
     count: number;
     similar: { id: string; name: string; label?: string; similarity: number }[];
   }> {
-    return req(`/api/v1/gds-live/similar?seed=${encodeURIComponent(seed)}&limit=${limit}`);
+    // Endpoint expects `k` (topK), not `limit` — sending `limit` was silently ignored.
+    return req(`/api/v1/gds-live/similar?seed=${encodeURIComponent(seed)}&k=${limit}`);
   },
   gdsLouvain(): Promise<{
     run_id: string;
@@ -540,8 +595,14 @@ export const api = {
 
   // -- §25.11 Value-of-Information ranking ----------------------------------
   // VoIResponse is declared locally in ValueOfInformationView; keep loose.
-  absenceValueOfInformation(topN = 20): Promise<any> {
-    return req(`/api/v1/absence/value-of-information?top_n=${topN}`);
+  // `scanLimit` caps how many empty cells the backend classifies before ranking —
+  // keep it modest so the (heavy) endpoint returns promptly. `init` lets callers pass
+  // an AbortController signal (timeout / unmount).
+  absenceValueOfInformation(topN = 20, scanLimit = 250, init?: RequestInit): Promise<any> {
+    return req(
+      `/api/v1/absence/value-of-information?top_n=${topN}&scan_limit=${scanLimit}`,
+      init,
+    );
   },
 
   // -- §3.14 Missing-links board (corpus feed) ------------------------------

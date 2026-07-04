@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Bookmark, Loader2 } from 'lucide-react';
 import { api } from '../api';
@@ -7,6 +7,7 @@ import { pushCall } from '../lib/callHistory';
 import { useStore } from '../store';
 import { AnswerView } from './AnswerView';
 import { GraphPanel } from './GraphPanel';
+import type { AnswerPayload, Citation, GraphResponse } from '../types';
 
 const EXAMPLES = [
   'Какие методы обессоливания воды подходят для обогатительной фабрики, если сульфаты, хлориды, Ca, Mg, Na по 200–300 мг/л, а сухой остаток ≤1000 мг/дм³?',
@@ -34,18 +35,49 @@ export function AskView() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['saved-views'] }),
   });
 
-  const ask = useMutation({
-    mutationFn: (query: string) => api.query(query, { role, useLlm, geography: geo }),
-    onSuccess: (a) => {
-      setAnswer(a);
-      setSelectedNode(null);
-    },
-  });
+  const [streaming, setStreaming] = useState(false);
+  const [streamErr, setStreamErr] = useState('');
+  const abortRef = useRef<null | (() => void)>(null);
+  // Cancel any in-flight stream when leaving the view.
+  useEffect(() => () => abortRef.current?.(), []);
 
-  const submit = (text: string) => {
-    if (!text.trim()) return;
-    pushCall('ask', text.trim(), { geography: geo });
-    ask.mutate(text.trim());
+  // Pass geography explicitly — a caller that just did setGeo(x) would otherwise send
+  // the *previous* geo here (state update is async, this closure captures the old value).
+  const submit = (text: string, geography: string = geo) => {
+    const t = text.trim();
+    if (!t) return;
+    pushCall('ask', t, { geography });
+    abortRef.current?.(); // cancel a previous stream
+    setStreamErr('');
+    setStreaming(true);
+    setSelectedNode(null);
+    // Progressive answer: seed empty, then fill graph/citations, then stream tokens.
+    const acc: AnswerPayload = {
+      answerMarkdown: '',
+      citations: [],
+      graph: null,
+      gaps: [],
+      contradictions: [],
+      confidence: null,
+      usedModels: [],
+    };
+    setAnswer({ ...acc });
+    abortRef.current = api.queryStream(t, { role, useLlm, geography }, (type, data) => {
+      const d = data as Record<string, unknown>;
+      if (type === 'graph') acc.graph = data as GraphResponse;
+      else if (type === 'evidence') acc.citations = (d.citations as Citation[]) ?? [];
+      else if (type === 'gap') acc.gaps = [...acc.gaps, d as { name?: string; type?: string }];
+      else if (type === 'token') acc.answerMarkdown += (d.text as string) ?? '';
+      else if (type === 'done') {
+        acc.confidence = (d.confidence as number) ?? null;
+        acc.usedModels = (d.models as string[]) ?? [];
+        setStreaming(false);
+      } else if (type === 'error') {
+        setStreamErr((d.message as string) ?? 'поток прерван');
+        setStreaming(false);
+      }
+      setAnswer({ ...acc });
+    });
   };
 
   return (
@@ -67,10 +99,10 @@ export function AskView() {
               />
               <button
                 onClick={() => submit(q)}
-                disabled={ask.isPending || !q.trim()}
+                disabled={streaming || !q.trim()}
                 className="btn-copper mb-1 mr-1 flex items-center gap-1.5"
               >
-                {ask.isPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+                {streaming ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
                 <span className="hidden sm:inline">Распутать</span>
               </button>
             </div>
@@ -85,7 +117,7 @@ export function AskView() {
                   key={o.id}
                   onClick={() => {
                     setGeo(o.id);
-                    if (answer && q.trim()) submit(q);
+                    if (answer && q.trim()) submit(q, o.id);
                   }}
                   className={`px-2.5 py-1 text-[11px] transition ${
                     geo === o.id ? 'bg-copper/20 text-copper' : 'text-faint hover:text-nickel'
@@ -107,7 +139,7 @@ export function AskView() {
             )}
           </div>
 
-          {!answer && !ask.isPending && (
+          {!answer && !streaming && (
             <div className="mt-6">
               <div className="eyebrow mb-2">Демо-вопросы постановки</div>
               <div className="flex flex-col gap-2">
@@ -132,9 +164,10 @@ export function AskView() {
               <CallHistory
                 feature="ask"
                 onPick={(e) => {
+                  const g = typeof e.payload?.geography === 'string' ? e.payload.geography : geo;
                   setQ(e.label);
-                  if (typeof e.payload?.geography === 'string') setGeo(e.payload.geography);
-                  submit(e.label);
+                  setGeo(g);
+                  submit(e.label, g);
                 }}
               />
 
@@ -150,9 +183,11 @@ export function AskView() {
                         <button
                           key={v.view_id}
                           onClick={() => {
+                            const g =
+                              typeof v.payload.geography === 'string' ? v.payload.geography : geo;
                             setQ(query);
-                            if (typeof v.payload.geography === 'string') setGeo(v.payload.geography);
-                            submit(query);
+                            setGeo(g);
+                            submit(query, g);
                           }}
                           className="chip max-w-xs truncate text-muted hover:border-copper/40 hover:text-copper"
                           title={query}
@@ -167,22 +202,23 @@ export function AskView() {
             </div>
           )}
 
-          {ask.isError && (
+          {streamErr && (
             <div className="mt-4 rounded-md border border-contradiction/40 bg-contradiction/10 px-4 py-3 text-sm text-contradiction">
-              Не удалось получить ответ. Проверьте, запущен ли API (:8000).
+              Ошибка потока: {streamErr}. Проверьте, запущен ли API (:8000).
             </div>
           )}
 
-          {ask.isPending && (
+          {/* Retrieval phase: shown only until the first answer token arrives. */}
+          {streaming && !answer?.answerMarkdown && (
             <div className="mt-8 flex items-center gap-3 text-muted">
               <Loader2 size={18} className="animate-spin text-copper" />
               <span className="font-mono text-sm">
-                Распутываю клубок: разбор запроса → поиск фактов → синтез с доказательствами…
+                Распутываю клубок: разбор запроса → поиск фактов по графу → синтез…
               </span>
             </div>
           )}
 
-          {answer && !ask.isPending && <AnswerView answer={answer} />}
+          {answer?.answerMarkdown && <AnswerView answer={answer} />}
         </div>
       </section>
 

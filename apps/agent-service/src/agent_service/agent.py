@@ -90,7 +90,10 @@ def build_agent(store: KuzuGraphStore):  # type: ignore[no-untyped-def]
 
     def n_synthesize(state: AgentState) -> dict[str, Any]:
         answer = build_answer(
-            state["intent"], state["retrieval"], use_llm=state.get("use_llm", True)
+            state["intent"],
+            state["retrieval"],
+            use_llm=state.get("use_llm", True),
+            reasoning_mode=state.get("reasoning_mode", False),
         )
         return {"answer": answer}
 
@@ -154,3 +157,51 @@ def answer_query(
         state["geography"] = geography
     out = agent.invoke(state)
     return out["answer"]
+
+
+def answer_query_stream(
+    query: str,
+    store: KuzuGraphStore,
+    *,
+    role: str = "researcher",
+    geography: str | None = None,
+):
+    """Streaming variant of :func:`answer_query`.
+
+    Runs the same preprocess → parse → retrieve steps, then delegates to
+    :func:`synthesize.stream_answer`, yielding ('meta', obj) → ('token', str)* →
+    ('final', dict) so the UI shows a brief conclusion in seconds and streams the rest.
+    """
+    from agent_service.intent_classifier import classify_intent
+    from agent_service.preprocess import preprocess_query
+    from agent_service.synthesize import stream_answer
+
+    retriever = GraphRetriever(store)
+    pp = preprocess_query(query)
+    intent = parse_query(pp.text)
+    if geography and geography != "all":
+        intent.practice_types = [geography]
+    ic = classify_intent(pp.text)
+    retrieval = retriever.retrieve(intent)
+    if ic.as_dict().get("query_type") == "global":
+        try:
+            from kg_retrievers.community_search import global_search
+
+            ga = global_search(store, pp.text, limit=3)
+            for c in ga.communities:
+                retrieval.passages.append({"text": c.summary, "score": round(c.score, 4)})
+        except Exception:  # global enrichment is best-effort
+            pass
+    hybrid = _get_hybrid()
+    if hybrid is not None and hybrid.available():
+        for hit in hybrid.search(intent.raw, limit=5):
+            retrieval.passages.append(
+                {
+                    "text": hit.payload.get("text", ""),
+                    "doc_id": hit.payload.get("doc_id"),
+                    "page": hit.payload.get("page"),
+                    "score": round(hit.score, 4),
+                }
+            )
+    retrieval = apply_access_policy(retrieval, role)
+    yield from stream_answer(intent, retrieval)

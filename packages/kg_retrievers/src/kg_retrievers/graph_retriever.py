@@ -22,7 +22,7 @@ SOLUTION_LABELS = ["TechnologySolution", "Method"]
 CANDIDATE_LABELS = [*SOLUTION_LABELS, "ProcessingRegime", "Material", "Equipment"]
 
 # Caps so a dense real corpus doesn't flood an answer with hundreds of items.
-MAX_CANDIDATES = 60
+MAX_CANDIDATES = 16  # relevance-ordered; top-16 keeps recall while cutting per-cand queries
 MAX_FACTS = 40
 MAX_SOLUTIONS = 25
 MAX_EVIDENCE = 40
@@ -129,12 +129,19 @@ class GraphRetriever:
                 return False
             if c.operator == ">" and c.normalized_value is not None and val <= c.normalized_value:
                 return False
-            if (
-                c.operator == "range"
-                and c.normalized_min is not None
-                and not (c.normalized_min <= val <= (c.normalized_max or c.normalized_min))
-            ):
-                return False
+            if c.operator == "=" and c.normalized_value is not None:
+                # Exact-value constraint («концентрация 250 мг/л»). Compare with a
+                # small tolerance so float rounding / unit conversion doesn't reject
+                # a genuine match; 5% relative, with an absolute floor for val≈0.
+                tol = max(abs(c.normalized_value) * 0.05, 1e-9)
+                if abs(val - c.normalized_value) > tol:
+                    return False
+            if c.operator == "range" and c.normalized_min is not None:
+                # Use an explicit None check for the upper bound: a legitimate max of
+                # 0.0 is falsy and `or` would collapse the range to a point (L-42).
+                hi = c.normalized_max if c.normalized_max is not None else c.normalized_min
+                if not (c.normalized_min <= val <= hi):
+                    return False
         return True
 
     # -- geographic filtering -------------------------------------------
@@ -145,34 +152,47 @@ class GraphRetriever:
         Facts carry ``practice_type`` (russia/cis/foreign/global) and ``country``
         propagated from their source Document. When the query asks for отечественную
         or зарубежную практику (``intent.practice_types``) or a specific country
-        (``intent.countries``), drop facts that don't match. A fact with no
-        classification at all is kept (can't prove it violates the filter) unless a
-        specific country was requested.
+        (``intent.countries``), drop only facts with a *conflicting* classification.
+
+        Two rules keep the filter from silently gutting the answer:
+        * ``practice_type == "global"`` — universally-applicable, peer-reviewed
+          facts always pass any geo filter (H-4b).
+        * a missing field is NOT a violation. Measurement/Evidence nodes often
+          carry no ``country``/``practice_type`` of their own (they inherit geo
+          from their source Document); absence must not exclude them (H-4a).
+          Only an explicit non-matching value drops a fact.
         """
         if not intent.practice_types and not intent.countries:
             return True
         pt = node.get("practice_type")
         country = node.get("country")
+        # Universally-applicable facts (peer-reviewed, geography-agnostic) always pass.
+        if pt == "global":
+            return True
         if intent.practice_types:
             # "russia" in the query also accepts CIS practice; "foreign" is strict.
             wanted = set(intent.practice_types)
             if "russia" in wanted:
                 wanted.add("cis")
+            # Exclude only on a conflicting value; a missing practice_type is kept.
             if pt is not None and pt not in wanted:
                 return False
-        if intent.countries:
-            if country is None:
-                return False
-            if country not in intent.countries:
-                return False
-        return True
+        # Exclude only on a conflicting country; a missing country is kept
+        # (Measurement/Evidence/Paper may not carry one of their own).
+        return not (
+            intent.countries and country is not None and country not in intent.countries
+        )
 
     @staticmethod
     def _passes_year(node: dict[str, Any], intent: QueryIntent) -> bool:
         """Keep a fact only if its source publication year is in the query's range."""
         if intent.year_from is None and intent.year_to is None:
             return True
+        # Seeded Papers/Measurements may tag the year under either key; check both
+        # so provenance-year filtering doesn't silently pass every dated fact (M-37).
         yr = node.get("source_year")
+        if yr is None:
+            yr = node.get("year")
         if yr is None:
             return True  # undated fact — can't prove it's out of range
         if intent.year_from is not None and yr < intent.year_from:
@@ -243,9 +263,9 @@ class GraphRetriever:
                     and self._passes_numeric(nb, intent)
                     and self._passes_provenance(nb, intent)
                 ):
-                    fev = self._evidence_for(nb["id"])
-                    ev_ids.update(e["id"] for e in fev)
-                    res.facts.append(Fact(node=nb, subjects=[cand], evidence=fev))
+                    # Defer evidence: fetch it in ONE batch after facts are capped,
+                    # instead of a per-measurement query for facts we then drop.
+                    res.facts.append(Fact(node=nb, subjects=[cand], evidence=[]))
                 elif nb.get("label") == "Gap":
                     gap_ids.add(nb["id"])
                 elif nb.get("label") == "Contradiction":
@@ -263,6 +283,13 @@ class GraphRetriever:
         res.facts.sort(key=lambda f: f.node.get("confidence") or 0.0, reverse=True)
         res.facts = res.facts[:MAX_FACTS]
         res.solutions = res.solutions[:MAX_SOLUTIONS]
+
+        # Batch-hydrate evidence for ONLY the kept facts (was a per-measurement query
+        # inside the loop → hundreds of round-trips for facts we then dropped).
+        fact_ev = self._evidence_for_many([f.node["id"] for f in res.facts if f.node.get("id")])
+        for f in res.facts:
+            f.evidence = fact_ev.get(f.node.get("id"), [])
+            ev_ids.update(e["id"] for e in f.evidence if e.get("id"))
 
         # practice grouping
         for s in res.solutions:
@@ -317,9 +344,47 @@ class GraphRetriever:
         return ids
 
     def _load_nodes(self, ids: set[str]) -> list[dict[str, Any]]:
-        out = []
-        for nid in ids:
-            nd = self.store.get_node(nid)
-            if nd:
-                out.append(nd)
-        return out
+        # One query instead of get_node() per id (was N+1).
+        if not ids:
+            return []
+        rows = self.store.rows(
+            "MATCH (n:Node) WHERE n.id IN $ids RETURN n", {"ids": list(ids)}
+        )
+        out = [self.store._node_dict(r[0]) for r in rows]
+        return [nd for nd in out if nd.get("id")]
+
+    def _evidence_for_many(self, node_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+        """Batch evidence for many nodes in ≤3 queries (was _evidence_for per node)."""
+        import json as _json
+
+        if not node_ids:
+            return {}
+        ids = list(dict.fromkeys(node_ids))
+        out: dict[str, dict[str, dict[str, Any]]] = {nid: {} for nid in ids}
+        # node-level evidence neighbours
+        for r in self.store.rows(
+            "MATCH (n:Node)-[:Rel]-(ev:Node) WHERE n.id IN $ids "
+            "AND ev.label IN ['Evidence', 'Paper'] RETURN n.id, ev",
+            {"ids": ids},
+        ):
+            ev = self.store._node_dict(r[1])
+            if ev.get("id"):
+                out[r[0]][ev["id"]] = ev
+        # edge-level evidence ids (batched), then batch-hydrate those nodes
+        edge_ev: dict[str, set[str]] = {}
+        for r in self.store.rows(
+            "MATCH (a:Node)-[e:Rel]-(:Node) WHERE a.id IN $ids "
+            "AND e.evidence_ids IS NOT NULL RETURN a.id, e.evidence_ids",
+            {"ids": ids},
+        ):
+            try:
+                edge_ev.setdefault(r[0], set()).update(_json.loads(r[1]))
+            except (_json.JSONDecodeError, TypeError):
+                continue
+        all_eids = {e for s in edge_ev.values() for e in s}
+        ev_nodes = {nd["id"]: nd for nd in self._load_nodes(all_eids)}
+        for nid, eids in edge_ev.items():
+            for eid in eids:
+                if eid in ev_nodes:
+                    out[nid].setdefault(eid, ev_nodes[eid])
+        return {nid: list(d.values()) for nid, d in out.items()}

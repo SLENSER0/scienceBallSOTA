@@ -41,27 +41,40 @@ def query(
 
 @router.post("/query/stream")
 async def query_stream(req: QueryRequest, role: str = Depends(current_role)) -> StreamingResponse:
-    """Server-sent events: emits parse/retrieve/answer stages (§5.3 ChatStreamEvent)."""
-    from agent_service.agent import answer_query
-
-    from kg_extractors.query_parser import parse_query
+    """Server-sent events: retrieval artifacts arrive first, then the answer streams
+    token-by-token (§5.3) so a brief conclusion appears in seconds and fills in live."""
+    from agent_service.agent import answer_query_stream
+    from starlette.concurrency import run_in_threadpool
 
     async def gen() -> AsyncIterator[bytes]:
+        _sentinel = object()
         try:
-            intent = parse_query(req.query)
-            yield _sse("tool_start", {"tool": "parse", "intent": intent.to_dict()})
-            ans = answer_query(req.query, get_store(), role=role, use_llm=req.use_llm)
-            if ans.graph:
-                yield _sse("graph", ans.graph.model_dump(by_alias=True))
-            if ans.table:
-                yield _sse("table", ans.table)
-            for g in ans.gaps:
-                yield _sse("gap", g)
-            yield _sse("token", {"text": ans.answer_markdown})
-            yield _sse(
-                "evidence", {"citations": [c.model_dump(by_alias=True) for c in ans.citations]}
+            it = answer_query_stream(
+                req.query, get_store(), role=role, geography=req.geography
             )
-            yield _sse("done", {"confidence": ans.confidence, "models": ans.used_models})
+            while True:
+                item = await run_in_threadpool(next, it, _sentinel)
+                if item is _sentinel:
+                    break
+                kind, data = item
+                if kind == "meta":
+                    if data.get("graph"):
+                        yield _sse("graph", data["graph"].model_dump(by_alias=True))
+                    if data.get("table"):
+                        yield _sse("table", data["table"])
+                    for g in data.get("gaps", []):
+                        yield _sse("gap", g)
+                    yield _sse(
+                        "evidence",
+                        {"citations": [c.model_dump(by_alias=True) for c in data["citations"]]},
+                    )
+                elif kind == "token":
+                    yield _sse("token", {"text": data})
+                elif kind == "final":
+                    yield _sse(
+                        "done",
+                        {"confidence": data["confidence"], "models": data["used_models"]},
+                    )
         except (
             Exception
         ) as exc:  # surface mid-stream failures as an error event (finding query.py:43)
@@ -71,5 +84,10 @@ async def query_stream(req: QueryRequest, role: str = Depends(current_role)) -> 
 
 
 def _sse(event_type: str, data: dict) -> bytes:
-    payload = {"type": event_type, "data": data}
-    return f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n".encode()
+    """SSE frame in the shared ``event: <name>`` + ``data: <json>`` contract (§5.3).
+
+    Matches every other streaming router (chat / advise / research) so ``EventSource``
+    named-event listeners fire correctly.
+    """
+    body = json.dumps(data, ensure_ascii=False, default=str)
+    return f"event: {event_type}\ndata: {body}\n\n".encode()
