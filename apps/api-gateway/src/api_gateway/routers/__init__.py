@@ -15,6 +15,8 @@ def attach_routers(app: FastAPI) -> None:
         # batch 2
         agent_trace,
         apples,
+        # batch 4
+        arbiter_evidence,
         arbiter_resolve,
         auth,
         # batch 3
@@ -22,16 +24,22 @@ def attach_routers(app: FastAPI) -> None:
         benchmark,
         chat,
         chat_absence,
+        chat_subgraph_attach,
         citation_provenance,
         community_cluster_graph,
         community_panel,
         comparison,
         confidence_fusion,
+        contradiction_scan,
         contradictions,
         corpus_overview,
+        coverage_dashboard,
         coverage_heatmap,
         coverage_sankey,
         curation,
+        curation_diff_reagraph,
+        curation_graph_diff,
+        definition_of_done,
         demo_run,
         documents,
         edge_anomalies,
@@ -47,13 +55,17 @@ def attach_routers(app: FastAPI) -> None:
         experiments,
         export,
         extraction_eval,
+        extraction_recall_eval,
         extractor_run,
+        facet_search,
+        fact_versions,
         figure_captions,
         figures,
         gap_closure,
         gaps,
         gds_live,
         gliner_ner,
+        golden_dataset,
         graph,
         graph_encoding,
         graph_ext,
@@ -67,26 +79,37 @@ def attach_routers(app: FastAPI) -> None:
         ingest_pipeline,
         insights,
         kg_health,
+        langgraph_studio,
         link_prediction,
+        long_term_memory,
         merge_undo,
         missing_links,
         mlflow_ui,
         mp_authority,
+        new_document_sensor,
         notifications,
         ocr,
         ops_dashboards,
+        pipeline_lineage,
+        pipeline_lineage_emission,
         property_graph,
         prose_claims,
         quality_board,
         query,
         rag_checks,
+        range_facets,
+        ranking_explain,
+        regression_gate,
         rerank_live,
         research,
+        retrieval_eval_dashboard,
+        review_task_gen,
         run_transparency,
         search,
         similar_embeddings,
         similar_materials,
         similarity_links,
+        source_catalog,
         source_trust,
         subgraph_ask,
         suspect_values,
@@ -94,6 +117,7 @@ def attach_routers(app: FastAPI) -> None:
         table_versions,
         unit_provenance,
         unit_review,
+        verifier_gate,
         views,
         voi,
         warning_panel,
@@ -193,3 +217,27 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(table_versions.router)
     app.include_router(unit_review.router)
     app.include_router(warning_panel.router)
+    # --- batch 4 roadmap features ---
+    app.include_router(arbiter_evidence.router)
+    app.include_router(chat_subgraph_attach.router)
+    app.include_router(contradiction_scan.router)
+    app.include_router(coverage_dashboard.router)
+    app.include_router(curation_diff_reagraph.router)
+    app.include_router(curation_graph_diff.router)
+    app.include_router(definition_of_done.router)
+    app.include_router(extraction_recall_eval.router)
+    app.include_router(facet_search.router)
+    app.include_router(fact_versions.router)
+    app.include_router(golden_dataset.router)
+    app.include_router(langgraph_studio.router)
+    app.include_router(long_term_memory.router)
+    app.include_router(new_document_sensor.router)
+    app.include_router(pipeline_lineage.router)
+    app.include_router(pipeline_lineage_emission.router)
+    app.include_router(range_facets.router)
+    app.include_router(ranking_explain.router)
+    app.include_router(regression_gate.router)
+    app.include_router(retrieval_eval_dashboard.router)
+    app.include_router(review_task_gen.router)
+    app.include_router(source_catalog.router)
+    app.include_router(verifier_gate.router)
