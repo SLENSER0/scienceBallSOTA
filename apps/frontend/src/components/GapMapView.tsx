@@ -44,10 +44,8 @@ export function GapMapView() {
               <Target size={22} className="text-copper" /> Куда направить исследования
             </h1>
             <p className="mt-1 text-sm text-faint">
-              Каждый пробел знаний оценивает отдельный агент-приоритизатор (
-              <span className="font-mono text-copper">glm-5.2</span>, до 10 параллельно): важность ×
-              осуществимость + конкретный следующий шаг. Карточки появляются по мере готовности
-              агентов.
+              Пробелы в знаниях, отсортированные по важности и выполнимости — с конкретным
+              следующим шагом по каждому.
             </p>
           </div>
           <button
@@ -62,7 +60,7 @@ export function GapMapView() {
 
         {(running || total > 0) && (
           <div className="mt-4">
-            <AgentProgress done={done} total={total} running={running} label="агентов оценили" />
+            <AgentProgress done={done} total={total} running={running} label="пробелов оценено" />
           </div>
         )}
 
@@ -92,7 +90,7 @@ function GapCard({ g, rank }: { g: PrioritizedGap; rank: number }) {
           {g.domain && <span className="chip text-faint">{DOMAIN_RU[g.domain] ?? g.domain}</span>}
         </div>
         <div className="mt-1 font-mono text-[10px] text-faint">
-          агент не смог оценить (сбой модели) — не значит низкий приоритет
+          не удалось оценить — это не значит, что приоритет низкий
         </div>
       </div>
     );

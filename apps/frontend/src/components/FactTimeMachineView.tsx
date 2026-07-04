@@ -201,14 +201,13 @@ export function FactTimeMachineView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-6xl">
-        <div className="eyebrow mb-1">provenance / versioning · §3.7</div>
+        <div className="eyebrow mb-1">история изменений факта</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">Машина времени факта</h2>
         <p className="mb-5 max-w-3xl text-sm text-faint">
-          Эволюция каждого числа сущности: v1 — исходное извлечение (с
-          <code className="mx-1 rounded bg-white/5 px-1">extractor_run_id</code>), а каждая
-          правка куратора создаёт <b>новую версию</b> со ссылкой на решение — не перезаписывая
-          предыдущую. Reviewed-поля (<i>accepted / corrected</i>) защищены от авто-перезаписи:
-          изменить их можно только явным curation-действием (§3.7 «never overwrite reviewed»).
+          Как менялось каждое число: первая версия — из исходного документа, а каждая
+          правка эксперта создаёт <b>новую версию</b> со ссылкой на обоснование — не
+          перезаписывая предыдущую. Проверенные значения защищены от автоматической
+          перезаписи: изменить их можно только вручную, с указанием причины.
         </p>
 
         {/* Entity picker */}
@@ -216,7 +215,7 @@ export function FactTimeMachineView() {
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[240px]">
               <label className="mb-1 block text-xs uppercase tracking-wide text-faint">
-                ID сущности (узел графа)
+                Идентификатор сущности
               </label>
               <div className="flex gap-2">
                 <input
@@ -277,12 +276,12 @@ export function FactTimeMachineView() {
               <StatTile
                 label="Статус ревью"
                 value={facts.data.reviewStatus ?? '—'}
-                hint="узел целиком"
+                hint="по всей сущности"
               />
               <StatTile
-                label="extractor_run_id"
+                label="Происхождение"
                 value={facts.data.extractorRunId ? '✓' : '—'}
-                hint={facts.data.schemaVersion ? `schema ${facts.data.schemaVersion}` : ''}
+                hint={facts.data.schemaVersion ? `версия данных ${facts.data.schemaVersion}` : ''}
               />
             </div>
 
@@ -402,11 +401,11 @@ function TimelinePanel({
             <h3 className="font-display text-lg">{tl.fieldLabel}</h3>
             {reviewed ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-400">
-                <ShieldCheck size={12} /> reviewed — защищено
+                <ShieldCheck size={12} /> проверено — защищено
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-faint">
-                <Unlock size={12} /> editable
+                <Unlock size={12} /> можно править
               </span>
             )}
           </div>
@@ -429,8 +428,8 @@ function TimelinePanel({
             {reviewed && (
               <div className="mb-2 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                Поле reviewed (<b>{tl.current.reviewStatus}</b>). Правка возможна только как явное
-                curation-действие — укажите ID curation-события, оно будет зафиксировано в решении.
+                Значение проверено экспертом. Изменить его можно только вручную — укажите
+                основание, оно будет зафиксировано в решении.
               </div>
             )}
             <div className="grid gap-2 sm:grid-cols-2">
@@ -450,10 +449,10 @@ function TimelinePanel({
                   onChange={(e) => setAction(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50"
                 >
-                  <option value="correct">correct (коррекция)</option>
-                  <option value="accept">accept (принять)</option>
-                  <option value="reject">reject (отклонить)</option>
-                  <option value="reopen">reopen (переоткрыть)</option>
+                  <option value="correct">Коррекция</option>
+                  <option value="accept">Принять</option>
+                  <option value="reject">Отклонить</option>
+                  <option value="reopen">Переоткрыть</option>
                 </select>
               </label>
               <label className="text-xs text-faint sm:col-span-2">
@@ -467,7 +466,7 @@ function TimelinePanel({
               </label>
               {reviewed && (
                 <label className="text-xs text-faint sm:col-span-2">
-                  ID curation-события (обязательно для reviewed-поля)
+                  Основание правки (обязательно для проверенного значения)
                   <input
                     value={ceId}
                     onChange={(e) => setCeId(e.target.value)}
@@ -543,9 +542,9 @@ function TimelinePanel({
                     <ScrollText size={10} /> решение {v.decisionId}
                   </span>
                 )}
-                {v.curationEventId && <span>curation {v.curationEventId}</span>}
-                {v.extractorRunId && <span>run {v.extractorRunId}</span>}
-                {v.supersededBy && <span>→ superseded_by v{v.supersededBy}</span>}
+                {v.curationEventId && <span>событие {v.curationEventId}</span>}
+                {v.extractorRunId && <span>извлечение {v.extractorRunId}</span>}
+                {v.supersededBy && <span>→ заменена версией v{v.supersededBy}</span>}
               </div>
             </li>
           ))}

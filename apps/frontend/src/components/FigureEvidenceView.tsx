@@ -117,13 +117,12 @@ export function FigureEvidenceView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-6xl">
-        <div className="eyebrow mb-1">доказательность · §23.34</div>
+        <div className="eyebrow mb-1">доказательность</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">Фигуры как доказательства</h2>
         <p className="mb-5 max-w-3xl text-[13px] text-faint">
-          Графики, микроструктуры и схемы извлекаются из PDF в граф как узлы{' '}
-          <span className="font-mono text-copper">:Figure</span> с номером страницы и bbox и
-          связываются с фактами (<span className="font-mono text-copper">SUPPORTED_BY</span>). Кликните
-          по фигуре — увидите её либо кропом, либо подсвеченной на реальной странице статьи.
+          Графики, микроструктуры и схемы из статей — рядом с фактами, которые они
+          подтверждают. Кликните по фигуре: увидите её отдельным вырезом или
+          подсвеченной прямо на странице статьи.
         </p>
 
         {/* Controls */}
@@ -222,7 +221,7 @@ export function FigureEvidenceView() {
                         </span>
                         {selected.supported_facts > 0 && (
                           <span className="chip text-copper">
-                            {selected.supported_facts} факт(ов) · SUPPORTED_BY
+                            {selected.supported_facts} факт(ов)
                           </span>
                         )}
                       </div>
@@ -257,8 +256,8 @@ export function FigureEvidenceView() {
                   <p className="mt-2 text-[11px] text-faint">
                     {currentDoc?.title ? `${currentDoc.title} · ` : ''}
                     {mode === 'highlight'
-                      ? 'Оранжевой рамкой выделен bbox фигуры на исходной странице PDF.'
-                      : 'Точный вырез фигуры из PDF по сохранённому bbox.'}
+                      ? 'Оранжевой рамкой выделена фигура на исходной странице статьи.'
+                      : 'Точный вырез фигуры из статьи.'}
                   </p>
                 </>
               ) : (

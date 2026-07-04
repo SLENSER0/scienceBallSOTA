@@ -245,11 +245,10 @@ export function CurationDiffReagraphView() {
         <GitCompareArrows className="text-cyan-400" size={22} />
         <div>
           <h1 className="text-lg font-semibold text-slate-100">
-            Graph diff · до/после курирования
+            Что изменилось при курировании
           </h1>
           <p className="text-xs text-slate-400">
-            §16.10 — только изменения курирования (по CurationEvent), отделены от ingestion.
-            Формат Reagraph: added / removed / changed с before/after.
+            Показаны только правки, сделанные при курировании: что добавлено, удалено и изменено — с прежним и новым значением.
           </p>
         </div>
         {(isFetching || isLoading) && <Loader2 className="animate-spin text-slate-500" size={16} />}
@@ -258,7 +257,7 @@ export function CurationDiffReagraphView() {
       {/* filters */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-700/50 bg-slate-900/30 p-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-400">
-          <Filter size={13} /> Фильтр окна курирования
+          <Filter size={13} /> Фильтры
         </div>
         <label className="flex flex-col gap-0.5 text-[11px] text-slate-400">
           Действие
@@ -275,7 +274,7 @@ export function CurationDiffReagraphView() {
           </select>
         </label>
         <label className="flex flex-col gap-0.5 text-[11px] text-slate-400">
-          Куратор (actor_id)
+          Куратор
           <input
             value={actor}
             onChange={(e) => setActor(e.target.value)}
@@ -284,7 +283,7 @@ export function CurationDiffReagraphView() {
           />
         </label>
         <label className="flex flex-col gap-0.5 text-[11px] text-slate-400">
-          С (created_at ≥)
+          С даты
           <input
             type="datetime-local"
             value={since}
@@ -293,7 +292,7 @@ export function CurationDiffReagraphView() {
           />
         </label>
         <label className="flex flex-col gap-0.5 text-[11px] text-slate-400">
-          По (created_at ≤)
+          По дату
           <input
             type="datetime-local"
             value={until}
@@ -314,7 +313,7 @@ export function CurationDiffReagraphView() {
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-300">
-          <AlertTriangle size={16} /> Ошибка загрузки diff: {String((error as Error).message)}
+          <AlertTriangle size={16} /> Ошибка загрузки изменений: {String((error as Error).message)}
         </div>
       )}
 
@@ -332,8 +331,7 @@ export function CurationDiffReagraphView() {
 
       {data && totalNodes === 0 && !isLoading && (
         <div className="rounded-lg border border-slate-700/50 bg-slate-900/30 p-6 text-center text-sm text-slate-400">
-          В выбранном окне нет курирующих изменений. Выполните правку/accept/merge в очереди
-          курирования — они появятся здесь как diff.
+          За выбранный период правок курирования нет. Утвердите, объедините или исправьте что-нибудь в очереди курирования — изменения появятся здесь.
         </div>
       )}
 

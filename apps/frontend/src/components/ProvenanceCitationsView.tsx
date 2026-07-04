@@ -204,13 +204,12 @@ export function ProvenanceCitationsView() {
     <div className="mx-auto max-w-4xl px-6 py-6">
       <div className="mb-1 flex items-center gap-2">
         <ShieldCheck size={18} className="text-copper" />
-        <h1 className="text-lg font-semibold text-ink">Провенанс цитат</h1>
+        <h1 className="text-lg font-semibold text-ink">Происхождение цитат</h1>
       </div>
       <p className="mb-5 text-sm text-muted">
-        Каждая цитата ответа уже несёт гео · год · дату актуализации. Здесь провенанс достроен до
-        полного: <span className="text-nickel">владелец · лаборатория · версия · свежесть</span>,
-        а также извлекатель/модель и статус курирования — из каталога/графа. Прямой прирост
-        доверия к ответу.
+        Каждая цитата ответа уже несёт географию, год и дату актуализации. Здесь картина
+        дополнена до полной: <span className="text-nickel">владелец · лаборатория · версия ·
+        свежесть</span> и статус проверки. Прямой прирост доверия к ответу.
       </p>
 
       <textarea
@@ -228,13 +227,13 @@ export function ProvenanceCitationsView() {
           className="chip flex items-center gap-1.5 border-copper/40 text-copper hover:bg-copper/10 disabled:opacity-40"
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-          Спросить и раскрыть провенанс
+          Спросить и показать происхождение
         </button>
         <button
           onClick={() => void loadDemo()}
           disabled={busy}
           className="chip flex items-center gap-1.5 border-line text-nickel hover:border-copper/40 hover:text-copper disabled:opacity-40"
-          title="Показать полный провенанс на демо-данных (§10.10)"
+          title="Показать полное происхождение на демо-данных"
         >
           <Beaker size={13} /> Демо
         </button>
@@ -257,7 +256,7 @@ export function ProvenanceCitationsView() {
           <span className="chip text-contradiction">устаревших: {s.stale}</span>
           {s.unknown > 0 && <span className="chip text-muted">без даты: {s.unknown}</span>}
           {s.missing > 0 && (
-            <span className="chip text-muted" title="Цитаты без узла источника в графе">
+            <span className="chip text-muted" title="Цитаты, для которых источник не найден">
               не найдено: {s.missing}
             </span>
           )}
@@ -310,7 +309,7 @@ export function ProvenanceCitationsView() {
               </div>
               {!p.owner && !p.lab && !p.version && !p.extractor && !p.model && (
                 <p className="mt-2 text-xs text-faint">
-                  В графе для этого источника нет метаданных владельца/лаборатории — показана только
+                  Для этого источника не указаны владелец и лаборатория — показана только
                   свежесть.
                 </p>
               )}

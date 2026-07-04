@@ -30,7 +30,7 @@ export function AdminView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-5xl">
-        <div className="eyebrow mb-1">Администрирование · governance</div>
+        <div className="eyebrow mb-1">Администрирование</div>
         <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
           <ShieldCheck size={22} className="text-copper" /> Панель управления графом
         </h1>
@@ -86,7 +86,7 @@ export function AdminView() {
         </Section>
 
         {/* Lineage runs */}
-        <Section icon={<Activity size={15} />} title="Lineage · прогоны экстрактора">
+        <Section icon={<Activity size={15} />} title="История загрузки данных">
           {lineage.isLoading ? (
             <Loading />
           ) : (
@@ -94,7 +94,7 @@ export function AdminView() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left font-mono text-[10px] uppercase tracking-wide text-faint">
-                    <th className="px-2 py-1">run</th>
+                    <th className="px-2 py-1">загрузка</th>
                     <th className="px-2 py-1">тип</th>
                     <th className="px-2 py-1">создан</th>
                     <th className="px-2 py-1 text-right">узлов</th>
@@ -120,7 +120,7 @@ export function AdminView() {
         </Section>
 
         {/* Graph analytics — degree centrality (most connected entities) */}
-        <Section icon={<Waypoints size={15} />} title="Аналитика графа · центральность (топ-узлы)">
+        <Section icon={<Waypoints size={15} />} title="Самые связанные объекты графа">
           {algos.isLoading ? (
             <Loading />
           ) : (

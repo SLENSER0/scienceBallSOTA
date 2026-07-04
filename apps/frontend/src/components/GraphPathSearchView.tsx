@@ -99,11 +99,11 @@ export function GraphPathSearchView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-4xl">
-        <div className="eyebrow mb-1">graph explorer · path search · §17.8</div>
+        <div className="eyebrow mb-1">связи в графе</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">Путь между сущностями</h2>
         <p className="mb-5 max-w-2xl text-sm text-faint">
-          Через ЧТО материал связан со свойством? Выберите источник и цель — граф найдёт
-          реляционные пути и подсветит лучший: цепочку узлов и типов связей от материала до
+          Через ЧТО материал связан со свойством? Выберите источник и цель — система найдёт
+          пути связей и подсветит лучший: цепочку узлов и типов связей от материала до
           свойства.
         </p>
 
@@ -186,7 +186,7 @@ export function GraphPathSearchView() {
               <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] text-faint/80">
                 <span>узлов в подграфе: {data.graph.nodes.length}</span>
                 <span>рёбер: {data.graph.edges.length}</span>
-                <span>onPath рёбер: {data.best?.edgeIds.length ?? 0}</span>
+                <span>рёбер в пути: {data.best?.edgeIds.length ?? 0}</span>
               </div>
             </div>
 
@@ -218,7 +218,7 @@ export function GraphPathSearchView() {
 
             <div className="mt-4 flex items-center gap-1.5 text-[11px] text-faint">
               <Waypoints size={12} className="text-copper" /> {data.count} путей от «{data.source.name}»
-              до «{data.target.name}»{data.truncated ? ' (перебор усечён)' : ''}
+              до «{data.target.name}»{data.truncated ? ' (показаны не все)' : ''}
             </div>
           </>
         )}

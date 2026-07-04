@@ -290,14 +290,12 @@ export function AgentTraceView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-3xl">
-        <div className="eyebrow text-copper">§18.3 · Agent trace viewer</div>
+        <div className="eyebrow text-copper">Разбор ответа по шагам</div>
         <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink">
-          Дерево трассировки агента
+          Как собирается ответ
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Полное дерево спанов <b>node → tool → LLM</b> одного chat-запроса: графовые узлы
-          (§7.5), под ними реальные tool-вызовы по живому графу и LLM-спан синтеза. Тайминги,
-          статусы, span_id/trace_id и доменные атрибуты (kg.* / tool.* / llm.*).
+          Каждый ответ раскладывается на шаги: какие данные подняли, что проверили и сколько времени ушло на каждый шаг.
         </p>
 
         {/* Composer */}
@@ -313,7 +311,7 @@ export function AgentTraceView() {
                 }
               }}
               rows={2}
-              placeholder="Вопрос к научному агенту…"
+              placeholder="Научный вопрос…"
               className="min-h-[52px] flex-1 resize-none bg-transparent px-3 py-2 text-[15px] leading-snug text-ink placeholder:text-faint focus:outline-none"
             />
             <button
@@ -326,7 +324,7 @@ export function AgentTraceView() {
               ) : (
                 <ArrowRight size={16} />
               )}
-              <span className="hidden sm:inline">Построить трейс</span>
+              <span className="hidden sm:inline">Показать шаги</span>
             </button>
           </div>
         </div>
@@ -361,7 +359,7 @@ export function AgentTraceView() {
             {/* Header: intent + totals + open trace */}
             <div className="flex flex-wrap items-center gap-2">
               {data.intent && (
-                <span className="chip text-copper" title="Классифицированный интент (§13.8)">
+                <span className="chip text-copper" title="Тип вопроса">
                   <Cpu size={12} className="mr-1 inline" />
                   {data.intent.intent} · {(data.intent.confidence * 100).toFixed(0)}%
                 </span>

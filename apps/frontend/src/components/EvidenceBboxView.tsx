@@ -125,12 +125,12 @@ export function EvidenceBboxView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-6xl">
-        <div className="eyebrow mb-1">доказательность · §14.9</div>
-        <h2 className="mb-1 font-display text-2xl font-semibold">Bbox-подсветка цитаты на странице</h2>
+        <div className="eyebrow mb-1">доказательность</div>
+        <h2 className="mb-1 font-display text-2xl font-semibold">Цитата, подсвеченная на странице</h2>
         <p className="mb-5 max-w-3xl text-[13px] text-faint">
-          Текстовое доказательство несёт локатор (документ · страница · цитата), но без пиксельной
-          геометрии. Здесь цитата ищется на исходной странице PDF полнотекстовым поиском и
-          подсвечивается точным прямоугольником — «клик по цитате → прыжок к месту на скане».
+          У каждой цитаты известны документ, страница и точный текст. Здесь цитата находится
+          на исходной странице статьи и подсвечивается прямо на ней — «клик по цитате →
+          переход к нужному месту».
         </p>
 
         <div className="panel mb-5 flex flex-wrap items-center gap-3 p-3">

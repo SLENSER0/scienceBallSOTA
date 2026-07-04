@@ -147,13 +147,12 @@ export function AgentReasoningTimelineView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-3xl">
-        <div className="eyebrow text-copper">§17.7 · Agent transparency</div>
+        <div className="eyebrow text-copper">Как ассистент ищет ответ</div>
         <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink">
-          Ход мысли агента
+          Ход мысли ассистента
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Реальный tool-call таймлайн по живому графу: resolve → graph → vector → evidence → gap.
-          Каждый шаг раскрывается — что искали, что нашли, за сколько.
+          Пошагово видно, как ассистент ищет ответ: что искали, что нашли и сколько это заняло.
         </p>
 
         {/* Composer */}
@@ -169,7 +168,7 @@ export function AgentReasoningTimelineView() {
                 }
               }}
               rows={2}
-              placeholder="Вопрос к научному агенту…"
+              placeholder="Научный вопрос…"
               className="min-h-[52px] flex-1 resize-none bg-transparent px-3 py-2 text-[15px] leading-snug text-ink placeholder:text-faint focus:outline-none"
             />
             <button
@@ -217,7 +216,7 @@ export function AgentReasoningTimelineView() {
             {/* Header: intent + totals */}
             <div className="flex flex-wrap items-center gap-2">
               {data.intent && (
-                <span className="chip text-copper" title="Классифицированный интент (§13.8)">
+                <span className="chip text-copper" title="Тип вопроса">
                   <Cpu size={12} className="mr-1 inline" />
                   {data.intent.intent} · {(data.intent.confidence * 100).toFixed(0)}%
                 </span>

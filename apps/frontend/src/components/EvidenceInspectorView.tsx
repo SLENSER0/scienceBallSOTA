@@ -254,10 +254,10 @@ export function EvidenceInspectorView() {
         <h1 className="text-lg font-semibold text-ink">Инспектор доказательства</h1>
       </div>
       <p className="mb-5 text-sm text-muted">
-        Полная цепочка доверия к факту (§5.2.6): извлечённое утверждение, источник и
-        span в контексте, распарсенный объект, версия экстрактора/модели, решение
-        ревьюера и ссылка на ребро графа. Введите id доказательства или id ребра вида{' '}
-        <span className="font-mono text-nickel">source|TYPE|target</span>.
+        Полная цепочка доверия к факту: извлечённое утверждение, источник и цитата в
+        контексте, разобранные данные, кто и когда проверил, и связанная с фактом связь в
+        графе. Введите идентификатор доказательства или связи вида{' '}
+        <span className="font-mono text-nickel">источник|СВЯЗЬ|цель</span>.
       </p>
 
       <div className="flex gap-2">
@@ -270,7 +270,7 @@ export function EvidenceInspectorView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="ev:... или source|TYPE|target"
+            placeholder="идентификатор доказательства или источник|СВЯЗЬ|цель"
             className="w-full rounded-md border border-line bg-surface/60 py-2 pl-9 pr-3 text-sm text-ink outline-none focus:border-copper/50"
           />
         </div>
@@ -415,10 +415,10 @@ function ParsedObjectBlock({ obj }: { obj: Record<string, unknown> }) {
   return (
     <div>
       <div className="eyebrow mb-1.5 flex items-center gap-1.5">
-        <Braces size={12} className="text-copper" /> распарсенный объект
+        <Braces size={12} className="text-copper" /> разобранные данные факта
       </div>
       {keys.length === 0 ? (
-        <div className="text-sm text-faint">Структурированный объект отсутствует.</div>
+        <div className="text-sm text-faint">Структурированных данных нет.</div>
       ) : (
         <pre className="max-h-72 overflow-auto rounded-md border border-line bg-surface/50 px-3 py-2.5 font-mono text-[11px] leading-relaxed text-nickel">
           {JSON.stringify(obj, null, 2)}
@@ -443,10 +443,10 @@ function ExtractorBlock({ x }: { x: ExtractorInfo }) {
   return (
     <div>
       <div className="eyebrow mb-1.5 flex items-center gap-1.5">
-        <Cpu size={12} className="text-copper" /> экстрактор / версия модели
+        <Cpu size={12} className="text-copper" /> как получен факт
       </div>
       {empty ? (
-        <div className="text-sm text-faint">Прогон-источник не привязан.</div>
+        <div className="text-sm text-faint">Источник обработки не указан.</div>
       ) : (
         <dl className="space-y-2 rounded-md border border-line bg-surface/40 px-3 py-2.5 text-sm">
           <Row label="extractor" value={x.extractor} />
@@ -459,7 +459,7 @@ function ExtractorBlock({ x }: { x: ExtractorInfo }) {
           <Row label="run id" value={x.run_id} />
           <Row
             label="связь"
-            value={x.linked_via === 'edge' ? 'EXTRACTED_BY (ребро)' : x.linked_via ?? undefined}
+            value={x.linked_via === 'edge' ? 'через связь графа' : x.linked_via ?? undefined}
           />
         </dl>
       )}
@@ -541,7 +541,7 @@ function EdgesBlock({
   return (
     <div>
       <div className="eyebrow mb-1.5 flex items-center gap-1.5">
-        <GitBranch size={12} className="text-copper" /> сгенерированные рёбра графа
+        <GitBranch size={12} className="text-copper" /> связи факта в графе
       </div>
       {edges.length === 0 ? (
         <div className="text-sm text-faint">Связанных рёбер не найдено.</div>

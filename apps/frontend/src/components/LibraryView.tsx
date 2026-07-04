@@ -118,7 +118,7 @@ export function LibraryView() {
               onClick={() => question.trim() && startDeep(question)}
               disabled={deep.running || !question.trim() || !deepStatus.data?.available}
               className="flex items-center gap-2 rounded-md border border-copper/40 bg-copper/10 px-4 text-sm text-copper transition enabled:hover:bg-copper/20 disabled:opacity-40"
-              title={deepStatus.data?.available ? 'Deep-research (open_deep_research + реальный веб-поиск, ~2-3 мин)' : 'Движок недоступен'}
+              title={deepStatus.data?.available ? 'Глубокое исследование по реальным веб-источникам (~2-3 мин)' : 'Сейчас недоступно'}
             >
               {deep.running ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}
               Deep-research
@@ -230,7 +230,7 @@ function DeepResearchPanel() {
     <div className="mt-4 rounded-md border border-copper/30 bg-surface/40 p-4">
       <div className="mb-3 flex items-center gap-2 text-xs text-faint">
         <Brain size={14} className="text-copper" />
-        open_deep_research · реальный веб-поиск
+        Реальный веб-поиск по научным источникам
         {deep.running && <Loader2 size={12} className="animate-spin text-copper" />}
       </div>
 
@@ -331,7 +331,7 @@ function ManualAddForm({ onAdded }: { onAdded: () => void }) {
         </div>
         <input value={f.url} onChange={set('url')} placeholder="URL источника"
           className="w-full rounded-md border border-line bg-surface/60 px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-copper/50" />
-        <textarea value={f.abstract} onChange={set('abstract')} rows={3} placeholder="Аннотация (станет Evidence в графе)"
+        <textarea value={f.abstract} onChange={set('abstract')} rows={3} placeholder="Аннотация статьи"
           className="w-full resize-none rounded-md border border-line bg-surface/60 px-3 py-2 text-sm text-ink outline-none placeholder:text-faint focus:border-copper/50" />
       </div>
       <button

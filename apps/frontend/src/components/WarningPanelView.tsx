@@ -82,9 +82,9 @@ const CATEGORY_META: Record<
   { icon: typeof TriangleAlert; hint: string }
 > = {
   contradictions: { icon: GitCompareArrows, hint: 'литература расходится в значениях' },
-  unsupported_claims: { icon: Quote, hint: 'числа в ответе без inline-цитаты [n]' },
-  low_confidence: { icon: TriangleAlert, hint: 'узлы/связи/цитаты ниже порога уверенности' },
-  missing_data: { icon: AlertOctagon, hint: 'пробелы типа missing_* — данных нет' },
+  unsupported_claims: { icon: Quote, hint: 'числа в ответе без ссылки на источник' },
+  low_confidence: { icon: TriangleAlert, hint: 'факты и цитаты с низкой уверенностью' },
+  missing_data: { icon: AlertOctagon, hint: 'нет данных по теме' },
 };
 
 // Цвет по severity — critical/high читаются как опасность, medium/low — как предупреждение.
@@ -143,13 +143,13 @@ export function WarningPanelView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-4xl">
-        <div className="eyebrow mb-1">guardrails · панель рисков ответа · §17.7</div>
+        <div className="eyebrow mb-1">панель рисков ответа</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">
           Единая панель предупреждений
         </h2>
         <p className="mb-6 max-w-3xl text-sm text-muted">
           Все риски ответа в одном месте: <b>противоречия</b>, <b>низкая уверенность</b>,{' '}
-          <b>пробелы данных</b> и <b>числа без цитат</b> (guardrail §13.12). Цвет — по
+          <b>пробелы данных</b> и <b>числа без ссылок на источник</b>. Цвет — по
           серьёзности; клик по карточке ведёт к деталям на соответствующем экране.
         </p>
 
@@ -162,7 +162,7 @@ export function WarningPanelView() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && query.trim()) run('query');
               }}
-              placeholder="Вопрос к агенту (напр. «твёрдость Al-Cu после старения 180°C 2ч»)"
+              placeholder="Вопрос (напр. «твёрдость Al-Cu после старения 180°C 2ч»)"
               className="min-w-[16rem] flex-1 rounded-lg border border-line bg-base px-3 py-2 text-sm outline-none focus:border-copper/60"
             />
             <button
@@ -180,7 +180,7 @@ export function WarningPanelView() {
               disabled={loading}
               className="text-xs text-muted underline decoration-dotted hover:text-ink"
             >
-              …или проверить текущий ответ из экрана «Запрос» (без повторного прогона LLM)
+              …или проверить текущий ответ из экрана «Запрос» (без повторного запроса)
             </button>
           )}
         </div>

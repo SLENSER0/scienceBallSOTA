@@ -27,14 +27,14 @@ export function DashboardView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-5xl">
-        <div className="eyebrow mb-1">командный центр · состояние знаний</div>
+        <div className="eyebrow mb-1">состояние базы знаний</div>
         <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
           <Radar size={22} className="text-copper" /> Обзор базы знаний
         </h1>
 
         {q.isLoading ? (
           <div className="mt-8 flex items-center gap-2 font-mono text-sm text-faint">
-            <Loader2 size={15} className="animate-spin text-copper" /> агент-аналитик готовит обзор…
+            <Loader2 size={15} className="animate-spin text-copper" /> Готовим обзор…
           </div>
         ) : (
           <>
@@ -57,7 +57,7 @@ export function DashboardView() {
             {/* Agent briefing */}
             <div className="panel mt-5 border-copper/30 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm text-copper">
-                <Sparkles size={15} /> Аналитический обзор (агент)
+                <Sparkles size={15} /> Аналитический обзор
                 {q.data?.model && (
                   <span className="ml-auto font-mono text-[10px] text-faint">{q.data.model}</span>
                 )}

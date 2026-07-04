@@ -52,10 +52,10 @@ export function ERCandidatesView() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-line px-6 py-4">
         <div className="flex items-center gap-2 text-sm text-nickel">
-          <Layers size={16} className="text-copper" /> Разрешение сущностей — кандидаты
+          <Layers size={16} className="text-copper" /> Кандидаты на слияние дубликатов
         </div>
         <div className="mt-0.5 font-mono text-[10px] text-faint">
-          группы слияния Splink · §8.8 · {q.data?.count ?? 0}
+          найдено групп: {q.data?.count ?? 0}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -88,7 +88,7 @@ export function ERCandidatesView() {
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         {q.isLoading ? (
           <div className="flex items-center gap-2 font-mono text-xs text-faint">
-            <Loader2 size={14} className="animate-spin text-copper" /> прогон ER…
+            <Loader2 size={14} className="animate-spin text-copper" /> поиск дубликатов…
           </div>
         ) : q.isError ? (
           <div className="text-sm text-contradiction">Не удалось загрузить кандидатов.</div>

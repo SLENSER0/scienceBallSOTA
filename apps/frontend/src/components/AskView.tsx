@@ -216,7 +216,7 @@ export function AskView() {
             <div className="mt-8 flex items-center gap-3 text-muted">
               <Loader2 size={18} className="animate-spin text-copper" />
               <span className="font-mono text-sm">
-                Распутываю клубок: разбор запроса → поиск фактов по графу → синтез…
+                Распутываю клубок: ищу и сверяю факты в графе знаний…
               </span>
             </div>
           )}
@@ -242,7 +242,7 @@ export function AskView() {
       {/* Right: the клубок */}
       <section className="hidden min-h-0 border-l border-line bg-graphite/40 lg:flex lg:flex-col">
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-          <div className="eyebrow">Клубок знаний · подграф ответа</div>
+          <div className="eyebrow">Клубок знаний · связи ответа</div>
           <GraphLegend />
         </div>
         <div className="min-h-0 flex-1">

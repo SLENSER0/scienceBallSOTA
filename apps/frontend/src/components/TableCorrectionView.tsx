@@ -208,7 +208,7 @@ export function TableCorrectionView() {
       setLineage(data.lineage);
       setDraft(data.created.rows.map((row) => [...row]));
       setReason('');
-      setToast(`Сохранена версия v${data.created.version} (corrected=true, parser_used=manual)`);
+      setToast(`Сохранена новая версия v${data.created.version}`);
       // Refresh the table list so the «исправлено» badge updates.
       void loadTablesSilent(docId);
     } catch (e) {
@@ -234,26 +234,23 @@ export function TableCorrectionView() {
       <div className="mb-1 flex items-center gap-2">
         <Wrench size={18} className="text-copper" />
         <h1 className="text-lg font-semibold text-ink">
-          Fallback-парсеры и ручная правка таблиц
+          Правка распознанных таблиц
         </h1>
       </div>
       <p className="mb-5 text-sm text-muted">
-        Устойчивость к трудным PDF: цепочка docling → marker → unstructured → встроенный парсер. Если
-        docling недоступен, документ всё равно разбирается fallback-парсером. Куратор может исправить
-        распознанную таблицу — правка сохраняется как <b>новая версия</b> артефакта (corrected=true,
-        parser_used=manual), не затирая исходный вывод парсера.
+        Даже со сложных PDF таблицы всё равно распознаются. Если что-то распозналось неверно, вы можете исправить таблицу вручную — правка сохраняется как <b>новая версия</b>, а исходный вариант остаётся.
       </p>
 
       {/* Fallback chain status */}
       {status && (
         <div className="mb-6 rounded-md border border-line bg-surface/40 p-4">
           <div className="mb-3 flex items-center gap-2">
-            <span className="eyebrow">цепочка fallback</span>
+            <span className="eyebrow">надёжность распознавания</span>
             <span
               className={`chip ${status.primaryAvailable ? 'text-verified' : 'text-gap'}`}
-              title="Доступность основного парсера (docling)"
+              title="Доступность распознавания"
             >
-              {status.primaryAvailable ? 'docling онлайн' : 'docling офлайн → fallback'}
+              {status.primaryAvailable ? 'распознавание доступно' : 'резервный режим'}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -442,7 +439,7 @@ export function TableCorrectionView() {
                       {v.version === 0 ? <FileText size={12} /> : <Pencil size={12} />}
                       {v.corrected ? 'ручная правка' : 'исходник парсера'}
                     </span>
-                    <span className="text-faint">parser_used={v.parserUsed}</span>
+                    <span className="text-faint">способ: {v.parserUsed}</span>
                     {v.author && <span className="text-faint">· {v.author}</span>}
                     {v.reason && <span className="italic text-muted">· «{v.reason}»</span>}
                     {v.version === lineage.current.version && (

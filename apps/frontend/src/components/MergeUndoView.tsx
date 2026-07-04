@@ -84,10 +84,10 @@ export function MergeUndoView() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-line px-6 py-4">
         <div className="flex items-center gap-2 text-sm text-nickel">
-          <Undo2 size={16} className="text-copper" /> Откат слияний — обратимость курирования
+          <Undo2 size={16} className="text-copper" /> Откат ошибочных слияний
         </div>
         <div className="mt-0.5 font-mono text-[10px] text-faint">
-          журнал merge · §8.9 · обратимо: {reversibleCount} из {all.length}
+          можно откатить: {reversibleCount} из {all.length}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <div className="flex gap-1">
@@ -102,8 +102,7 @@ export function MergeUndoView() {
             ))}
           </div>
           <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-faint">
-            <ShieldCheck size={11} className="text-verified" /> ничего не удаляется — только
-            компенсирующие события
+            <ShieldCheck size={11} className="text-verified" /> ничего не удаляется безвозвратно
           </span>
         </div>
       </div>

@@ -126,17 +126,12 @@ export function FigureCaptionEvidenceView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-6xl">
-        <div className="eyebrow mb-1">доказательность · §5.7 / §8.3</div>
-        <h2 className="mb-1 font-display text-2xl font-semibold">Подписи рисунков как evidence</h2>
+        <div className="eyebrow mb-1">доказательность</div>
+        <h2 className="mb-1 font-display text-2xl font-semibold">Подписи рисунков как доказательства</h2>
         <p className="mb-5 max-w-3xl text-[13px] text-faint">
-          Каждая подпись рисунка превращается в узел{' '}
-          <span className="font-mono text-copper">:Evidence</span> с{' '}
-          <span className="font-mono text-copper">source_type=figure_caption</span>, реальным
-          номером страницы и точным span-ом (<span className="font-mono">char_start/char_end</span>)
-          в тексте страницы, связанный со своей фигурой (
-          <span className="font-mono text-copper">HAS_CAPTION</span> /{' '}
-          <span className="font-mono text-copper">CAPTION_OF</span>). Так подпись становится
-          цитируемым, span-заякоренным источником для мультимодального анализа.
+          Каждая подпись рисунка становится отдельным цитируемым доказательством: с номером
+          страницы, точным местом в тексте и привязкой к своему рисунку. Так на подпись можно
+          сослаться так же, как на любой другой источник.
         </p>
 
         {/* Controls */}
@@ -161,7 +156,7 @@ export function FigureCaptionEvidenceView() {
             className="flex items-center gap-2 rounded-md bg-copper/15 px-3 py-2 text-sm text-copper transition hover:bg-copper/25 disabled:opacity-50"
           >
             {building ? <Loader2 size={15} className="animate-spin" /> : <ScanText size={15} />}
-            Построить evidence подписей
+            Собрать доказательства из подписей
           </button>
         </div>
 
@@ -176,11 +171,10 @@ export function FigureCaptionEvidenceView() {
           <div className="panel flex flex-col items-center gap-2 p-10 text-center">
             <FileImage size={28} className="text-faint" />
             <div className="text-sm text-nickel">
-              Для этого документа evidence из подписей ещё не построены
+              Для этого документа доказательства из подписей ещё не собраны
             </div>
             <div className="text-[11px] text-faint">
-              Нажмите «Построить evidence подписей» — переиспользует уже извлечённые фигуры, иначе
-              извлечёт их из PDF на лету.
+              Нажмите «Собрать доказательства из подписей».
             </div>
           </div>
         ) : (

@@ -219,14 +219,12 @@ export function RunTransparencyView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-3xl">
-        <div className="eyebrow text-copper">§13.23 · Transparency & reproducibility</div>
+        <div className="eyebrow text-copper">Проверяемость и воспроизводимость</div>
         <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink">
           Прозрачность и воспроизводимость прогона
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Виден весь прогон агента: tool_trace, точный сгенерированный Cypher каждой стадии
-          и детерминированный replay по seed. План исполняется дважды — совпадение
-          дайджестов доказывает воспроизводимость.
+          Виден каждый шаг ответа и его источник. Один и тот же запрос повторяется дважды и даёт идентичный результат — это доказывает воспроизводимость.
         </p>
 
         {/* Composer */}
@@ -242,7 +240,7 @@ export function RunTransparencyView() {
                 }
               }}
               rows={2}
-              placeholder="Вопрос к научному агенту…"
+              placeholder="Научный вопрос…"
               className="min-h-[52px] flex-1 resize-none bg-transparent px-3 py-2 text-[15px] leading-snug text-ink placeholder:text-faint focus:outline-none"
             />
             <button
@@ -385,7 +383,7 @@ export function RunTransparencyView() {
 
             {/* Phase timeline with generated Cypher */}
             <div className="mt-5">
-              <div className="eyebrow mb-2 text-faint">Стадии прогона · сгенерированный Cypher</div>
+              <div className="eyebrow mb-2 text-faint">Стадии прогона · точные запросы к графу</div>
               <div className="relative space-y-1 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-nickel/25">
                 {data.phases.map((p, i) => (
                   <PhaseCard key={p.phase} step={p} index={i} />
@@ -395,7 +393,7 @@ export function RunTransparencyView() {
 
             {/* tool_trace table */}
             <div className="mt-6">
-              <div className="eyebrow mb-2 text-faint">tool_trace (§13.23)</div>
+              <div className="eyebrow mb-2 text-faint">Журнал шагов</div>
               <div className="panel overflow-x-auto p-0">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-nickel/20 text-[11px] text-faint">

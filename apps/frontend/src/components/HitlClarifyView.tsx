@@ -124,11 +124,10 @@ export function HitlClarifyView() {
       <div className="mx-auto w-full max-w-3xl space-y-5">
         <header className="space-y-1">
           <h1 className="flex items-center gap-2 text-lg font-semibold text-nickel">
-            <Sparkles size={18} className="text-copper" /> Уточнение в диалоге (HITL)
+            <Sparkles size={18} className="text-copper" /> Уточнение в диалоге
           </h1>
           <p className="text-sm text-faint">
-            Если в вопросе есть неоднозначная критичная сущность, агент остановится и
-            переспросит — вместо того чтобы угадывать. §13.21
+            Если в вопросе что-то можно понять двояко, ассистент остановится и переспросит — вместо того чтобы угадывать.
           </p>
         </header>
 
@@ -141,7 +140,7 @@ export function HitlClarifyView() {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit(q);
               }}
               rows={2}
-              placeholder="Задайте вопрос с потенциально неоднозначной сущностью…"
+              placeholder="Задайте вопрос, который можно понять по-разному…"
               className="min-h-[3rem] flex-1 resize-none bg-transparent px-3 py-2 text-sm text-nickel outline-none placeholder:text-faint"
             />
             <button

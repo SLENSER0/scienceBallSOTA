@@ -103,11 +103,10 @@ export function SimilarEmbeddingsView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-4xl">
-        <div className="eyebrow mb-1">семантические аналоги · vector-search · node embeddings · §3.13</div>
+        <div className="eyebrow mb-1">семантические аналоги</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">Похожие материалы и режимы</h2>
         <p className="mb-5 max-w-2xl text-sm text-faint">
-          Находим сущности, семантически близкие по эмбеддингам названий и описаний (косинусная
-          близость), — «найди аналоги этого сплава или режима». В отличие от «Вероятных связей»
+          Находим сущности, близкие по смыслу к выбранной — «найди аналоги этого сплава или режима». В отличие от «Вероятных связей»
           (общие соседи в графе) здесь близкими становятся даже никак не соединённые узлы со
           схожим смыслом.
         </p>
@@ -199,7 +198,7 @@ export function SimilarEmbeddingsView() {
           <div className="mb-4 flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface/50 px-2.5 py-1 text-[10px] uppercase tracking-wide text-faint">
               <Cpu size={11} className="text-copper" />
-              {method === 'entity_index' ? 'Qdrant ANN (kg_entities)' : 'on-the-fly cosine'}
+              {method === 'entity_index' ? 'поиск по смыслу' : 'поиск по запросу'}
             </span>
             {mode === 'entity' && seedName && (
               <span className="inline-flex items-center gap-1.5 text-[11px] text-faint">
@@ -210,7 +209,7 @@ export function SimilarEmbeddingsView() {
         )}
 
         {active.isLoading && (
-          <div className="text-sm text-faint">Считаем близость эмбеддингов…</div>
+          <div className="text-sm text-faint">Ищем аналоги…</div>
         )}
         {active.isError && (
           <div className="flex items-center gap-2 text-sm text-copper">
@@ -222,7 +221,7 @@ export function SimilarEmbeddingsView() {
           <div className="rounded-lg border border-line bg-surface/40 px-4 py-6 text-center text-sm text-faint">
             {mode === 'query'
               ? 'Ничего похожего по смыслу не нашлось.'
-              : 'У этой сущности нет описания для сравнения по эмбеддингу.'}
+              : 'У этой сущности нет описания для сравнения.'}
           </div>
         )}
 
@@ -245,7 +244,7 @@ export function SimilarEmbeddingsView() {
             </ul>
             <div className="mt-4 flex items-center gap-1.5 text-[11px] text-faint">
               <Sparkles size={12} className="text-copper" /> {active.data.count} семантических
-              аналогов · ранжирование по косинусной близости node-embedding'ов
+              аналогов
             </div>
           </>
         )}

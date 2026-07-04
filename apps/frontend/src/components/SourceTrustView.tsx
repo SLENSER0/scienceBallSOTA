@@ -123,7 +123,7 @@ export function SourceTrustView() {
           <ShieldCheck size={16} className="text-copper" /> Доверие к источникам
         </div>
         <div className="mt-0.5 font-mono text-[11px] text-faint">
-          отзыв · свежесть · рецензирование — и как это режет уверенность ответа (§23.27)
+          отзыв · свежесть · рецензирование — и как это влияет на уверенность ответа
         </div>
       </header>
 
@@ -150,7 +150,7 @@ function ConfidenceCard({ report }: { report: AnswerTrustReport }) {
     <div className="panel mb-4 p-4">
       <div className="mb-2 flex items-center justify-between">
         <div className="font-mono text-[10px] uppercase tracking-wide text-faint">
-          уверенность верификатора
+          итоговая уверенность ответа
         </div>
         {report.relies_on_retracted && (
           <span className="chip text-contradiction border-contradiction/50">

@@ -374,13 +374,10 @@ export function TargetPictureDemoView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-5xl">
-        <div className="eyebrow mb-1">§22.6 · целевая картина §23</div>
+        <div className="eyebrow mb-1">Демонстрационный прогон</div>
         <h2 className="mb-1 font-display text-2xl font-semibold">Демо-прогон целевой картины</h2>
         <p className="mb-4 max-w-3xl text-sm text-faint">
-          Один непрерывный сценарий одной сессией демонстрирует все 8 свойств целевой картины
-          подряд: вопрос → план агента → ответ с числами/источниками/предупреждениями → граф →
-          доказательство под ребром → пробелы как объекты → версионирование → отражение нового
-          документа в графе/индексах/coverage. «Research intelligence, не RAG-бот».
+          Один непрерывный сценарий за одну сессию показывает все 8 свойств платформы подряд: вопрос → план → ответ с числами, источниками и предупреждениями → граф → доказательство под связью → пробелы как объекты → версии → отражение нового документа в базе знаний.
         </p>
 
         {/* Controls */}
@@ -408,7 +405,7 @@ export function TargetPictureDemoView() {
           <div className="flex items-center justify-between gap-3">
             <label className="flex items-center gap-2 text-xs text-faint">
               <input type="checkbox" checked={useLlm} onChange={(e) => setUseLlm(e.target.checked)} />
-              Синтез через OSS-LLM (медленнее; по умолчанию детерминированно)
+              Развёрнутый разбор ответа (медленнее; по умолчанию — быстрый режим)
             </label>
             <button
               onClick={() => mut.mutate()}
@@ -448,7 +445,7 @@ export function TargetPictureDemoView() {
                 </div>
                 <div className="text-sm text-faint">
                   Доказано {run.summary.propertiesProven} из {run.summary.propertiesTotal} свойств
-                  §23 на живом графе · «{run.question}»
+                  на живом графе · «{run.question}»
                 </div>
               </div>
             </div>

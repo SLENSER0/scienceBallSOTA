@@ -347,7 +347,7 @@ export function LargeGraphView() {
       <header className="flex flex-wrap items-center gap-3 border-b border-line px-6 py-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-nickel">
           <Network size={20} className="text-copper" /> Клубок корпуса
-          <span className="font-mono text-[11px] font-normal text-faint">Sigma · WebGL · §17.9</span>
+          <span className="font-mono text-[11px] font-normal text-faint">WebGL</span>
         </h2>
         <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-faint">
           <Filter size={13} />
@@ -410,7 +410,7 @@ export function LargeGraphView() {
               {stats.nodeCount.toLocaleString()} узлов · {stats.edgeCount.toLocaleString()} рёбер ·{' '}
               {stats.communityCount} сообществ
               {stats.truncated && <span className="text-copper"> · срез {stats.totalNodes.toLocaleString()}</span>}
-              {running && <span className="text-copper"> · forceatlas2…</span>}
+              {running && <span className="text-copper"> · раскладка…</span>}
             </div>
           )}
 

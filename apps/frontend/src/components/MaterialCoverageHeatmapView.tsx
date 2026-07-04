@@ -142,7 +142,7 @@ export function MaterialCoverageHeatmapView({ embedded = false }: { embedded?: b
             className="panel mt-8 flex items-center justify-center gap-2 py-8 text-center font-mono text-[12px]"
             style={{ color: '#E5484D' }}
           >
-            <TriangleAlert size={15} /> не удалось загрузить /coverage/matrix
+            <TriangleAlert size={15} /> не удалось загрузить матрицу покрытия
           </div>
         ) : materials.length === 0 || properties.length === 0 ? (
           <div className="panel mt-8 py-12 text-center font-mono text-[11px] text-faint">
@@ -291,7 +291,7 @@ function CellDrill({ cell, onClose }: { cell: Cell; onClose: () => void }) {
     <div className="panel mt-5 p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="eyebrow">drill-down</div>
+          <div className="eyebrow">детализация</div>
           <div className="text-sm font-medium text-ink">
             {cell.material_name} <span className="text-faint">×</span> {ruProp(cell.property)}
           </div>

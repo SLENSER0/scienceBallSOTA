@@ -86,14 +86,13 @@ export function ContradictionsView() {
             <div>
               <Scale size={30} className="mx-auto mb-2 text-faint" />
               <div className="font-mono text-xs text-faint">
-                выберите противоречие — агент-арбитр вынесет вердикт
+                выберите противоречие — покажем разбор и вердикт по сторонам
               </div>
             </div>
           </div>
         ) : analyze.isPending ? (
           <div className="flex items-center gap-2 font-mono text-sm text-faint">
-            <Loader2 size={15} className="animate-spin text-copper" /> агент-арбитр анализирует
-            стороны…
+            <Loader2 size={15} className="animate-spin text-copper" /> разбираем стороны…
           </div>
         ) : analyze.data ? (
           <Arbitration a={analyze.data} />

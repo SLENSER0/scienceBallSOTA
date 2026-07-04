@@ -68,10 +68,10 @@ const REQUIRED_SLOTS = [
 ];
 
 const FORMATS: { id: Fmt; label: string; icon: typeof Download; hint: string }[] = [
-  { id: 'zip', label: 'ZIP', icon: FileArchive, hint: 'Полный пакет: манифест + все файлы' },
+  { id: 'zip', label: 'ZIP', icon: FileArchive, hint: 'Полный пакет со всеми файлами' },
   { id: 'html', label: 'HTML', icon: FileCode2, hint: 'Автономный отчёт (открыть/печать в PDF)' },
-  { id: 'pdf', label: 'PDF', icon: FileText, hint: 'PDF-обложка с проверочными хешами' },
-  { id: 'json', label: 'JSON', icon: FileJson, hint: 'Манифест + provenance для проверки' },
+  { id: 'pdf', label: 'PDF', icon: FileText, hint: 'PDF-обложка с кодами проверки' },
+  { id: 'json', label: 'JSON', icon: FileJson, hint: 'Данные пакета для проверки' },
 ];
 
 export function EvidencePackView() {
@@ -156,12 +156,12 @@ export function EvidencePackView() {
     <div className="mx-auto max-w-4xl px-6 py-6">
       <div className="mb-1 flex items-center gap-2">
         <ShieldCheck size={18} className="text-copper" />
-        <h1 className="text-lg font-semibold text-ink">Доказательный пакет (Evidence Pack)</h1>
+        <h1 className="text-lg font-semibold text-ink">Доказательный пакет</h1>
       </div>
       <p className="mb-5 text-sm text-muted">
-        Экспорт воспроизводимого пакета по ответу: вопрос, ответ, таблицы, доказательства, citations,
-        provenance (версии моделей/промпта/схемы/снимка) и криптографический манифест. Replay
-        перезапускает запрос на том же снимке и подтверждает, что каждое число воспроизводится.
+        Экспорт воспроизводимого пакета по ответу: вопрос, ответ, таблицы, доказательства,
+        цитаты, происхождение данных и защита от подмены. Повторная проверка перезапускает
+        запрос на тех же данных и подтверждает, что каждое число воспроизводится.
       </p>
 
       <textarea
@@ -199,25 +199,25 @@ export function EvidencePackView() {
       {meta?.manifest && (
         <div className="mt-6 rounded-md border border-line bg-surface/40 p-4">
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <span className="eyebrow">answer id</span>
+            <span className="eyebrow">идентификатор ответа</span>
             <span className="metric font-mono text-xs text-copper">{meta.answer_id}</span>
             {provComplete !== undefined && (
               <span
                 className={`chip ${provComplete ? 'text-verified' : 'text-gap'}`}
-                title="Полнота provenance (6 обязательных слотов)"
+                title="Всё происхождение данных прослежено"
               >
-                {provComplete ? 'provenance полное' : 'provenance неполное'}
+                {provComplete ? 'происхождение прослежено' : 'происхождение неполное'}
               </span>
             )}
           </div>
 
           <div className="mb-3 text-xs text-muted">
             <div>
-              <span className="text-faint">root sha256:</span>{' '}
+              <span className="text-faint">контрольная сумма:</span>{' '}
               <span className="break-all font-mono text-nickel">{meta.manifest.root_sha256}</span>
             </div>
             <div>
-              <span className="text-faint">snapshot:</span>{' '}
+              <span className="text-faint">версия данных:</span>{' '}
               <span className="font-mono text-nickel">{meta.snapshot_id}</span> ·{' '}
               <span className="text-faint">байт:</span> {meta.manifest.total_bytes}
             </div>
@@ -227,7 +227,7 @@ export function EvidencePackView() {
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['Файл', 'sha256', 'Байт'].map((h) => (
+                  {['Файл', 'контр. сумма', 'Байт'].map((h) => (
                     <th
                       key={h}
                       className="px-2 py-1 text-left font-mono text-[10px] uppercase tracking-wide text-faint"
@@ -259,14 +259,14 @@ export function EvidencePackView() {
             onClick={() => void runReplay()}
             disabled={replaying}
             className="chip flex items-center gap-1.5 border-copper/40 text-copper hover:bg-copper/10 disabled:opacity-40"
-            title="Перезапустить запрос на том же снимке данных и сравнить"
+            title="Перезапустить запрос на тех же данных и сравнить результат"
           >
             {replaying ? (
               <Loader2 size={13} className="animate-spin" />
             ) : (
               <RefreshCw size={13} />
             )}
-            Replay · проверить воспроизводимость
+            Проверить воспроизводимость
           </button>
         </div>
       )}
@@ -286,8 +286,8 @@ export function EvidencePackView() {
               <XCircle size={16} className="text-gap" />
             )}
             {replay.reproduced
-              ? 'Ответ воспроизведён — идентичный content-fingerprint'
-              : 'Расхождение при replay'}
+              ? 'Ответ воспроизведён — числа полностью совпали'
+              : 'Расхождение при повторной проверке'}
           </div>
           {!replay.reproduced && (
             <div className="space-y-1 text-xs text-muted">
@@ -299,7 +299,7 @@ export function EvidencePackView() {
                 </p>
               )}
               <p>
-                <span className="text-faint">snapshot изменился:</span>{' '}
+                <span className="text-faint">данные изменились:</span>{' '}
                 {replay.snapshot_changed ? 'да' : 'нет'}
               </p>
             </div>

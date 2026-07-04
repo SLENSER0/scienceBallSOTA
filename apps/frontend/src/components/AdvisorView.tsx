@@ -101,15 +101,13 @@ export function AdvisorView() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-3xl">
-        <div className="eyebrow mb-1">агентный советник · рекомендация технологий</div>
+        <div className="eyebrow mb-1">рекомендация технологий · подбор под ваши условия</div>
         <h1 className="flex items-center gap-2 font-display text-2xl font-semibold tracking-tight">
           <Bot size={22} className="text-copper" /> Что выбрать под ваши условия
         </h1>
         <p className="mt-1 text-sm text-faint">
-          На каждую технологию-кандидата запускается отдельный агент-рассуждатель
-          (<span className="font-mono text-copper">glm-5.2</span>), который оценивает соответствие
-          строго по данным графа. Итог сводит агент-синтезатор. Карточки появляются в реальном
-          времени по мере завершения агентов.
+          Подбираем технологии под ваши условия и оцениваем, насколько каждая подходит —
+          строго по фактам из графа знаний. Результаты появляются по мере готовности.
         </p>
 
         {/* Composer */}
@@ -197,7 +195,7 @@ export function AdvisorView() {
               done={cards.length}
               total={expected}
               running={phase === 'running'}
-              label="агентов оценили технологии"
+              label="технологий оценено"
             />
           </div>
         )}
@@ -230,8 +228,8 @@ export function AdvisorView() {
               key={`pending-${i}`}
               className="panel flex items-center gap-2 p-3 font-mono text-xs text-faint"
             >
-              <Loader2 size={14} className="animate-spin text-copper" /> агент оценивает
-              технологию…
+              <Loader2 size={14} className="animate-spin text-copper" /> идёт оценка
+              технологии…
             </div>
           ))}
         </div>
@@ -255,7 +253,7 @@ function CandidateCard({ c, rank }: { c: AdvisorCandidate; rank: number }) {
             {c.relevance === 1 && <span className="chip text-gap border-gap/40">смежная</span>}
             {c.relevance === 0 && <span className="chip text-faint border-line">вне темы</span>}
             {c.model && (
-              <span className="font-mono text-[10px] text-faint" title="агент-оценщик">
+              <span className="font-mono text-[10px] text-faint" title="оценка соответствия">
                 {c.model}
               </span>
             )}

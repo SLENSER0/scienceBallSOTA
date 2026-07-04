@@ -300,10 +300,7 @@ export function CollaborationView() {
           <Users size={22} className="text-copper" /> Совместные расследования
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-faint">
-          Комментарии к узлам графа, @mentions, общие «investigation»-воркспейсы и центр
-          уведомлений. Два исследователя могут вместе разобрать противоречие или пробел, оставить
-          комментарии, назначить action и сохранить расследование. Комментарии не считаются
-          доказательством без ручного promoted-статуса (§10.8).
+          Комментарии к узлам графа, упоминания коллег и общие рабочие пространства с центром уведомлений. Двое исследователей могут вместе разобрать противоречие или пробел, обсудить, назначить задачу и сохранить расследование. Комментарии не считаются доказательством, пока их вручную не подтвердят.
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[280px_1fr_300px]">
@@ -476,7 +473,7 @@ export function CollaborationView() {
                             </span>
                             {c.promoted && (
                               <span className="rounded bg-copper/15 px-1.5 py-0.5 font-mono text-[9px] text-copper">
-                                promoted evidence
+                                подтверждённое доказательство
                               </span>
                             )}
                             {c.mentions
@@ -510,7 +507,7 @@ export function CollaborationView() {
                     <input
                       value={assignee}
                       onChange={(e) => setAssignee(e.target.value)}
-                      placeholder="assignee для «на ревью» (опц.)"
+                      placeholder="кому назначить на ревью (необязательно)"
                       className="flex-1 rounded border border-line/50 bg-transparent px-2 py-1 font-mono text-[10px] text-ink outline-none placeholder:text-faint"
                     />
                   </div>

@@ -147,13 +147,12 @@ export function SubgraphAskView() {
       {/* Canvas + lasso */}
       <div className="flex min-w-0 flex-1 flex-col border-r border-line">
         <div className="border-b border-line px-5 py-4">
-          <div className="eyebrow mb-1">graph → chat · lasso selection · §17.8</div>
+          <div className="eyebrow mb-1">выделите и спросите</div>
           <h1 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight">
-            <Lasso size={18} className="text-copper" /> Выдели подграф — спроси агента
+            <Lasso size={18} className="text-copper" /> Выдели подграф — задай вопрос
           </h1>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-faint">
-            <MousePointerSquareDashed size={13} /> Тяни рамку по канвасу или кликай узлы — выделишь
-            кластер. Затем «Спросить агента» — он рассуждает именно о выделенном.
+            <MousePointerSquareDashed size={13} /> Тяни рамку по полю или кликай узлы — выделишь кластер. Затем «Спросить» — ответ строится именно по выделенному.
           </p>
         </div>
         <div className="relative min-h-0 flex-1">
@@ -163,7 +162,7 @@ export function SubgraphAskView() {
             </div>
           ) : seed.isError ? (
             <div className="flex h-full items-center justify-center px-6 text-center font-mono text-[11px] text-contradiction">
-              граф недоступен — нужен server-профиль (Neo4j :8000)
+              граф недоступен
             </div>
           ) : graph && graph.nodes.length > 0 ? (
             <SelectCanvas graph={graph} selected={selected} onToggle={toggleNode} onBox={setSelected} />
@@ -224,7 +223,7 @@ export function SubgraphAskView() {
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Необязательный вопрос о выделенном (пусто → общий разбор кластера)"
+            placeholder="Необязательный вопрос о выделенном (если пусто — общий разбор)"
             rows={2}
             className="w-full resize-none rounded-md border border-line bg-surface/50 px-3 py-2 text-sm text-ink outline-none focus:border-copper/60"
           />
@@ -237,8 +236,8 @@ export function SubgraphAskView() {
                 className="rounded border border-line bg-surface/50 px-1.5 py-0.5 text-[11px] text-ink"
               >
                 <option value={0}>только выделенное</option>
-                <option value={1}>+1 hop</option>
-                <option value={2}>+2 hop</option>
+                <option value={1}>+1 шаг</option>
+                <option value={2}>+2 шага</option>
               </select>
             </label>
             <button
@@ -247,7 +246,7 @@ export function SubgraphAskView() {
               className="ml-auto flex items-center gap-1.5 rounded-md bg-copper px-3 py-1.5 text-sm font-medium text-graphite disabled:opacity-40"
             >
               {asking ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Спросить агента
+              Спросить
             </button>
           </div>
         </div>
@@ -261,12 +260,12 @@ export function SubgraphAskView() {
           {!result && !asking && !askError && (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center font-mono text-[11px] text-faint">
               <BrainCircuit size={22} className="text-faint/60" />
-              выдели кластер узлов и спроси — агент рассуждает о нём
+              выдели кластер узлов и задай вопрос — ответ будет о нём
             </div>
           )}
           {asking && (
             <div className="flex items-center gap-2 font-mono text-sm text-faint">
-              <Loader2 size={15} className="animate-spin text-copper" /> агент рассуждает о подграфе…
+              <Loader2 size={15} className="animate-spin text-copper" /> Готовим ответ по выделенному…
             </div>
           )}
           {result && <AnswerBlock result={result} />}
@@ -284,7 +283,7 @@ function AnswerBlock({ result }: { result: SubgraphAskResult }) {
         <span className="chip text-[10px] text-copper">{focus.node_count} узлов</span>
         <span className="chip text-[10px] text-faint">{focus.edge_count} связей</span>
         {focus.expand > 0 && (
-          <span className="chip text-[10px] text-faint">+{focus.expand} hop контекст</span>
+          <span className="chip text-[10px] text-faint">+{focus.expand} шаг соседей</span>
         )}
         {answer.confidence != null && (
           <span className="chip text-[10px] text-faint">
@@ -553,7 +552,7 @@ function SelectCanvas({
         onMouseLeave={() => (dragRef.current = null)}
       />
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-line bg-graphite/70 px-2.5 py-1.5 font-mono text-[10px] text-faint">
-        рамка = box-select · клик = добавить/убрать узел
+        рамка = выделить область · клик = добавить/убрать узел
       </div>
     </div>
   );

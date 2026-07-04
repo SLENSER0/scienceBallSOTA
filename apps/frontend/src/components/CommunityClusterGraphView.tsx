@@ -235,13 +235,13 @@ export function CommunityClusterGraphView() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-line px-5 py-4">
         <div className="min-w-0">
-          <div className="eyebrow mb-1">GraphRAG · community-cluster граф · §11.8</div>
+          <div className="eyebrow mb-1">карта кластеров знаний</div>
           <h1 className="flex items-center gap-2 font-display text-xl font-semibold tracking-tight">
             <Sparkles size={18} className="text-copper" /> Карта кластеров знаний
           </h1>
           <p className="mt-1 max-w-2xl text-xs text-faint">
-            Глобальный взгляд на корпус (Mode C): каждый узел — целый кластер знаний,
-            размер ∝ числу сущностей, ребро — сколько связей между темами. Клик по
+            Обзор всего корпуса: каждый узел — целый кластер знаний, крупнее узел —
+            больше сущностей в теме, линия — сколько связей между темами. Клик по
             кластеру раскрывает сводку и ключевые сущности.
           </p>
         </div>
@@ -266,21 +266,21 @@ export function CommunityClusterGraphView() {
         <div className="relative min-w-0 flex-1">
           {loading ? (
             <div className="flex h-full items-center justify-center font-mono text-sm text-faint">
-              <Loader2 size={15} className="mr-2 animate-spin text-copper" /> детекция сообществ…
+              <Loader2 size={15} className="mr-2 animate-spin text-copper" /> формируем кластеры знаний…
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center px-6 text-center font-mono text-[11px] text-red-400">
-              ошибка загрузки мета-графа: {error}
+              не удалось загрузить карту кластеров
             </div>
           ) : communityCount === 0 ? (
             <div className="flex h-full items-center justify-center font-mono text-[11px] text-faint">
-              кластеры знаний не найдены — корпус ещё не кластеризован
+              кластеры знаний ещё не сформированы
             </div>
           ) : (
             <>
               <div ref={containerRef} className="absolute inset-0" />
               <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-line bg-graphite/70 px-2.5 py-1.5 font-mono text-[10px] text-faint">
-                узел = кластер · размер ∝ сущностей · ребро = связи между темами
+                узел = кластер · крупнее узел — больше сущностей · линия = связи между темами
               </div>
             </>
           )}
