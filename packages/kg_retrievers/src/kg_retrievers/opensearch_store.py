@@ -105,6 +105,16 @@ class OpenSearchKeywordStore:
         )
         return int(resp.get("deleted", 0))
 
+    def count_by_doc(self, doc_id: str) -> int | None:
+        """Indexed-chunk count for one document; ``None`` if the index is absent (§4.6)."""
+        try:
+            resp = self.client.count(
+                index=self.index, body={"query": {"term": {"doc_id.keyword": doc_id}}}
+            )
+            return int(resp["count"])
+        except Exception:  # index_not_found / connection → unknown (not zero)
+            return None
+
     # -- reads ------------------------------------------------------------
     def search(
         self,

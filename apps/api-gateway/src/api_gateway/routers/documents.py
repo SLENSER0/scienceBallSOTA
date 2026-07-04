@@ -28,8 +28,9 @@ from pydantic import BaseModel
 from api_gateway import audit
 from api_gateway.auth import current_role, current_user
 from api_gateway.deps import get_store
-from kg_common import GraphResponse, get_settings, make_id
+from kg_common import GraphResponse, get_logger, get_settings, make_id
 
+_log = get_logger("documents")
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 # Same write-capable roles as manual article add (§19).
@@ -83,6 +84,16 @@ def _ingest_file(path: Path, *, use_llm: bool) -> dict[str, Any]:
     pipe = IngestionPipeline(get_store(), use_llm=use_llm, llm_max_chunks=3)
     res = pipe.ingest(parsed)
 
+    # Push the just-written chunks into the search index (the graph write alone leaves the
+    # doc invisible to search). Best-effort — never fails the upload.
+    index = _index_doc_chunks(get_store(), doc_id)
+
+    # A re-upload hits the idempotency guard (status 'skipped', chunks absent) — report the
+    # REAL graph chunk count so it reads «уже в хранилище, N чанков», not a misleading 0.
+    chunks = res.get("chunks", 0)
+    if res.get("status") == "skipped":
+        chunks = index.get("chunks", 0)
+
     # Persist parsed content for the viewer (pages + tables + metadata).
     sidecar = {
         "doc_id": doc_id,
@@ -95,18 +106,105 @@ def _ingest_file(path: Path, *, use_llm: bool) -> dict[str, Any]:
         "source_path": str(path),
         "page_count": len(parsed.pages),
         "status": res.get("status", "ok"),
-        "chunks": res.get("chunks", 0),
+        "chunks": chunks,
         "extractor": "rule+llm" if use_llm else "rule",
         "pages": [{"page": p, "text": t} for p, t in parsed.pages],
         "tables": [{"page": t.page, "rows": t.rows} for t in parsed.tables],
     }
     _sidecar(doc_id).write_text(json.dumps(sidecar, ensure_ascii=False), encoding="utf-8")
-    return {"doc_id": doc_id, "meta": sidecar, "stats": res}
+    return {"doc_id": doc_id, "meta": sidecar, "stats": res, "index": index}
 
 
 def _doc_graph(doc_id: str) -> GraphResponse:
     """The ingested document's 2-hop neighbourhood as a §5.2.3 graph payload."""
     return get_store().neighbors(doc_id, depth=2, limit=300)
+
+
+def _index_doc_chunks(store: Any, doc_id: str) -> dict[str, Any]:
+    """Push a freshly-ingested document's :Chunk nodes into the search index so it is
+    actually SEARCHABLE — IngestionPipeline.ingest writes the graph only. Server profile
+    only; each store is wrapped so a missing OpenSearch index degrades to Qdrant-only
+    (never fails the upload). NB: we never call ensure_collection() — it wipes the live
+    Qdrant collection — only upsert into the existing one."""
+    if get_settings().runtime_profile != "server":
+        return {"chunks": 0, "qdrant": None, "opensearch": None, "indexed": False}
+    try:
+        rows = store.rows(
+            "MATCH (c:Node {label:'Chunk'}) WHERE c.doc_id=$id "
+            "RETURN c.id, coalesce(c.text,''), c.doc_id, c.page",
+            {"id": doc_id},
+        )
+    except Exception as exc:  # pragma: no cover - store defensiveness
+        _log.warning("index.read_chunks_failed", doc_id=doc_id, error=str(exc)[:160])
+        return {"chunks": 0, "qdrant": None, "opensearch": None, "indexed": False}
+    buf = [
+        {"id": r[0], "text": r[1], "doc_id": r[2], "page": r[3]}
+        for r in rows
+        if r[1] and str(r[1]).strip()
+    ]
+    out: dict[str, Any] = {"chunks": len(buf), "qdrant": None, "opensearch": None, "indexed": False}
+    if not buf:
+        return out
+    try:
+        from kg_retrievers.qdrant_server_store import QdrantServerStore
+
+        qs = QdrantServerStore()
+        qs.upsert_chunks(buf)  # NOT ensure_collection (destructive) — upsert into the live one
+        out["qdrant"] = qs.count_by_doc(doc_id)
+        out["indexed"] = bool(out["qdrant"])
+    except Exception as exc:
+        _log.warning("index.qdrant_failed", doc_id=doc_id, error=str(exc)[:160])
+    try:
+        from kg_retrievers.opensearch_store import OpenSearchKeywordStore
+
+        osk = OpenSearchKeywordStore()
+        osk.ensure_index()  # safe: creates only if missing
+        osk.index_chunks(buf)
+        out["opensearch"] = osk.count_by_doc(doc_id)
+    except Exception as exc:
+        _log.warning("index.opensearch_failed", doc_id=doc_id, error=str(exc)[:160])
+    return out
+
+
+def _doc_storage(store: Any, doc_id: str) -> dict[str, Any]:
+    """Per-document storage confirmation: real graph node counts + search-index membership —
+    the «landed in storage» proof the upload queue shows."""
+
+    def _c(cypher: str) -> int:
+        try:
+            rows = list(store.rows(cypher, {"id": doc_id}))
+            return int(rows[0][0]) if rows else 0
+        except Exception:
+            return 0
+
+    graph = {
+        "chunks": _c("MATCH (c:Node {label:'Chunk'}) WHERE c.doc_id=$id RETURN count(*)"),
+        "measurements": _c("MATCH (m:Node {label:'Measurement'}) WHERE m.doc_id=$id RETURN count(*)"),
+        "evidence": _c("MATCH (e:Node {label:'Evidence'}) WHERE e.doc_id=$id RETURN count(*)"),
+    }
+    graph["in_graph"] = graph["chunks"] > 0 or graph["measurements"] > 0
+    qdrant: int | None = None
+    opensearch: int | None = None
+    if get_settings().runtime_profile == "server":
+        try:
+            from kg_retrievers.qdrant_server_store import QdrantServerStore
+
+            qdrant = QdrantServerStore().count_by_doc(doc_id)
+        except Exception:
+            qdrant = None
+        try:
+            from kg_retrievers.opensearch_store import OpenSearchKeywordStore
+
+            opensearch = OpenSearchKeywordStore().count_by_doc(doc_id)
+        except Exception:
+            opensearch = None
+    return {
+        "doc_id": doc_id,
+        "graph": graph,
+        "qdrant": qdrant,
+        "opensearch": opensearch,
+        "indexed": bool(qdrant),
+    }
 
 
 # -- request bodies --------------------------------------------------------
@@ -156,6 +254,7 @@ async def upload_document(
         "chunks": result["meta"]["chunks"],
         "graph": graph.model_dump(by_alias=True),
         "node_count": len(graph.nodes),
+        "index": result.get("index", {}),
     }
 
 
@@ -228,6 +327,14 @@ def document_graph(doc_id: str) -> GraphResponse:
     """The document's neighbourhood subgraph (§5.2.3)."""
     _load_sidecar(doc_id)  # 404 if unknown
     return _doc_graph(doc_id)
+
+
+@router.get("/{doc_id:path}/storage")
+def document_storage(doc_id: str) -> dict:
+    """«В хранилище?» — real per-document confirmation: graph node counts (chunks /
+    measurements / evidence) + search-index membership (Qdrant / OpenSearch). The upload
+    queue polls this so the user can SEE a document actually landed, not just a toast."""
+    return _doc_storage(get_store(), doc_id)
 
 
 @router.post("/{doc_id:path}/reindex")

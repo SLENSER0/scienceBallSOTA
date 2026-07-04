@@ -156,6 +156,21 @@ class QdrantServerStore:
             wait=True,
         )
 
+    def count_by_doc(self, doc_id: str) -> int:
+        """Number of indexed points (chunks) for one document (§4.5)."""
+        from qdrant_client.models import FieldCondition, MatchValue
+        from qdrant_client.models import Filter as QFilter
+
+        return int(
+            self.client.count(
+                self.collection,
+                count_filter=QFilter(
+                    must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
+                ),
+                exact=True,
+            ).count
+        )
+
     def count(self) -> int:
         """Exact number of points currently stored (§4.5)."""
         return self.client.count(self.collection, exact=True).count

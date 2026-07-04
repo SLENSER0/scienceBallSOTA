@@ -408,6 +408,10 @@ export const api = {
       body: JSON.stringify({ use_llm: useLlm }),
     });
   },
+  // Per-document storage confirmation: real graph counts + Qdrant/OpenSearch membership.
+  documentStorage(docId: string): Promise<DocStorage> {
+    return req(`/api/v1/documents/${encodeURIComponent(docId)}/storage`);
+  },
 
   // -- Multimodal deep-research: analyse a figure/micrograph/screenshot (§ minimax-m3) --
   async analyzeImage(file: File, question: string): Promise<MultimodalResult> {
@@ -994,6 +998,19 @@ export interface DocumentMeta {
   status: string;
 }
 
+export interface DocIndex {
+  chunks: number;
+  qdrant: number | null;
+  opensearch: number | null;
+  indexed: boolean;
+}
+export interface DocStorage {
+  doc_id: string;
+  graph: { chunks: number; measurements: number; evidence: number; in_graph: boolean };
+  qdrant: number | null;
+  opensearch: number | null;
+  indexed: boolean;
+}
 export interface UploadResult {
   doc_id: string;
   title: string;
@@ -1002,6 +1019,7 @@ export interface UploadResult {
   chunks: number;
   graph: GraphResponse;
   node_count: number;
+  index?: DocIndex;
 }
 
 // -- §6.13 Confidence-fusion в оркестраторе --------------------------------
