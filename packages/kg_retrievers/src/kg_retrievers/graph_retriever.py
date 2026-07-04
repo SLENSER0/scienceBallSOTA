@@ -464,11 +464,15 @@ class GraphRetriever:
             res.grouped_by_practice.setdefault(pt, []).append(s)
 
         # hydrate evidence / gaps / contradictions (capped)
-        res.evidence = self._load_nodes(set(list(ev_ids)[:MAX_EVIDENCE]))
-        # Promote top corpus chunks to evidence so the answer cites clean chunk prose,
-        # not just the sparse (often OCR-junk) candidate Evidence nodes — chunk-first so
-        # readable corpus text leads the citation list.
-        res.evidence = self._chunk_evidence(intent) + res.evidence
+        cand_ev = self._load_nodes(set(list(ev_ids)[:MAX_EVIDENCE]))
+        # Lead with the top VECTOR-relevant corpus chunks (clean, on-topic prose) and keep
+        # only a few candidate SUPPORTED_BY nodes: those are frequently off-topic / OCR-junk
+        # spans of generically-matched candidates, and left unbounded they drown the
+        # relevant chunk citations (the head-to-head flagged exactly this). When no semantic
+        # chunk hits exist (corpus lacks the topic / embedded profile) we keep the candidate
+        # evidence as the only provenance.
+        chunk_ev = self._chunk_evidence(intent, limit=12)
+        res.evidence = (chunk_ev + cand_ev[:3]) if chunk_ev else cand_ev
         res.gaps = self._load_nodes(set(list(gap_ids)[:MAX_GAPS]))
         res.contradictions = self._load_nodes(set(list(contra_ids)[:MAX_CONTRADICTIONS]))
 
