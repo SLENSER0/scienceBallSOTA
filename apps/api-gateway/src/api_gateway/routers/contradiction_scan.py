@@ -96,7 +96,9 @@ def _load_measurements(
         extra += " AND m.property_name = $property"
         params["property"] = property_
     records: list[dict[str, Any]] = []
-    for r in store.rows(_SCAN_CYPHER.format(extra=extra), params):
+    # NB: str.format() would choke on the Cypher map-literals ({label:'…'}) in
+    # _SCAN_CYPHER (KeyError). Substitute only our own {extra} token.
+    for r in store.rows(_SCAN_CYPHER.replace("{extra}", extra), params):
         val = _num(r[1])
         if val is None:
             continue

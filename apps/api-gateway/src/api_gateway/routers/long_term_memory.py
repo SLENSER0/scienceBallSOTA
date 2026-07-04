@@ -38,12 +38,26 @@ from typing import Any, Literal
 from agent_service.memory_personalization import personalize
 from agent_service.memory_writeback import collect_writes
 from agent_service.user_memory import MemoryRecord, namespace, prune
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api_gateway.auth import current_role, current_user
 from kg_common import get_logger, get_settings
 
 router = APIRouter(prefix="/api/v1/memory", tags=["memory"])
+
+# Long-term memory is per-user and drives the next session's entity-resolution
+# (§13.20) — a caller may only touch their OWN memory (a poisoned alias would
+# otherwise personalise the victim's future queries). Privileged roles may act
+# cross-user for curation.
+_PRIVILEGED_ROLES = {"admin", "curator"}
+
+
+def _authorize(user_id: str, caller: str, role: str) -> None:
+    if caller == "anonymous":
+        raise HTTPException(status_code=401, detail="authentication required")
+    if caller != user_id and role not in _PRIVILEGED_ROLES:
+        raise HTTPException(status_code=403, detail="cannot access another user's memory")
 
 _log = get_logger("api.long_term_memory")
 
@@ -238,8 +252,13 @@ def _filter_key(filt: dict[str, Any]) -> str:
 
 
 @router.get("/{user_id}", response_model=MemoryListResponse)
-def read_memory(user_id: str) -> MemoryListResponse:
+def read_memory(
+    user_id: str,
+    caller: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> MemoryListResponse:
     """Прочитать долговременную память пользователя (после TTL-prune и усечения)."""
+    _authorize(user_id, caller, role)
     now = time.time()
     records = _read_pruned(user_id, now)
     counts: dict[str, int] = {}
@@ -257,8 +276,14 @@ def read_memory(user_id: str) -> MemoryListResponse:
 
 
 @router.post("/{user_id}", response_model=MemoryRecordOut)
-def put_memory(user_id: str, body: PutMemoryRequest) -> MemoryRecordOut:
+def put_memory(
+    user_id: str,
+    body: PutMemoryRequest,
+    caller: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> MemoryRecordOut:
     """Записать один подтверждённый факт (upsert по ключу) в память пользователя."""
+    _authorize(user_id, caller, role)
     now = time.time()
     if body.kind == "alias":
         if not body.mention or not body.canonical:
@@ -285,12 +310,18 @@ def put_memory(user_id: str, body: PutMemoryRequest) -> MemoryRecordOut:
 
 
 @router.post("/{user_id}/learn", response_model=LearnResponse)
-def learn_memory(user_id: str, body: LearnRequest) -> LearnResponse:
+def learn_memory(
+    user_id: str,
+    body: LearnRequest,
+    caller: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> LearnResponse:
     """Вывести durable-факты из завершённой сессии и записать их (§13.20 writeback).
 
     Переиспользует ``collect_writes``: подтверждённые сущности (>= threshold) дают
     alias-записи, часто применённые фильтры — frequent_filter-записи.
     """
+    _authorize(user_id, caller, role)
     now = time.time()
     state = {
         "confirmed_entities": body.confirmed_entities,
@@ -329,13 +360,19 @@ def learn_memory(user_id: str, body: LearnRequest) -> LearnResponse:
 
 
 @router.post("/{user_id}/personalize", response_model=PersonalizeResponse)
-def personalize_query(user_id: str, body: PersonalizeRequest) -> PersonalizeResponse:
+def personalize_query(
+    user_id: str,
+    body: PersonalizeRequest,
+    caller: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> PersonalizeResponse:
     """Применить память прошлых сессий к новому запросу (алиасы + фильтры по умолчанию).
 
     Это точка, где долговременная память «подхватывается в entity_resolver следующей
     сессии» (§13.20): mentions переписываются на канонические id, а часто используемые
     фильтры инжектятся как значения по умолчанию, не перекрывая явно заданные.
     """
+    _authorize(user_id, caller, role)
     now = time.time()
     records = _read_pruned(user_id, now)
     mem_dicts = _memory_dicts_for_personalize(records)
@@ -350,8 +387,14 @@ def personalize_query(user_id: str, body: PersonalizeRequest) -> PersonalizeResp
 
 
 @router.delete("/{user_id}/{key:path}")
-def forget_memory(user_id: str, key: str) -> dict[str, Any]:
+def forget_memory(
+    user_id: str,
+    key: str,
+    caller: str = Depends(current_user),
+    role: str = Depends(current_role),
+) -> dict[str, Any]:
     """Забыть один факт по ключу (напр. отозвать ошибочно подтверждённый алиас)."""
+    _authorize(user_id, caller, role)
     now = time.time()
     records = _read_pruned(user_id, now)
     remaining = [r for r in records if r.key != key]

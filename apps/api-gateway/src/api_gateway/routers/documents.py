@@ -17,6 +17,7 @@ curator-and-up roles (same set as manual article add, §19).
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -43,9 +44,16 @@ def _uploads_dir() -> Path:
 
 
 def _sidecar(doc_id: str) -> Path:
-    # doc_id is "Document:<hash>" — keep the hash only for a filesystem-safe name.
-    safe = doc_id.replace(":", "_")
-    return _uploads_dir() / f"{safe}.json"
+    # doc_id is "Document:<hash>". The read routes take {doc_id:path}, so a caller
+    # could pass "../../secret" — collapse EVERY non-safe char (incl. "/" and ".")
+    # so no directory separator survives, strip leading dots, then assert the
+    # resolved path stays inside uploads/ (defence in depth against traversal).
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", doc_id).strip("_") or "doc"
+    base = _uploads_dir().resolve()
+    p = (base / f"{safe}.json").resolve()
+    if p.parent != base:
+        raise HTTPException(status_code=400, detail="invalid document id")
+    return p
 
 
 def _load_sidecar(doc_id: str) -> dict[str, Any]:
