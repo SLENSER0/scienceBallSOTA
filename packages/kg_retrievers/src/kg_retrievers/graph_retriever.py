@@ -116,37 +116,21 @@ class GraphRetriever:
                 found[nd["id"]] = nd
 
         # 4) chunk-grounded candidates: when taxonomy/alias matching is thin, ground the
-        # query on the real 52k-chunk corpus — match chunks whose text contains query
-        # terms, then expand to candidate nodes via the (abundant) Chunk-[MENTIONS]->node
-        # edges. This lets a topic that isn't in the taxonomy still surface on-topic
-        # solutions/materials/regimes. Guarded on a thin taxonomy match so the extra
-        # (unindexed) chunk scan only runs when it's actually needed.
+        # query on the real corpus — take the most query-relevant chunks (VECTOR-ranked,
+        # not lexical) and expand to candidate nodes via the abundant Chunk-[MENTIONS]->node
+        # edges, so an off-taxonomy topic still surfaces on-topic solutions/materials.
         if len(found) < MAX_CANDIDATES:
-            content_terms: set[str] = set(terms)
-            for tok in intent.raw.lower().split():
-                tok = tok.strip(".,;:!?()«»\"'—")
-                if len(tok) >= 5:
-                    content_terms.add(tok)
-            ts = list(content_terms)[:8]
-            if ts:
-                where = " OR ".join(f"toLower(c.text) CONTAINS $t{i}" for i in range(len(ts)))
-                params: dict[str, Any] = {f"t{i}": t for i, t in enumerate(ts)}
-                params["k"] = 200
-                chunk_ids = [
-                    r[0]
-                    for r in self.store.rows(
-                        f'MATCH (c:Node {{label:"Chunk"}}) WHERE {where} RETURN c.id LIMIT $k',
-                        params,
-                    )
-                ]
-                if chunk_ids:
-                    for r in self.store.rows(
-                        "MATCH (c:Node)-[e:Rel]-(n:Node) WHERE c.id IN $ids AND e.type='MENTIONS' "
-                        "AND n.label IN $labels RETURN n, count(*) AS m ORDER BY m DESC LIMIT $top",
-                        {"ids": chunk_ids, "labels": CANDIDATE_LABELS, "top": MAX_CANDIDATES},
-                    ):
-                        nd = self.store._node_dict(r[0])
-                        found.setdefault(nd["id"], nd)  # taxonomy candidates stay first
+            chunk_ids = [h["id"] for h in self._semantic_chunks(intent, 40)]
+            if not chunk_ids:  # lexical fallback (embedded profile / no vector store)
+                chunk_ids = self._chunk_ids_contains(self._chunk_terms(intent), 200)
+            if chunk_ids:
+                for r in self.store.rows(
+                    "MATCH (c:Node)-[e:Rel]-(n:Node) WHERE c.id IN $ids AND e.type='MENTIONS' "
+                    "AND n.label IN $labels RETURN n, count(*) AS m ORDER BY m DESC LIMIT $top",
+                    {"ids": chunk_ids, "labels": CANDIDATE_LABELS, "top": MAX_CANDIDATES},
+                ):
+                    nd = self.store._node_dict(r[0])
+                    found.setdefault(nd["id"], nd)  # taxonomy candidates stay first
         return list(found.values())
 
     # -- numeric filtering ----------------------------------------------
@@ -254,15 +238,49 @@ class GraphRetriever:
             out.append((self.store._node_dict(r[0]), r[1]))
         return out
 
-    def _chunk_evidence(self, intent: QueryIntent, limit: int = 6) -> list[dict[str, Any]]:
-        """Top corpus chunks matching the query, as citable evidence (real Chunk nodes).
+    def _vec_store(self):  # type: ignore[no-untyped-def]
+        """Lazily open the server-profile vector store; None off the server profile.
 
-        Promotes the corpus itself into evidence so the answer cites clean chunk prose.
-        The taxonomy/candidate path alone surfaces few — often OCR-junk — Evidence nodes,
-        which starves citations despite a rich 52k-chunk corpus. Chunk ids are real graph
-        nodes (ground in the verifier) and their text is full prose (passes the clean
-        gate). Ranked by how many distinct query terms a chunk contains.
+        Gated on ``runtime_profile == 'server'`` so the embedded/Kuzu path (and unit
+        tests on a seeded temp store) never pull the live corpus's chunks into retrieval.
         """
+        if not hasattr(self, "_qs_cache"):
+            self._qs_cache: Any = None
+            try:
+                from kg_common import get_settings
+
+                if get_settings().runtime_profile == "server":
+                    from kg_retrievers.qdrant_server_store import QdrantServerStore
+
+                    self._qs_cache = QdrantServerStore()
+            except Exception:
+                self._qs_cache = None
+        return self._qs_cache
+
+    # Cosine floor — drop chunks only loosely related to the query. Relevant chunks
+    # score ~0.65-0.85 with the multilingual embedder; noise sits below ~0.55.
+    _MIN_CHUNK_SIM = 0.55
+
+    def _semantic_chunks(self, intent: QueryIntent, k: int) -> list[dict[str, Any]]:
+        """Top query-relevant corpus chunks by VECTOR similarity ({id=chunk_id, text, score}).
+
+        Semantic ranking is what makes promoted chunk citations on-topic instead of the
+        lexical noise a raw CONTAINS word-overlap scan produced. Returns [] if the vector
+        store is unavailable (callers fall back to the lexical scan).
+        """
+        qs = self._vec_store()
+        if qs is None:
+            return []
+        try:
+            hits = qs.search(intent.raw, top_k=k)
+        except Exception:
+            return []
+        # Only the score threshold here — OCR-junk chunk text is filtered downstream by
+        # synthesize._citable_evidence (which owns the is_clean_text gate).
+        return [h for h in hits if (h.get("score") or 0.0) >= self._MIN_CHUNK_SIM]
+
+    def _chunk_terms(self, intent: QueryIntent) -> list[str]:
+        """Query surface terms for the lexical (fallback) chunk scan."""
         terms: set[str] = set()
         for e in intent.entities:
             for t in (e.canonical_ru, e.canonical_en, *e.aliases):
@@ -272,30 +290,55 @@ class GraphRetriever:
             tok = tok.strip(".,;:!?()«»\"'—")
             if len(tok) >= 5:
                 terms.add(tok)
-        ts = list(terms)[:8]
-        if not ts:
+        return list(terms)[:8]
+
+    def _chunk_ids_contains(self, terms: list[str], limit: int) -> list[str]:
+        """Lexical fallback: Chunk ids whose text CONTAINS a query term (no vector store)."""
+        if not terms:
             return []
-        where = " OR ".join(f"toLower(c.text) CONTAINS $t{i}" for i in range(len(ts)))
-        score = " + ".join(
-            f"(CASE WHEN toLower(c.text) CONTAINS $t{i} THEN 1 ELSE 0 END)" for i in range(len(ts))
-        )
-        params: dict[str, Any] = {f"t{i}": t for i, t in enumerate(ts)}
+        where = " OR ".join(f"toLower(c.text) CONTAINS $t{i}" for i in range(len(terms)))
+        params: dict[str, Any] = {f"t{i}": t for i, t in enumerate(terms)}
         params["lim"] = limit
-        out: list[dict[str, Any]] = []
-        for r in self.store.rows(
-            f'MATCH (c:Node {{label:"Chunk"}}) WHERE {where} '
-            f"RETURN c.id, c.text, c.doc_id, c.page, {score} AS s ORDER BY s DESC LIMIT $lim",
-            params,
-        ):
-            out.append(
+        return [
+            r[0]
+            for r in self.store.rows(
+                f'MATCH (c:Node {{label:"Chunk"}}) WHERE {where} RETURN c.id LIMIT $lim', params
+            )
+        ]
+
+    def _chunk_evidence(self, intent: QueryIntent, limit: int = 8) -> list[dict[str, Any]]:
+        """Top query-relevant corpus chunks as citable evidence (real, groundable Chunk nodes).
+
+        Ranked by VECTOR similarity so citations are on-topic; the chunk id is a real graph
+        node (grounds in the verifier) and its text is full prose (passes the clean gate).
+        Falls back to a lexical CONTAINS scan only when the vector store is unavailable.
+        """
+        hits = self._semantic_chunks(intent, limit)
+        if hits:
+            return [
                 {
-                    "id": r[0],
-                    "text": r[1],
-                    "doc_id": r[2],
-                    "page": r[3],
-                    "confidence": 0.7,
+                    "id": h["id"],
+                    "text": h.get("text"),
+                    "doc_id": h.get("doc_id"),
+                    "page": h.get("page"),
+                    "confidence": round(min(0.85, max(0.4, h.get("score") or 0.5)), 2),
                     "evidence_strength": "unverified",
                 }
+                for h in hits
+            ]
+        # lexical fallback (embedded profile) — unranked, so relevance is weaker
+        ids = self._chunk_ids_contains(self._chunk_terms(intent), limit)
+        if not ids:
+            return []
+        out: list[dict[str, Any]] = []
+        for r in self.store.rows(
+            "MATCH (c:Node {label:'Chunk'}) WHERE c.id IN $ids "
+            "RETURN c.id, c.text, c.doc_id, c.page",
+            {"ids": ids},
+        ):
+            out.append(
+                {"id": r[0], "text": r[1], "doc_id": r[2], "page": r[3],
+                 "confidence": 0.6, "evidence_strength": "unverified"}
             )
         return out
 
