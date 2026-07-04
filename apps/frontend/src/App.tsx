@@ -59,6 +59,16 @@ import {
   Code2,
   Wrench,
   ShieldAlert,
+  Brain,
+  FolderInput,
+  Filter,
+  History,
+  Radio,
+  SlidersHorizontal,
+  ListOrdered,
+  TrendingDown,
+  ClipboardCheck,
+  BadgeCheck,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -144,6 +154,30 @@ import { MentionResolverView } from './components/MentionResolverView';
 import { MergeUndoView } from './components/MergeUndoView';
 import { EvidenceInspectorView } from './components/EvidenceInspectorView';
 import { TableCorrectionView } from './components/TableCorrectionView';
+// -- Batch-4 feature screens ------------------------------------------------
+import { ArbiterEvidenceView } from './components/ArbiterEvidenceView';
+import { ContradictionScanView } from './components/ContradictionScanView';
+import { CoverageDashboardView } from './components/CoverageDashboardView';
+import { CurationDiffReagraphView } from './components/CurationDiffReagraphView';
+import DefinitionOfDoneView from './components/DefinitionOfDoneView';
+import { ExtractionRecallEvalView } from './components/ExtractionRecallEvalView';
+import { FacetSearchView } from './components/FacetSearchView';
+import { FactTimeMachineView } from './components/FactTimeMachineView';
+import { GoldenDatasetView } from './components/GoldenDatasetView';
+import { GraphDiffView } from './components/GraphDiffView';
+import { LangGraphStudioView } from './components/LangGraphStudioView';
+import { LongTermMemoryView } from './components/LongTermMemoryView';
+import { NewDocumentSensorView } from './components/NewDocumentSensorView';
+import { PipelineLineageEmissionView } from './components/PipelineLineageEmissionView';
+import { PipelineLineageView } from './components/PipelineLineageView';
+import { RangeFacetsView } from './components/RangeFacetsView';
+import { RankingExplainView } from './components/RankingExplainView';
+import { RegressionGateView } from './components/RegressionGateView';
+import { RetrievalEvalDashboardView } from './components/RetrievalEvalDashboardView';
+import { ReviewTaskGenView } from './components/ReviewTaskGenView';
+import { SourceCatalogView } from './components/SourceCatalogView';
+import { SubgraphChatAttachView } from './components/SubgraphChatAttachView';
+import { VerifierGateView } from './components/VerifierGateView';
 
 const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
 const CURATOR = ['curator', 'project_manager', 'admin'];
@@ -268,6 +302,31 @@ const NAV: NavItem[] = [
   { id: 'targetdemo', label: 'Демо-прогон §23', icon: Sparkles, group: 'agent' },
 
   { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: CURATOR, group: 'admin' },
+
+  // -- Batch-4 feature screens ----------------------------------------------
+  { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' },
+  { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' },
+  { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' },
+  { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' },
+  { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
+  { id: 'rangefacets', label: 'Диапазонные фасеты', icon: SlidersHorizontal, group: 'knowledge' },
+  { id: 'graphdiff', label: 'Diff графа (курирование)', icon: GitCompareArrows, roles: CURATOR, group: 'graph' },
+  { id: 'subgraphchat', label: 'Чат с подграфом', icon: Lasso, roles: INTERNAL, group: 'graph' },
+  { id: 'newdocsensor', label: 'Сенсор новых документов', icon: FolderInput, roles: INTERNAL, group: 'data' },
+  { id: 'pipelineemission', label: 'Эмиссия линиджа', icon: Radio, roles: INTERNAL, group: 'data' },
+  { id: 'pipelinelineage', label: 'Линидж конвейера', icon: GitBranch, roles: INTERNAL, group: 'data' },
+  { id: 'extractionrecall', label: 'Recall извлечения', icon: Gauge, roles: ANALYST, group: 'quality' },
+  { id: 'goldendataset', label: 'Golden dataset', icon: BookMarked, roles: ANALYST, group: 'quality' },
+  { id: 'rankingexplain', label: 'Объяснение ранжирования', icon: ListOrdered, roles: ANALYST, group: 'quality' },
+  { id: 'regressiongate', label: 'Гейт регрессий', icon: TrendingDown, roles: ANALYST, group: 'quality' },
+  { id: 'retrievaleval', label: 'Retrieval-eval (hybrid/bm25/dense)', icon: Gauge, roles: ANALYST, group: 'quality' },
+  { id: 'verifiergate', label: 'Verifier-гейт', icon: BadgeCheck, roles: ANALYST, group: 'quality' },
+  { id: 'curationdiffreagraph', label: 'Diff курирования (до/после)', icon: GitCompareArrows, roles: CURATOR, group: 'curation' },
+  { id: 'reviewtaskgen', label: 'Генерация задач ревью', icon: ClipboardList, roles: CURATOR, group: 'curation' },
+  { id: 'langgraphstudio', label: 'LangGraph Studio', icon: Workflow, roles: INTERNAL, group: 'agent' },
+  { id: 'ltmemory', label: 'Память ассистента', icon: Brain, roles: INTERNAL, group: 'agent' },
+  { id: 'dod', label: 'Definition of Done', icon: ClipboardCheck, roles: ANALYST, group: 'admin' },
+  { id: 'sourcecatalog', label: 'Каталог источников', icon: Library, roles: ANALYST, group: 'admin' },
 ];
 
 export function App() {
@@ -498,6 +557,30 @@ export function App() {
           {view === 'tablecorrection' && <TableCorrectionView />}
           {view === 'unitreview' && <UnitReviewView />}
           {view === 'graphintegrity' && <GraphIntegrityView />}
+          {/* -- Batch-4 feature screens -- */}
+          {view === 'arbiterEvidence' && <ArbiterEvidenceView />}
+          {view === 'contradictionScan' && <ContradictionScanView />}
+          {view === 'coveragedash' && <CoverageDashboardView />}
+          {view === 'curationdiffreagraph' && <CurationDiffReagraphView />}
+          {view === 'dod' && <DefinitionOfDoneView />}
+          {view === 'extractionrecall' && <ExtractionRecallEvalView />}
+          {view === 'facetsearch' && <FacetSearchView />}
+          {view === 'facttimemachine' && <FactTimeMachineView />}
+          {view === 'goldendataset' && <GoldenDatasetView />}
+          {view === 'graphdiff' && <GraphDiffView />}
+          {view === 'langgraphstudio' && <LangGraphStudioView />}
+          {view === 'ltmemory' && <LongTermMemoryView />}
+          {view === 'newdocsensor' && <NewDocumentSensorView />}
+          {view === 'pipelineemission' && <PipelineLineageEmissionView />}
+          {view === 'pipelinelineage' && <PipelineLineageView />}
+          {view === 'rangefacets' && <RangeFacetsView />}
+          {view === 'rankingexplain' && <RankingExplainView />}
+          {view === 'regressiongate' && <RegressionGateView />}
+          {view === 'retrievaleval' && <RetrievalEvalDashboardView />}
+          {view === 'reviewtaskgen' && <ReviewTaskGenView />}
+          {view === 'sourcecatalog' && <SourceCatalogView />}
+          {view === 'subgraphchat' && <SubgraphChatAttachView />}
+          {view === 'verifiergate' && <VerifierGateView />}
         </main>
       </div>
 

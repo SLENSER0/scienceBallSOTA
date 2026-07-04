@@ -81,7 +81,31 @@ export type View =
   | 'mentionresolve'
   | 'mergeundo'
   | 'evidenceinspector'
-  | 'tablecorrection';
+  | 'tablecorrection'
+  // -- Batch-4 feature screens ---------------------------------------------
+  | 'arbiterEvidence'
+  | 'contradictionScan'
+  | 'coveragedash'
+  | 'curationdiffreagraph'
+  | 'dod'
+  | 'extractionrecall'
+  | 'facetsearch'
+  | 'facttimemachine'
+  | 'goldendataset'
+  | 'graphdiff'
+  | 'langgraphstudio'
+  | 'ltmemory'
+  | 'newdocsensor'
+  | 'pipelineemission'
+  | 'pipelinelineage'
+  | 'rangefacets'
+  | 'rankingexplain'
+  | 'regressiongate'
+  | 'retrievaleval'
+  | 'reviewtaskgen'
+  | 'sourcecatalog'
+  | 'subgraphchat'
+  | 'verifiergate';
 
 interface AppState {
   view: View;

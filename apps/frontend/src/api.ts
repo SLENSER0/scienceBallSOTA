@@ -749,6 +749,39 @@ export const api = {
     if (opts?.fragments) p.set('fragments', String(opts.fragments));
     return req<HighlightSearchResponse>(`/api/v1/search/highlight?${p.toString()}`);
   },
+
+  // == Batch-4 feature endpoints ============================================
+
+  // -- §19.10 LangGraph Studio: граф scientific_agent + live node-trace ------
+  studioGraph(): Promise<import('./components/LangGraphStudioView').StudioGraph> {
+    return req('/api/v1/agent/studio/graph');
+  },
+  studioTrace(question: string): Promise<import('./components/LangGraphStudioView').StudioTrace> {
+    return req('/api/v1/agent/studio/trace', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    });
+  },
+
+  // -- §15.8 Verifier gate: блокировка неподкреплённых чисел + scan_gaps -----
+  verifierGate(
+    question: string,
+    answer: string,
+    citations: unknown[] = [],
+  ): Promise<import('./components/VerifierGateView').VerifyResult> {
+    return req('/api/v1/verifier-gate/verify', {
+      method: 'POST',
+      body: JSON.stringify({ question, answer, citations }),
+    });
+  },
+  verifierScanGaps(
+    question: string,
+  ): Promise<import('./components/VerifierGateView').ScanContext> {
+    return req('/api/v1/verifier-gate/scan-gaps', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    });
+  },
 };
 
 // -- §7.5 Apples-to-apples normalized-unit result --------------------------
