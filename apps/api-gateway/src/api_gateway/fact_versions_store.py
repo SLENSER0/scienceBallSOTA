@@ -56,7 +56,6 @@ FACT_FIELDS: tuple[tuple[str, str], ...] = (
     ("year", "Год"),
     ("name", "Имя"),
     ("canonical_name", "Каноническое имя"),
-    ("review_status", "Статус ревью"),
 )
 _FIELD_LABEL = dict(FACT_FIELDS)
 _FIELD_NAMES = tuple(k for k, _ in FACT_FIELDS)
