@@ -26,9 +26,12 @@ def attach_routers(app: FastAPI) -> None:
         chat_absence,
         chat_subgraph_attach,
         citation_provenance,
+        # batch 5 (final)
+        collaboration,
         community_cluster_graph,
         community_panel,
         comparison,
+        confidence_calibration,
         confidence_fusion,
         contradiction_scan,
         contradictions,
@@ -36,23 +39,28 @@ def attach_routers(app: FastAPI) -> None:
         coverage_dashboard,
         coverage_heatmap,
         coverage_sankey,
+        crosslingual_search,
         curation,
         curation_diff_reagraph,
         curation_graph_diff,
+        dagster_asset_graph,
         definition_of_done,
         demo_run,
         documents,
         edge_anomalies,
         entity_resolution,
         entity_resolve,
+        entity_timeline,
         er_candidates,
         er_eval,
+        er_metrics,
         evidence,
         evidence_bbox,
         evidence_inspector,
         evidence_pack,
         experiment_extract,
         experiments,
+        expert_feedback,
         export,
         extraction_eval,
         extraction_recall_eval,
@@ -70,11 +78,13 @@ def attach_routers(app: FastAPI) -> None:
         graph_encoding,
         graph_ext,
         graph_integrity,
+        graph_legend,
         graph_path,
         graph_templates,
         hardness,
         highlight_search,
         hitl,
+        i18n,
         ingest,
         ingest_pipeline,
         insights,
@@ -82,6 +92,7 @@ def attach_routers(app: FastAPI) -> None:
         langgraph_studio,
         link_prediction,
         long_term_memory,
+        materials_ner,
         merge_undo,
         missing_links,
         mlflow_ui,
@@ -90,9 +101,11 @@ def attach_routers(app: FastAPI) -> None:
         notifications,
         ocr,
         ops_dashboards,
+        pipeline_dag,
         pipeline_lineage,
         pipeline_lineage_emission,
         property_graph,
+        property_term_review,
         prose_claims,
         quality_board,
         query,
@@ -241,3 +254,18 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(review_task_gen.router)
     app.include_router(source_catalog.router)
     app.include_router(verifier_gate.router)
+    # --- batch 5 roadmap features (final) ---
+    # er_metrics uses /admin prefix and graph_legend uses /graph — mounted after
+    # admin.router / graph.router (registered early) so existing routes win on any clash.
+    app.include_router(collaboration.router)
+    app.include_router(confidence_calibration.router)
+    app.include_router(crosslingual_search.router)
+    app.include_router(dagster_asset_graph.router)
+    app.include_router(entity_timeline.router)
+    app.include_router(er_metrics.router)
+    app.include_router(expert_feedback.router)
+    app.include_router(graph_legend.router)
+    app.include_router(i18n.router)
+    app.include_router(materials_ner.router)
+    app.include_router(pipeline_dag.router)
+    app.include_router(property_term_review.router)
