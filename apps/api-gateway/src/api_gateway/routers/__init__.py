@@ -159,6 +159,7 @@ _ROUTERS: list[tuple[str, tuple[str, ...]]] = [
     ("materials_ner", ("router",)),
     ("pipeline_dag", ("router",)),
     ("property_term_review", ("router",)),
+    ("cluster_map", ("router",)),
 ]
 
 

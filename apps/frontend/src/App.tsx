@@ -9,6 +9,7 @@ import {
   LogOut,
   Library,
   Boxes,
+  Orbit,
   ShieldCheck,
   Bot,
   GitCompareArrows,
@@ -73,6 +74,7 @@ import { SimilarMaterialsView } from './components/SimilarMaterialsView';
 import { SuspectValuesView } from './components/SuspectValuesView';
 import { KgHealthView } from './components/KgHealthView';
 import { CommunityClusterGraphView } from './components/CommunityClusterGraphView';
+import { ClusterMap3DView } from './components/ClusterMap3DView';
 import { CoverageSankeyView } from './components/CoverageSankeyView';
 import { GraphVisualEncodingView } from './components/GraphVisualEncodingView';
 import { EvidenceBboxView } from './components/EvidenceBboxView';
@@ -199,6 +201,7 @@ const NAV: NavItem[] = [
   // Обе встроены в «Обзор базы знаний» — из меню убраны (роуты/компоненты в коде):
   // { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
   // { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
+  { id: 'corpusmap3d', label: 'Карта тем корпуса', icon: Orbit, group: 'knowledge' },
   { id: 'facttimemachine', label: 'Версионирование фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
   { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
@@ -416,6 +419,7 @@ export function App() {
           {/* -- Batch-2 feature screens -- */}
           {view === 'targetdemo' && <TargetPictureDemoView />}
           {view === 'clustergraph' && <CommunityClusterGraphView />}
+          {view === 'corpusmap3d' && <ClusterMap3DView />}
           {view === 'coveragesankey' && <CoverageSankeyView />}
           {view === 'graphencoding' && <GraphVisualEncodingView />}
           {view === 'simembed' && <SimilarEmbeddingsView />}
