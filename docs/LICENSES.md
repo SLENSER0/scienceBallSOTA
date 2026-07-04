@@ -8,14 +8,17 @@ LGPLv3 / EPL / MPL / Apache-2.0 / MIT — permissive BSD/ISC treated as MIT-clas
 
 | Model | License | Use |
 |---|---|---|
-| qwen/qwen-2.5-7b-instruct | Apache-2.0 | extraction (default) |
+| qwen/qwen3.6-35b-a3b | Apache-2.0 | extraction / fast (default) |
+| deepseek/deepseek-v4-flash | MIT | agent synthesis (default) |
+| z-ai/glm-5.2 | MIT | synthesis quality mode / deep-research supervisor |
 | qwen/qwen3-235b-a22b | Apache-2.0 | heavy synthesis (alt) |
-| deepseek/deepseek-chat-v3-0324 | MIT | agent synthesis (default) |
 | mistralai/mistral-small-24b-instruct-2501 | Apache-2.0 | alt |
-| mistralai/mistral-nemo | Apache-2.0 | alt |
+| minimax/minimax-m3 | ⚠ MiniMax-Community (NOT permissive) | multimodal deep-research (OPTIONAL only) |
 
 **Excluded** (license not permitted): meta-llama/* (Llama Community License),
-google/gemma-* (Gemma License).
+google/gemma-* (Gemma License), nvidia/nemotron-* (OpenMDW).
+**Policy caveat:** `minimax/minimax-m3` is MiniMax-Community (not MIT/Apache) — allowed
+only for the optional multimodal role, never the core text path, under strict OSS rules.
 
 ## Embedding model
 

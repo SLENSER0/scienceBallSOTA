@@ -17,13 +17,20 @@ are open source."*
 
 | Role | Model | License |
 |---|---|---|
-| Extraction (default) | `qwen/qwen-2.5-7b-instruct` | Apache-2.0 |
-| Synthesis / agent | `deepseek/deepseek-chat-v3-0324` | MIT |
-| Alternates | `mistralai/mistral-small-24b-instruct-2501`, `qwen/qwen3-235b-a22b` | Apache-2.0 |
+| Extraction / fast (default) | `qwen/qwen3.6-35b-a3b` | Apache-2.0 |
+| Synthesis / agent (default) | `deepseek/deepseek-v4-flash` | MIT |
+| Synthesis — quality mode | `z-ai/glm-5.2` | MIT |
+| Deep-research supervisor | `z-ai/glm-5.2` | MIT |
+| Deep-research worker / report | `deepseek/deepseek-v4-flash` | MIT |
+| Multimodal (optional) | `minimax/minimax-m3` | ⚠ MiniMax-Community (NOT MIT/Apache) — optional only |
+| Alternates | `qwen/qwen3-235b-a22b`, `mistralai/mistral-small-24b-instruct-2501` | Apache-2.0 |
 
-**Explicitly excluded:** Llama (Llama Community License) and Gemma (Gemma
-License) — neither is in the permitted list. All model IDs are configurable
-(`LLM_MODEL_*`); operators must keep them within the permitted-license set.
+**Explicitly excluded:** Llama (Llama Community License), Gemma (Gemma License),
+and NVIDIA Nemotron (OpenMDW — non-permissive) are NOT in the permitted list.
+**Caveat:** `minimax/minimax-m3` is under the **MiniMax-Community** license (not
+MIT/Apache) — it is permitted only for the optional multimodal role, not the core
+text path, under a strict OSS policy. All model IDs are configurable (`LLM_MODEL_*`);
+operators must keep them within the permitted-license set.
 
 ### Embeddings — Apache-2.0
 
