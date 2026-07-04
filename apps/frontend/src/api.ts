@@ -16,6 +16,7 @@ import type {
   NodeRow,
   PrioritizedGap,
   SavedView,
+  SimilarMaterials,
   SimLinksSeeds,
   SimLinksSuggest,
 } from './types';
@@ -564,6 +565,130 @@ export const api = {
     if (seedLabel) q.set('seed_label', seedLabel);
     if (targetLabel) q.set('target_label', targetLabel);
     return req(`/api/v1/missing-links/board?${q.toString()}`);
+  },
+
+  // == Batch-2 feature endpoints ============================================
+
+  // -- §18.3 Agent trace viewer (node → tool → LLM span tree) ---------------
+  agentTrace(question: string): Promise<import('./components/AgentTraceView').AgentTrace> {
+    return req('/api/v1/agent/trace', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    });
+  },
+
+  // -- §13.23 Run transparency & reproducibility ----------------------------
+  runTransparency(
+    question: string,
+    seed = '0',
+  ): Promise<import('./components/RunTransparencyView').RunTransparency> {
+    return req('/api/v1/agent/run-transparency', {
+      method: 'POST',
+      body: JSON.stringify({ question, seed }),
+    });
+  },
+
+  // -- §17.8 Path search Material↔Property (подсветка пути) -----------------
+  graphPathEndpoints(
+    label = 'Material',
+    limit = 200,
+  ): Promise<{ label: string; count: number; nodes: import('./components/GraphPathSearchView').PathEndpoint[] }> {
+    return req(`/api/v1/graph-path/endpoints?label=${encodeURIComponent(label)}&limit=${limit}`);
+  },
+  graphPathSearch(
+    source: string,
+    target: string,
+    maxHops = 4,
+    topN = 6,
+    edgeTypes?: string[],
+  ): Promise<import('./components/GraphPathSearchView').PathSearchResult> {
+    return req('/api/v1/graph-path/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        source,
+        target,
+        max_hops: maxHops,
+        top_n: topN,
+        edge_types: edgeTypes ?? null,
+      }),
+    });
+  },
+
+  // -- §13.11/§8.13 Structural edge anomalies (Mode D graph hygiene) --------
+  edgeAnomalies(limit = 500): Promise<import('./components/EdgeAnomaliesView').EdgeAnomalyReport> {
+    return req(`/api/v1/edge-anomalies/report?limit=${limit}`);
+  },
+
+  // -- §6.11 Schema-constrained property-graph extraction -------------------
+  propertyGraphSchema(): Promise<any> {
+    return req('/api/v1/property-graph/schema');
+  },
+  propertyGraphConstrain(triplets: unknown[]): Promise<any> {
+    return req('/api/v1/property-graph/constrain', {
+      method: 'POST',
+      body: JSON.stringify({ triplets }),
+    });
+  },
+  propertyGraphAudit(): Promise<any> {
+    return req('/api/v1/property-graph/audit');
+  },
+
+  // -- §3.13 Similar entities via node-embedding vector search --------------
+  similarEmbStatus(): Promise<{ available: boolean; method: string; entities: number; labels?: string[] }> {
+    return req('/api/v1/similar-embeddings/status');
+  },
+  similarEmbSeeds(label?: string): Promise<{
+    count: number;
+    labels: string[];
+    seeds: { id: string; name: string; label: string }[];
+  }> {
+    const q = label ? `?label=${encodeURIComponent(label)}` : '';
+    return req(`/api/v1/similar-embeddings/seeds${q}`);
+  },
+  similarEmbSimilar(seed: string, k = 10): Promise<{
+    seed: { id: string; name?: string; label?: string };
+    method: string;
+    count: number;
+    similar: { id: string; name: string; label: string; similarity: number; reason: string }[];
+  }> {
+    return req(`/api/v1/similar-embeddings/similar?seed=${encodeURIComponent(seed)}&k=${k}`);
+  },
+  similarEmbByText(q: string, k = 10): Promise<{
+    query: string;
+    method: string;
+    count: number;
+    similar: { id: string; name: string; label: string; similarity: number; reason: string }[];
+  }> {
+    return req(`/api/v1/similar-embeddings/by-text?q=${encodeURIComponent(q)}&k=${k}`);
+  },
+
+  // -- §13.11 Похожие материалы (node similarity, Mode D) -------------------
+  similarMaterialsSeeds(): Promise<{
+    count: number;
+    seeds: { id: string; name: string; attributes: number }[];
+  }> {
+    return req('/api/v1/similar-materials/seeds');
+  },
+  similarMaterials(seed: string, k = 12, facets?: string): Promise<SimilarMaterials> {
+    const f = facets ? `&facets=${encodeURIComponent(facets)}` : '';
+    return req(`/api/v1/similar-materials/similar?seed=${encodeURIComponent(seed)}&k=${k}${f}`);
+  },
+
+  // -- §7.7 Suspect-value flags (curation queue) ----------------------------
+  suspectValueQueue(
+    flag?: string,
+    severity?: string,
+  ): Promise<import('./components/SuspectValuesView').SuspectQueueResponse> {
+    const p = new URLSearchParams();
+    if (flag) p.set('flag', flag);
+    if (severity) p.set('severity', severity);
+    const qs = p.toString();
+    return req(`/api/v1/suspect-values/queue${qs ? `?${qs}` : ''}`);
+  },
+  suspectValueMeasurement(
+    id: string,
+  ): Promise<import('./components/SuspectValuesView').SuspectMeasurement> {
+    return req(`/api/v1/suspect-values/measurement/${encodeURIComponent(id)}`);
   },
 };
 

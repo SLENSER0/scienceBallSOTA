@@ -35,6 +35,17 @@ import {
   Compass,
   Table2,
   Spline,
+  Hexagon,
+  MapPin,
+  ScanText,
+  ScrollText,
+  Activity,
+  FileCode2,
+  Shapes,
+  Fingerprint,
+  GitBranch,
+  Palette,
+  HeartPulse,
 } from 'lucide-react';
 import { api } from './api';
 import { useStore, type View } from './store';
@@ -76,6 +87,28 @@ import { ValueOfInformationView } from './components/ValueOfInformationView';
 import { AbsenceMapView } from './components/AbsenceMapView';
 import { MaterialCoverageHeatmapView } from './components/MaterialCoverageHeatmapView';
 import { MissingLinksBoardView } from './components/MissingLinksBoardView';
+// -- Batch-2 feature screens ------------------------------------------------
+import { AgentTraceView } from './components/AgentTraceView';
+import { RunTransparencyView } from './components/RunTransparencyView';
+import { GraphPathSearchView } from './components/GraphPathSearchView';
+import { EdgeAnomaliesView } from './components/EdgeAnomaliesView';
+import { SchemaGraphExtractionView } from './components/SchemaGraphExtractionView';
+import { SimilarEmbeddingsView } from './components/SimilarEmbeddingsView';
+import { SimilarMaterialsView } from './components/SimilarMaterialsView';
+import { SuspectValuesView } from './components/SuspectValuesView';
+import { KgHealthView } from './components/KgHealthView';
+import { CommunityClusterGraphView } from './components/CommunityClusterGraphView';
+import { CoverageSankeyView } from './components/CoverageSankeyView';
+import { GraphVisualEncodingView } from './components/GraphVisualEncodingView';
+import { EvidenceBboxView } from './components/EvidenceBboxView';
+import { ExtractionEvalView } from './components/ExtractionEvalView';
+import { MlNerView } from './components/MlNerView';
+import { MlflowExperimentsView } from './components/MlflowExperimentsView';
+import { ProseClaimsView } from './components/ProseClaimsView';
+import { QualityBoardView } from './components/QualityBoardView';
+import { RagChecksView } from './components/RagChecksView';
+import { TargetPictureDemoView } from './components/TargetPictureDemoView';
+import { UnitProvenanceView } from './components/UnitProvenanceView';
 
 const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
 const CURATOR = ['curator', 'project_manager', 'admin'];
@@ -121,6 +154,29 @@ const NAV: { id: View; label: string; icon: typeof Network; roles?: string[] }[]
   { id: 'benchmark', label: 'Бенчмарк', icon: Trophy, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
   { id: 'er_candidates', label: 'Слияние сущностей', icon: Layers, roles: CURATOR },
   { id: 'erstep', label: 'ER-шаг конвейера', icon: Workflow, roles: INTERNAL },
+
+  // -- Batch-2 feature screens ----------------------------------------------
+  { id: 'targetdemo', label: 'Демо-прогон §23', icon: Sparkles },
+  { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon },
+  { id: 'coveragesankey', label: 'Потоки покрытия', icon: Workflow },
+  { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette },
+  { id: 'simembed', label: 'Похожие (эмбеддинги)', icon: Boxes },
+  { id: 'similarMaterials', label: 'Похожие материалы', icon: Boxes, roles: INTERNAL },
+  { id: 'graphpath', label: 'Путь между сущностями', icon: Waypoints, roles: INTERNAL },
+  { id: 'unitprov', label: 'Провенанс единиц', icon: Fingerprint, roles: INTERNAL },
+  { id: 'mlner', label: 'ML-NER (GLiNER)', icon: ScanText, roles: INTERNAL },
+  { id: 'mlflow', label: 'MLflow эксперименты', icon: FlaskConical, roles: INTERNAL },
+  { id: 'schemaextract', label: 'Схема-экстракция', icon: Shapes, roles: INTERNAL },
+  { id: 'evidencebbox', label: 'Bbox-цитаты', icon: MapPin, roles: INTERNAL },
+  { id: 'edgeanomalies', label: 'Аномалии рёбер', icon: GitFork, roles: INTERNAL },
+  { id: 'agenttrace', label: 'Трейс агента', icon: GitBranch, roles: INTERNAL },
+  { id: 'runtransparency', label: 'Прозрачность прогона', icon: FileCode2, roles: INTERNAL },
+  { id: 'proseclaims', label: 'Факты из прозы', icon: ScrollText, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'extraction_eval', label: 'Extraction eval', icon: Gauge, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'qualityboard', label: 'Табло качества', icon: Activity, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'ragchecks', label: 'RAGAS / DeepEval', icon: ShieldCheck, roles: ['analyst', 'curator', 'project_manager', 'admin'] },
+  { id: 'suspects', label: 'Подозрительные значения', icon: TriangleAlert, roles: CURATOR },
+  { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR },
 ];
 
 export function App() {
@@ -239,6 +295,28 @@ export function App() {
           {view === 'benchmark' && <BenchmarkView />}
           {view === 'er_candidates' && <ERCandidatesView />}
           {view === 'erstep' && <EntityResolutionStepView />}
+          {/* -- Batch-2 feature screens -- */}
+          {view === 'targetdemo' && <TargetPictureDemoView />}
+          {view === 'clustergraph' && <CommunityClusterGraphView />}
+          {view === 'coveragesankey' && <CoverageSankeyView />}
+          {view === 'graphencoding' && <GraphVisualEncodingView />}
+          {view === 'simembed' && <SimilarEmbeddingsView />}
+          {view === 'similarMaterials' && <SimilarMaterialsView />}
+          {view === 'graphpath' && <GraphPathSearchView />}
+          {view === 'unitprov' && <UnitProvenanceView />}
+          {view === 'mlner' && <MlNerView />}
+          {view === 'mlflow' && <MlflowExperimentsView />}
+          {view === 'schemaextract' && <SchemaGraphExtractionView />}
+          {view === 'evidencebbox' && <EvidenceBboxView />}
+          {view === 'edgeanomalies' && <EdgeAnomaliesView />}
+          {view === 'agenttrace' && <AgentTraceView />}
+          {view === 'runtransparency' && <RunTransparencyView />}
+          {view === 'proseclaims' && <ProseClaimsView />}
+          {view === 'extraction_eval' && <ExtractionEvalView />}
+          {view === 'qualityboard' && <QualityBoardView />}
+          {view === 'ragchecks' && <RagChecksView />}
+          {view === 'suspects' && <SuspectValuesView />}
+          {view === 'kghealth' && <KgHealthView />}
         </main>
       </div>
 

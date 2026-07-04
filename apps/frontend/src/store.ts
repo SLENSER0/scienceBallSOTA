@@ -37,7 +37,29 @@ export type View =
   | 'voi'
   | 'absence'
   | 'coverageMatrix'
-  | 'missinglinks';
+  | 'missinglinks'
+  // -- Batch-2 feature screens ---------------------------------------------
+  | 'agenttrace'
+  | 'runtransparency'
+  | 'graphpath'
+  | 'edgeanomalies'
+  | 'schemaextract'
+  | 'simembed'
+  | 'similarMaterials'
+  | 'suspects'
+  | 'kghealth'
+  | 'clustergraph'
+  | 'coveragesankey'
+  | 'graphencoding'
+  | 'evidencebbox'
+  | 'extraction_eval'
+  | 'mlner'
+  | 'mlflow'
+  | 'proseclaims'
+  | 'qualityboard'
+  | 'ragchecks'
+  | 'targetdemo'
+  | 'unitprov';
 
 interface AppState {
   view: View;

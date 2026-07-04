@@ -302,3 +302,26 @@ export interface MaterialsProjectBadgeData {
   canonical_formula: string | null;
   url: string | null;
 }
+
+// -- §13.11 Похожие материалы (node similarity, Mode D) --------------------
+export interface SimilarMaterialAttr {
+  id: string;
+  name: string;
+}
+export interface SimilarMaterial {
+  id: string;
+  name: string;
+  similarity: number;
+  overlap: number;
+  shared_count: number;
+  shared_by_facet: Record<string, SimilarMaterialAttr[]>;
+  reason: string;
+}
+export interface SimilarMaterials {
+  seed: { id: string; name: string; label?: string | null };
+  facets: string[];
+  seed_attributes: { id: string; name: string; label: string }[];
+  count: number;
+  similar: SimilarMaterial[];
+  note?: string;
+}
