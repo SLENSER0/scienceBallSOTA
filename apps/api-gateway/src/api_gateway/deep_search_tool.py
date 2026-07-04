@@ -43,10 +43,10 @@ def collected_sources() -> list[dict[str, str]]:
     seen: set[str] = set()
     out: list[dict[str, str]] = []
     for h in got:
-        url = h.get("url", "")
-        if not url or url in seen:
+        key = h.get("url") or h.get("title") or ""
+        if not key or key in seen:
             continue
-        seen.add(url)
+        seen.add(key)
         out.append(h)
     return out
 
@@ -75,7 +75,10 @@ def _ddg_search(queries: list[str], max_results: int) -> str:
                 url = h.get("href") or h.get("url") or ""
                 body = (h.get("body") or "").strip()[:300]
                 blocks.append(f"{i}. {title}\n   URL: {url}\n   {body}")
-                if collector is not None and url:
+                # Collect any hit that carries a title OR url — niche RU/technical
+                # queries often return url-less snippets, and promote can still ingest a
+                # title-only source (url is optional), so we must not drop them.
+                if collector is not None and (url or title):
                     collector.append({"title": title, "url": url, "snippet": body, "query": q})
     return "\n".join(blocks) or "(нет результатов)"
 
