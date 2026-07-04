@@ -17,12 +17,16 @@ def attach_routers(app: FastAPI) -> None:
         apples,
         arbiter_resolve,
         auth,
+        # batch 3
+        batch_ingest,
         benchmark,
         chat,
         chat_absence,
+        citation_provenance,
         community_cluster_graph,
         community_panel,
         comparison,
+        confidence_fusion,
         contradictions,
         corpus_overview,
         coverage_heatmap,
@@ -32,13 +36,19 @@ def attach_routers(app: FastAPI) -> None:
         documents,
         edge_anomalies,
         entity_resolution,
+        entity_resolve,
         er_candidates,
+        er_eval,
         evidence,
         evidence_bbox,
+        evidence_inspector,
         evidence_pack,
+        experiment_extract,
         experiments,
         export,
         extraction_eval,
+        extractor_run,
+        figure_captions,
         figures,
         gap_closure,
         gaps,
@@ -47,22 +57,30 @@ def attach_routers(app: FastAPI) -> None:
         graph,
         graph_encoding,
         graph_ext,
+        graph_integrity,
         graph_path,
+        graph_templates,
         hardness,
+        highlight_search,
         hitl,
         ingest,
+        ingest_pipeline,
         insights,
         kg_health,
         link_prediction,
+        merge_undo,
         missing_links,
         mlflow_ui,
         mp_authority,
         notifications,
+        ocr,
+        ops_dashboards,
         property_graph,
         prose_claims,
         quality_board,
         query,
         rag_checks,
+        rerank_live,
         research,
         run_transparency,
         search,
@@ -70,11 +88,15 @@ def attach_routers(app: FastAPI) -> None:
         similar_materials,
         similarity_links,
         source_trust,
+        subgraph_ask,
         suspect_values,
         table_cell,
+        table_versions,
         unit_provenance,
+        unit_review,
         views,
         voi,
+        warning_panel,
     )
 
     app.include_router(auth.router)
@@ -83,8 +105,9 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(notifications.router)
     app.include_router(graph.router)
     app.include_router(graph.entities_router)
-    # er_candidates GET /entities/candidates must precede search.py's /entities/{entity_id}
+    # er_candidates + entity_resolve /entities/* static routes precede search.py /entities/{id}
     app.include_router(er_candidates.router)
+    app.include_router(entity_resolve.router)
     app.include_router(search.router)
     app.include_router(evidence.router)
     app.include_router(admin.router)
@@ -149,3 +172,24 @@ def attach_routers(app: FastAPI) -> None:
     app.include_router(unit_provenance.router)
     app.include_router(agent_trace.router)
     app.include_router(edge_anomalies.router)
+    # --- batch 3 roadmap features ---
+    app.include_router(batch_ingest.router)
+    app.include_router(citation_provenance.router)
+    app.include_router(confidence_fusion.router)
+    app.include_router(er_eval.router)
+    app.include_router(evidence_inspector.router)
+    app.include_router(experiment_extract.router)
+    app.include_router(extractor_run.router)
+    app.include_router(figure_captions.router)
+    app.include_router(graph_integrity.router)
+    app.include_router(graph_templates.router)
+    app.include_router(highlight_search.router)
+    app.include_router(ingest_pipeline.router)
+    app.include_router(merge_undo.router)
+    app.include_router(ocr.router)
+    app.include_router(ops_dashboards.router)
+    app.include_router(rerank_live.router)
+    app.include_router(subgraph_ask.router)
+    app.include_router(table_versions.router)
+    app.include_router(unit_review.router)
+    app.include_router(warning_panel.router)
