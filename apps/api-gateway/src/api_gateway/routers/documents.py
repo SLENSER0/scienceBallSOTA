@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from api_gateway import audit
@@ -235,6 +236,161 @@ def reindex_document(
         "graph": graph.model_dump(by_alias=True),
         "node_count": len(graph.nodes),
     }
+
+
+# -- corpus source listing + download -------------------------------------
+# NB: these two routes MUST stay ABOVE the catch-all @router.get("/{doc_id:path}")
+# below, or FastAPI folds "corpus" and ".../download" into the catch-all.
+class CorpusSource(BaseModel):
+    """A citable corpus item — a seed/manual :Paper or an uploaded :Document."""
+
+    doc_id: str
+    title: str
+    doc_type: str
+    year: int | None = None
+    country: str | None = None
+    practice_type: str | None = None
+    evidence_strength: str | None = None
+    domain: str | None = None
+    url: str | None = None
+    doi: str | None = None
+    authors: list[str] = []
+    has_parsed: bool = False
+
+
+def _authors_list(node: dict[str, Any]) -> list[str]:
+    """Authors as a list — native list, else split authors_text on '|' or ','."""
+    val = node.get("authors")
+    if isinstance(val, list):
+        return [str(a).strip() for a in val if str(a).strip()]
+    text = node.get("authors_text")
+    if isinstance(text, str) and text.strip():
+        return [a.strip() for a in re.split(r"[|,]", text) if a.strip()]
+    return []
+
+
+def _has_parsed(doc_id: str) -> bool:
+    try:
+        return _sidecar(doc_id).exists()
+    except Exception:
+        return False
+
+
+def _as_int(v: Any) -> int | None:
+    """Coerce a node property to int|None — dirty data (e.g. '2019 г.') becomes None
+    instead of raising a pydantic ValidationError that would 500 the whole listing."""
+    try:
+        if v is None or v == "":
+            return None
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+@router.get("/corpus")
+def corpus_sources(
+    limit: int = 200,
+    q: str | None = None,
+    doc_type: str | None = None,
+) -> dict:
+    """List citable corpus sources — seed/manual :Paper + uploaded :Document (§17.19)."""
+    store = get_store()
+    bounded = min(max(limit, 1), 500)
+    # NB: LIMIT is interpolated as an int literal (not a bound $param) — the embedded
+    # Kuzu store rejects a parameterized LIMIT, matching every other query in the repo
+    # (graph.py, search.py). `bounded` is an int, so there is no injection surface.
+    rows = store.rows(
+        "MATCH (n:Node) WHERE n.label IN ['Paper','Document'] AND n.name IS NOT NULL "
+        f"RETURN n LIMIT {int(bounded)}",
+    )
+    sources: list[CorpusSource] = []
+    for r in rows:
+        nd = store._node_dict(r[0])
+        node_id = nd.get("id") or ""
+        label = nd.get("label") or ""
+        title = nd.get("name") or nd.get("canonical_name") or node_id
+        sources.append(
+            CorpusSource(
+                doc_id=node_id,
+                title=str(title),
+                doc_type=str(label).lower(),
+                year=_as_int(nd.get("year")),
+                country=nd.get("country"),
+                practice_type=nd.get("practice_type"),
+                evidence_strength=nd.get("evidence_strength"),
+                domain=nd.get("domain"),
+                url=nd.get("url"),
+                doi=nd.get("doi"),
+                authors=_authors_list(nd),
+                has_parsed=_has_parsed(node_id),
+            )
+        )
+    if q:
+        ql = q.lower()
+        sources = [s for s in sources if ql in s.title.lower()]
+    if doc_type:
+        sources = [s for s in sources if s.doc_type == doc_type]
+    sources.sort(key=lambda s: (0 if s.has_parsed else 1, s.title.lower()))
+    return {"sources": [s.model_dump() for s in sources], "count": len(sources)}
+
+
+@router.get("/{doc_id:path}/download")
+def download_document(doc_id: str) -> Response:
+    """Download a corpus item — parsed Markdown for uploads, else a citation card (§17.19)."""
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", doc_id).strip("_") or "doc"
+    sidecar = _sidecar(doc_id)
+    if sidecar.exists():
+        d = json.loads(sidecar.read_text(encoding="utf-8"))
+        title = d.get("title") or doc_id
+        pages = d.get("pages") or []
+        tables = d.get("tables") or []
+        lines: list[str] = [f"# {title}", ""]
+        lines.append(f"- doc_type: {d.get('doc_type') or ''}")
+        lines.append(f"- year: {d.get('year') if d.get('year') is not None else ''}")
+        lines.append(f"- pages: {d.get('page_count', len(pages))}")
+        lines.append("")
+        for pg in pages:
+            lines.append(f"## Стр. {pg.get('page')}")
+            lines.append("")
+            lines.append(str(pg.get("text") or ""))
+            lines.append("")
+            for t in tables:
+                if t.get("page") == pg.get("page"):
+                    for row in t.get("rows") or []:
+                        lines.append("| " + " | ".join(str(c) for c in row) + " |")
+                    lines.append("")
+        content = "\n".join(lines)
+        return Response(
+            content=content,
+            media_type="text/markdown",
+            headers={"Content-Disposition": f'attachment; filename="{safe}.md"'},
+        )
+
+    node = get_store().get_node(doc_id)
+    if node is not None:
+        title = node.get("name") or node.get("canonical_name") or doc_id
+        authors = _authors_list(node)
+        lines = [f"Title: {title}"]
+        if authors:
+            lines.append("Authors: " + ", ".join(authors))
+        if node.get("year") is not None:
+            lines.append(f"Year: {node['year']}")
+        if node.get("doi"):
+            lines.append(f"DOI: {node['doi']}")
+        if node.get("url"):
+            lines.append(f"URL: {node['url']}")
+        if node.get("country"):
+            lines.append(f"Country: {node['country']}")
+        if node.get("evidence_strength"):
+            lines.append(f"Evidence strength: {node['evidence_strength']}")
+        content = "\n".join(lines) + "\n"
+        return Response(
+            content=content,
+            media_type="text/plain",
+            headers={"Content-Disposition": f'attachment; filename="{safe}.txt"'},
+        )
+
+    raise HTTPException(status_code=404, detail="document not found")
 
 
 @router.get("/{doc_id:path}")

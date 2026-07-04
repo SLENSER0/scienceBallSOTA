@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, Bookmark, Loader2 } from 'lucide-react';
+import { ArrowRight, Bookmark, HelpCircle, Loader2 } from 'lucide-react';
 import { api } from '../api';
 import { CallHistory } from './CallHistory';
 import { pushCall } from '../lib/callHistory';
@@ -8,6 +8,37 @@ import { useStore } from '../store';
 import { AnswerView } from './AnswerView';
 import { GraphPanel } from './GraphPanel';
 import type { AnswerPayload, Citation, GraphResponse } from '../types';
+
+// Inline auth helper (copied verbatim from EvidenceInspectorView) so the clarify
+// pre-check can authenticate without adding methods to api.ts.
+function authHeaders(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('sb.session');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s?.token) return { Authorization: `Bearer ${s.token}` };
+      if (s?.role) return { 'X-Role': s.role };
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
+// §13.21 HITL clarification, folded into the Ask flow: before answering an
+// ambiguous question the assistant pauses and asks the user to disambiguate.
+interface ClarifyCandidate {
+  canonical_id: string;
+  name: string;
+  label: string | null;
+  confidence?: number;
+}
+interface ClarifyState {
+  clarify_id: string;
+  mention: string;
+  question: string;
+  candidates: ClarifyCandidate[];
+}
 
 const EXAMPLES = [
   'Какие методы обессоливания воды подходят для обогатительной фабрики, если сульфаты, хлориды, Ca, Mg, Na по 200–300 мг/л, а сухой остаток ≤1000 мг/дм³?',
@@ -42,9 +73,16 @@ export function AskView() {
   // Cancel any in-flight stream when leaving the view.
   useEffect(() => () => abortRef.current?.(), []);
 
+  // Built-in HITL clarification: when the question is ambiguous the assistant
+  // pauses here (instead of streaming) and asks the user to disambiguate.
+  const [clarify, setClarify] = useState<ClarifyState | null>(null);
+  const [clarifyBusy, setClarifyBusy] = useState(false);
+
+  // The actual streaming answer path (unchanged behavior). Extracted so both the
+  // normal submit and a resumed clarification can drive it.
   // Pass geography explicitly — a caller that just did setGeo(x) would otherwise send
   // the *previous* geo here (state update is async, this closure captures the old value).
-  const submit = (text: string, geography: string = geo) => {
+  const runStream = (text: string, geography: string = geo) => {
     const t = text.trim();
     if (!t) return;
     pushCall('ask', t, { geography });
@@ -82,6 +120,75 @@ export function AskView() {
       }
       setAnswer({ ...acc });
     });
+  };
+
+  // Entry point for every call site. Runs a fault-tolerant clarify pre-check; if the
+  // question is ambiguous we pause and surface disambiguation options, otherwise we
+  // fall through to the normal streaming answer. The pre-check must NEVER block the
+  // answer path — any error / non-200 / "ok" status streams as usual.
+  const submit = async (text: string, geography: string = geo) => {
+    const t = text.trim();
+    if (!t) return;
+    setClarify(null);
+    try {
+      const res = await fetch('/api/v1/chat/clarify/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ content: t }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          status?: string;
+          clarify_id?: string;
+          mention?: string;
+          request?: { question?: string; context?: { candidates?: ClarifyCandidate[] } };
+        };
+        if (data.status === 'clarify' && data.clarify_id) {
+          // Pausing to disambiguate: abort any in-flight stream and clear stale output
+          // so the clarify card can't race a still-running answer (setAnswer) or sit
+          // above a previous answer/error banner.
+          abortRef.current?.();
+          setStreaming(false);
+          setBrief('');
+          setStreamErr('');
+          setAnswer(null);
+          setClarify({
+            clarify_id: data.clarify_id,
+            mention: data.mention ?? '',
+            question: data.request?.question ?? '',
+            candidates: data.request?.context?.candidates ?? [],
+          });
+          return; // wait for the user to disambiguate before streaming
+        }
+      }
+    } catch {
+      /* clarify is best-effort — fall through to the normal stream */
+    }
+    runStream(t, geography);
+  };
+
+  // User picked a disambiguation option: resume the paused question on the chosen
+  // entity, then clear the clarify card. Falls back to streaming the raw question.
+  const pickCandidate = async (canonicalId: string) => {
+    if (!clarify) return;
+    setClarifyBusy(true);
+    try {
+      const res = await fetch('/api/v1/chat/clarify/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ clarify_id: clarify.clarify_id, resume_value: canonicalId }),
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = (await res.json()) as { status?: string; answer?: AnswerPayload };
+      if (data.answer) setAnswer(data.answer);
+      else runStream(q);
+      setClarify(null);
+    } catch {
+      runStream(q);
+      setClarify(null);
+    } finally {
+      setClarifyBusy(false);
+    }
   };
 
   return (
@@ -212,8 +319,45 @@ export function AskView() {
             </div>
           )}
 
+          {/* Built-in HITL clarification — the assistant paused to disambiguate before
+              answering. Shown above the answer output; suppresses the retrieval spinner. */}
+          {clarify && (
+            <section className="panel mt-6 space-y-3 p-4">
+              <div className="flex items-start gap-2">
+                <HelpCircle size={18} className="mt-0.5 shrink-0 text-gap" />
+                <div>
+                  <p className="text-sm font-medium text-ink">
+                    {clarify.question || 'Уточните, что именно вы имеете в виду?'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-faint">
+                    Неоднозначное упоминание: <span className="text-copper">«{clarify.mention}»</span>
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {clarify.candidates.map((c) => (
+                  <button
+                    key={c.canonical_id}
+                    onClick={() => pickCandidate(c.canonical_id)}
+                    disabled={clarifyBusy}
+                    className="group flex flex-col items-start gap-1 rounded-lg border border-line bg-surface/40 px-3 py-2 text-left transition hover:border-copper/50 hover:bg-copper/10 disabled:opacity-40"
+                  >
+                    <span className="text-sm font-medium text-ink group-hover:text-copper">
+                      {c.name}
+                    </span>
+                    <span className="text-xs text-faint">{c.label ?? c.canonical_id}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-faint">
+                {clarifyBusy && <Loader2 size={12} className="animate-spin" />}
+                Ассистент переспросит при неоднозначности
+              </div>
+            </section>
+          )}
+
           {/* Retrieval phase: shown only until the brief conclusion / first token arrives. */}
-          {streaming && !answer?.answerMarkdown && !brief && (
+          {streaming && !answer?.answerMarkdown && !brief && !clarify && (
             <div className="mt-8 flex items-center gap-3 text-muted">
               <Loader2 size={18} className="animate-spin text-copper" />
               <span className="font-mono text-sm">

@@ -14,6 +14,15 @@ interface DocItem {
   title: string | null;
   page_count?: number | null;
   year?: number | null;
+  has_parsed?: boolean;
+}
+
+// Corpus-wide source listing (graph :Paper / :Document nodes), not just uploaded
+// sidecars. has_parsed=true means a parsed page-image sidecar exists for this doc.
+interface CorpusSource {
+  doc_id: string;
+  title: string | null;
+  has_parsed?: boolean;
 }
 
 interface Figure {
@@ -63,10 +72,17 @@ export function FigureEvidenceView() {
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    jget<{ documents: DocItem[] }>('/api/v1/documents?limit=100')
+    // Corpus-wide listing (backend already sorts has_parsed-first, so parsed docs
+    // — the ones that actually have rasterized pages/figures — surface at the top).
+    jget<{ sources: CorpusSource[] }>('/api/v1/documents/corpus?limit=200')
       .then((d) => {
-        setDocs(d.documents);
-        if (d.documents[0]) setDocId(d.documents[0].doc_id);
+        const mapped: DocItem[] = (d.sources ?? []).map((s) => ({
+          doc_id: s.doc_id,
+          title: s.title,
+          has_parsed: s.has_parsed,
+        }));
+        setDocs(mapped);
+        if (mapped[0]) setDocId(mapped[0].doc_id);
       })
       .catch((e) => setError(String(e)));
   }, []);
@@ -78,10 +94,13 @@ export function FigureEvidenceView() {
     setSelected(null);
     try {
       const r = await jget<{ figures: Figure[] }>(`/api/v1/figures/by-doc/${encodeURIComponent(id)}`);
-      setFigs(r.figures);
-      setSelected(r.figures[0] ?? null);
-    } catch (e) {
-      setError(String(e));
+      setFigs(r.figures ?? []);
+      setSelected(r.figures?.[0] ?? null);
+    } catch {
+      // Corpus :Paper nodes have no rasterized pages, so by-doc may 4xx/error or
+      // return nothing. Degrade to the empty state instead of a scary error banner.
+      setFigs([]);
+      setSelected(null);
     } finally {
       setBusy(false);
     }
@@ -103,7 +122,14 @@ export function FigureEvidenceView() {
       setNotice(`Извлечено фигур: ${r.count} · связано с фактами: ${r.linked_facts}`);
       await loadFigs(docId);
     } catch (e) {
-      setError(String(e));
+      // A corpus :Paper without an uploaded PDF returns 404/415 — show a neutral hint
+      // rather than dumping the raw error JSON into a red banner.
+      const msg = String(e);
+      if (msg.includes('404') || msg.includes('415')) {
+        setNotice('Для этого источника нет загруженного PDF — извлечение фигур недоступно.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setExtracting(false);
     }
@@ -137,13 +163,18 @@ export function FigureEvidenceView() {
             {docs.map((d) => (
               <option key={d.doc_id} value={d.doc_id}>
                 {(d.title || d.doc_id).slice(0, 80)}
-                {d.page_count ? ` · ${d.page_count} стр.` : ''}
+                {d.has_parsed ? ' · PDF' : ''}
               </option>
             ))}
           </select>
           <button
             onClick={() => void extract()}
-            disabled={!docId || extracting}
+            disabled={!docId || extracting || (currentDoc != null && !currentDoc.has_parsed)}
+            title={
+              currentDoc && !currentDoc.has_parsed
+                ? 'Нет загруженного PDF для этого источника — извлечение фигур недоступно'
+                : 'Извлечь фигуры из PDF-источника'
+            }
             className="flex items-center gap-2 rounded-md bg-copper/15 px-3 py-2 text-sm text-copper transition hover:bg-copper/25 disabled:opacity-50"
           >
             {extracting ? <Loader2 size={15} className="animate-spin" /> : <ScanSearch size={15} />}
@@ -164,8 +195,11 @@ export function FigureEvidenceView() {
             <div className="text-sm text-nickel">
               Для этого документа фигуры ещё не извлечены
             </div>
-            <div className="text-[11px] text-faint">
-              Нажмите «Извлечь фигуры» — только для PDF-источников.
+            <div className="mx-auto max-w-md text-[11px] leading-relaxed text-faint">
+              Постраничные фигуры доступны для документов с распознанными страницами
+              (например, загруженных PDF): нажмите «Извлечь фигуры» для такого источника.
+              Полный список источников корпуса можно просмотреть в разделе
+              «Библиотека → Источники корпуса».
             </div>
           </div>
         ) : (

@@ -14,6 +14,15 @@ interface DocItem {
   title: string | null;
   page_count?: number | null;
   year?: number | null;
+  has_parsed?: boolean;
+}
+
+// Corpus-wide source listing (graph :Paper / :Document nodes), not just uploaded
+// sidecars. has_parsed=true means a parsed page-image sidecar exists for this doc.
+interface CorpusSource {
+  doc_id: string;
+  title: string | null;
+  has_parsed?: boolean;
 }
 
 interface EvidenceItem {
@@ -77,10 +86,17 @@ export function EvidenceBboxView() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    jget<{ documents: DocItem[] }>('/api/v1/documents?limit=100')
+    // Corpus-wide listing (backend already sorts has_parsed-first, so parsed docs
+    // — the ones that actually have page images/citations — surface at the top).
+    jget<{ sources: CorpusSource[] }>('/api/v1/documents/corpus?limit=200')
       .then((d) => {
-        setDocs(d.documents);
-        if (d.documents[0]) setDocId(d.documents[0].doc_id);
+        const mapped: DocItem[] = (d.sources ?? []).map((s) => ({
+          doc_id: s.doc_id,
+          title: s.title,
+          has_parsed: s.has_parsed,
+        }));
+        setDocs(mapped);
+        if (mapped[0]) setDocId(mapped[0].doc_id);
       })
       .catch((e) => setError(String(e)));
   }, []);
@@ -93,10 +109,15 @@ export function EvidenceBboxView() {
     setLocate(null);
     jget<{ evidence: EvidenceItem[] }>(`/api/v1/evidence-bbox/by-doc/${encodeURIComponent(docId)}`)
       .then((r) => {
-        setItems(r.evidence);
-        setSelected(r.evidence[0] ?? null);
+        setItems(r.evidence ?? []);
+        setSelected(r.evidence?.[0] ?? null);
       })
-      .catch((e) => setError(String(e)))
+      .catch(() => {
+        // Corpus :Paper nodes have no rasterized pages, so by-doc may 4xx/error or
+        // return nothing. Degrade to the empty state instead of a scary error banner.
+        setItems([]);
+        setSelected(null);
+      })
       .finally(() => setBusy(false));
   }, [docId]);
 
@@ -109,7 +130,9 @@ export function EvidenceBboxView() {
     setLocate(null);
     jget<LocateResult>(`/api/v1/evidence-bbox/locate/${encodeURIComponent(selected.evidence_id)}`)
       .then(setLocate)
-      .catch((e) => setError(String(e)))
+      // A doc without page images can't be located — fall back to no-locate quietly
+      // rather than surfacing an error for something the user can't act on.
+      .catch(() => setLocate(null))
       .finally(() => setLocating(false));
   }, [selected]);
 
@@ -144,7 +167,7 @@ export function EvidenceBboxView() {
             {docs.map((d) => (
               <option key={d.doc_id} value={d.doc_id}>
                 {(d.title || d.doc_id).slice(0, 80)}
-                {d.page_count ? ` · ${d.page_count} стр.` : ''}
+                {d.has_parsed ? ' · PDF' : ''}
               </option>
             ))}
           </select>
@@ -162,8 +185,11 @@ export function EvidenceBboxView() {
             <div className="text-sm text-nickel">
               У этого документа нет текстовых доказательств со страницей
             </div>
-            <div className="text-[11px] text-faint">
-              Загрузите PDF и запустите извлечение — evidence с page+text появятся здесь.
+            <div className="mx-auto max-w-md text-[11px] leading-relaxed text-faint">
+              Подсветка цитат на странице доступна для документов с распознанными
+              страницами (например, загруженных PDF): загрузите PDF и запустите
+              извлечение — цитаты с page+text появятся здесь. Полный список источников
+              корпуса можно просмотреть в разделе «Библиотека → Источники корпуса».
             </div>
           </div>
         ) : (

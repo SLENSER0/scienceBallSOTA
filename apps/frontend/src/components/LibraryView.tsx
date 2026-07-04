@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ExternalLink,
   FlaskConical,
+  Library,
   Loader2,
   Search,
   Sparkles,
@@ -20,6 +21,8 @@ import { CallHistory } from './CallHistory';
 import { pushCall } from '../lib/callHistory';
 import { DocumentUpload } from './DocumentUpload';
 import { MultimodalPanel } from './MultimodalPanel';
+import { TabHub } from './TabHub';
+import { SourcesShowcaseView } from './SourcesShowcaseView';
 
 // «Библиотека» — add scientific articles to the graph. Two flows:
 // (1) deep-research: decompose a question into sub-questions × ready-to-open
@@ -32,7 +35,30 @@ const ACCESS_STYLE: Record<string, { label: string; cls: string }> = {
   shadow: { label: 'теневая б-ка', cls: 'text-contradiction border-contradiction/40' },
 };
 
+// Top-level «Библиотека» hub: sources showcase first, then the search/add flow.
 export function LibraryView() {
+  return (
+    <TabHub
+      eyebrow="библиотека · источники и добавление"
+      tabs={[
+        {
+          id: 'sources',
+          label: 'Источники корпуса',
+          icon: Library,
+          render: () => <SourcesShowcaseView />,
+        },
+        {
+          id: 'add',
+          label: 'Поиск и добавление статей',
+          icon: Sparkles,
+          render: () => <LibrarySearchTab />,
+        },
+      ]}
+    />
+  );
+}
+
+function LibrarySearchTab() {
   const qc = useQueryClient();
   const [question, setQuestion] = useState('');
   const sources = useQuery({ queryKey: ['research-sources'], queryFn: api.researchSources });

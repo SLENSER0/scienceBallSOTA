@@ -14,17 +14,11 @@ import {
   GitCompareArrows,
   Radar,
   Target,
-  Route,
   Sparkles,
-  PackageCheck,
-  Waypoints,
   ScanSearch,
   Table2,
   Hexagon,
-  Lasso,
   Search,
-  ShieldAlert,
-  Brain,
   Filter,
   History,
   ClipboardCheck,
@@ -159,7 +153,6 @@ import { PropertyTermReviewView } from './components/PropertyTermReviewView';
 
 const INTERNAL = ['researcher', 'analyst', 'curator', 'project_manager', 'admin'];
 const CURATOR = ['curator', 'project_manager', 'admin'];
-const ANALYST = ['analyst', 'curator', 'project_manager', 'admin'];
 
 // Grouped navigation — with ~70 screens a flat icon rail is unusable, so the sidebar
 // groups them into labelled, collapsible sections with a filter. Order = display order.
@@ -210,20 +203,13 @@ const NAV: NavItem[] = [
   { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
   { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
-  { id: 'largegraph', label: 'Клубок корпуса (WebGL)', icon: Waypoints, group: 'graph' },
-  { id: 'graphpath', label: 'Путь между сущностями', icon: Route, roles: INTERNAL, group: 'graph' },
-  { id: 'subgraphask', label: 'Спросить о подграфе', icon: Lasso, roles: INTERNAL, group: 'graph' },
 
   { id: 'evidence-inspector', label: 'Инспектор доказательств', icon: ScanSearch, roles: INTERNAL, group: 'evidence' },
   { id: 'source-trust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL, group: 'evidence' },
-  { id: 'warnings', label: 'Панель рисков ответа', icon: ShieldAlert, roles: INTERNAL, group: 'evidence' },
-  { id: 'evidencepack', label: 'Доказательный пакет', icon: PackageCheck, roles: INTERNAL, group: 'evidence' },
 
   { id: 'curation-hub', label: 'Курирование', icon: ClipboardCheck, roles: CURATOR, group: 'curation' },
 
   { id: 'targetdemo', label: 'Демонстрационный прогон', icon: Sparkles, group: 'agent' },
-  { id: 'hitl', label: 'Уточнение в диалоге', icon: CircleHelp, group: 'agent' },
-  { id: 'agent-reasoning', label: 'Ход мысли ассистента', icon: Brain, group: 'agent' },
   { id: 'collaboration', label: 'Совместная работа', icon: Users, roles: CURATOR, group: 'agent' },
 
   { id: 'admin', label: 'Администрирование', icon: ShieldCheck, roles: CURATOR, group: 'admin' },
