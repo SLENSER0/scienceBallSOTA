@@ -68,6 +68,8 @@ async def query_stream(req: QueryRequest, role: str = Depends(current_role)) -> 
                         "evidence",
                         {"citations": [c.model_dump(by_alias=True) for c in data["citations"]]},
                     )
+                elif kind == "brief":
+                    yield _sse("brief", {"text": data["text"]})
                 elif kind == "token":
                     yield _sse("token", {"text": data})
                 elif kind == "final":

@@ -37,6 +37,7 @@ export function AskView() {
 
   const [streaming, setStreaming] = useState(false);
   const [streamErr, setStreamErr] = useState('');
+  const [brief, setBrief] = useState('');
   const abortRef = useRef<null | (() => void)>(null);
   // Cancel any in-flight stream when leaving the view.
   useEffect(() => () => abortRef.current?.(), []);
@@ -49,6 +50,7 @@ export function AskView() {
     pushCall('ask', t, { geography });
     abortRef.current?.(); // cancel a previous stream
     setStreamErr('');
+    setBrief('');
     setStreaming(true);
     setSelectedNode(null);
     // Progressive answer: seed empty, then fill graph/citations, then stream tokens.
@@ -65,6 +67,7 @@ export function AskView() {
     abortRef.current = api.queryStream(t, { role, useLlm, geography }, (type, data) => {
       const d = data as Record<string, unknown>;
       if (type === 'graph') acc.graph = data as GraphResponse;
+      else if (type === 'brief') setBrief((d.text as string) ?? '');
       else if (type === 'evidence') acc.citations = (d.citations as Citation[]) ?? [];
       else if (type === 'gap') acc.gaps = [...acc.gaps, d as { name?: string; type?: string }];
       else if (type === 'token') acc.answerMarkdown += (d.text as string) ?? '';
@@ -208,13 +211,27 @@ export function AskView() {
             </div>
           )}
 
-          {/* Retrieval phase: shown only until the first answer token arrives. */}
-          {streaming && !answer?.answerMarkdown && (
+          {/* Retrieval phase: shown only until the brief conclusion / first token arrives. */}
+          {streaming && !answer?.answerMarkdown && !brief && (
             <div className="mt-8 flex items-center gap-3 text-muted">
               <Loader2 size={18} className="animate-spin text-copper" />
               <span className="font-mono text-sm">
                 Распутываю клубок: разбор запроса → поиск фактов по графу → синтез…
               </span>
+            </div>
+          )}
+
+          {/* Fast extractive «краткий вывод» — appears the moment retrieval finishes,
+              before the LLM answer streams in below. */}
+          {brief && (
+            <div className="mt-6 rounded-lg border border-copper/40 bg-copper/5 px-4 py-3">
+              <div className="eyebrow mb-1 flex items-center gap-1.5 text-copper">
+                {streaming && !answer?.answerMarkdown && (
+                  <Loader2 size={12} className="animate-spin" />
+                )}
+                Краткий вывод
+              </div>
+              <div className="text-sm leading-relaxed text-ink">{brief}</div>
             </div>
           )}
 

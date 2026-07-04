@@ -137,6 +137,37 @@ def _table(retrieval: RetrievalResult) -> dict[str, Any] | None:
     return {"columns": ["Решение", "Практика", "Ключевой показатель", "Применимость"], "rows": rows}
 
 
+def _brief_conclusion(retrieval: RetrievalResult) -> str:
+    """A 2–4 line extractive «краткий вывод» from graph facts — no LLM, instant."""
+    parts: list[str] = []
+    practice_ru = {"russia": "отеч.", "foreign": "заруб.", "global": "межд.", "cis": "СНГ"}
+    sols = [s for s in retrieval.solutions[:5] if s.get("name")]
+    if sols:
+
+        def _label(s: dict) -> str:
+            pt = practice_ru.get(s.get("practice_type"))
+            return s["name"] + (f" ({pt})" if pt else "")
+
+        names = ", ".join(_label(s) for s in sols)
+        parts.append(f"**Кратко:** по вашим условиям релевантны — {names}.")
+    fbits: list[str] = []
+    for f in retrieval.facts[:3]:
+        n = f.node
+        prop = n.get("property_name") or n.get("name")
+        val = n.get("value_normalized")
+        unit = n.get("normalized_unit") or n.get("unit") or ""
+        if prop and val is not None:
+            fbits.append(f"{prop} ≈ {val} {unit}".strip())
+    if fbits:
+        parts.append("Ключевые показатели: " + "; ".join(fbits) + ".")
+    if retrieval.contradictions:
+        parts.append(f"⚠ Есть противоречивые данные ({len(retrieval.contradictions)}) — см. ниже.")
+    if not parts:
+        return ""
+    parts.append("_Подробный разбор с доказательствами формируется…_")
+    return " ".join(parts)
+
+
 def _fallback_markdown(
     intent: QueryIntent, retrieval: RetrievalResult, cite: dict[str, str]
 ) -> str:
@@ -248,6 +279,11 @@ def stream_answer(intent: QueryIntent, retrieval: RetrievalResult):
         "citations": citations,
         "parsed_query": intent.to_dict(),
     }
+    # A brief extractive conclusion straight from the graph facts — no LLM wait, so a
+    # readable «краткий вывод» shows the moment retrieval finishes; the LLM refines below.
+    brief = _brief_conclusion(retrieval)
+    if brief:
+        yield "brief", {"text": brief}
     parts: list[str] = []
     used_models: list[str] = []
     try:
@@ -255,8 +291,10 @@ def stream_answer(intent: QueryIntent, retrieval: RetrievalResult):
 
         llm = get_llm()
         user = f"ВОПРОС: {intent.raw}\n\n{context}\n\nСоставь ответ по инструкции."
+        # Generous cap so the RU answer (token-heavy Cyrillic) is never cut mid-word;
+        # streaming means a larger cap costs nothing until the model actually needs it.
         for piece in llm.complete_stream(
-            user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=1600
+            user, system=SYSTEM, model=llm._settings.llm_model_synth, max_tokens=4000
         ):
             parts.append(piece)
             yield "token", piece

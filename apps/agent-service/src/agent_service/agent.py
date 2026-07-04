@@ -172,6 +172,8 @@ def answer_query_stream(
     :func:`synthesize.stream_answer`, yielding ('meta', obj) → ('token', str)* →
     ('final', dict) so the UI shows a brief conclusion in seconds and streams the rest.
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     from agent_service.intent_classifier import classify_intent
     from agent_service.preprocess import preprocess_query
     from agent_service.synthesize import stream_answer
@@ -182,26 +184,41 @@ def answer_query_stream(
     if geography and geography != "all":
         intent.practice_types = [geography]
     ic = classify_intent(pp.text)
-    retrieval = retriever.retrieve(intent)
-    if ic.as_dict().get("query_type") == "global":
-        try:
-            from kg_retrievers.community_search import global_search
 
-            ga = global_search(store, pp.text, limit=3)
-            for c in ga.communities:
-                retrieval.passages.append({"text": c.summary, "score": round(c.score, 4)})
-        except Exception:  # global enrichment is best-effort
+    # The hybrid/vector search embeds the query on CPU (~2.5 s) and the graph retrieval
+    # is a batch of Neo4j reads — independent, so run them concurrently and merge.
+    def _hybrid_passages() -> list[dict[str, Any]]:
+        hybrid = _get_hybrid()
+        if hybrid is None or not hybrid.available():
+            return []
+        out: list[dict[str, Any]] = []
+        try:
+            for hit in hybrid.search(intent.raw, limit=5):
+                out.append(
+                    {
+                        "text": hit.payload.get("text", ""),
+                        "doc_id": hit.payload.get("doc_id"),
+                        "page": hit.payload.get("page"),
+                        "score": round(hit.score, 4),
+                    }
+                )
+        except Exception:  # hybrid enrichment is best-effort
             pass
-    hybrid = _get_hybrid()
-    if hybrid is not None and hybrid.available():
-        for hit in hybrid.search(intent.raw, limit=5):
-            retrieval.passages.append(
-                {
-                    "text": hit.payload.get("text", ""),
-                    "doc_id": hit.payload.get("doc_id"),
-                    "page": hit.payload.get("page"),
-                    "score": round(hit.score, 4),
-                }
-            )
+        return out
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        hybrid_future = ex.submit(_hybrid_passages)
+        retrieval = retriever.retrieve(intent)  # graph reads, in parallel with the embed
+        if ic.as_dict().get("query_type") == "global":
+            try:
+                from kg_retrievers.community_search import global_search
+
+                ga = global_search(store, pp.text, limit=3)
+                for c in ga.communities:
+                    retrieval.passages.append({"text": c.summary, "score": round(c.score, 4)})
+            except Exception:  # global enrichment is best-effort
+                pass
+        retrieval.passages.extend(hybrid_future.result())
+
     retrieval = apply_access_policy(retrieval, role)
     yield from stream_answer(intent, retrieval)

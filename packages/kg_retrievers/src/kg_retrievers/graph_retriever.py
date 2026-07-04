@@ -8,6 +8,7 @@ returns an evidence-first result + a graph payload for the UI.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -17,6 +18,10 @@ from kg_extractors.query_parser import QueryIntent
 from kg_retrievers.graph_store import KuzuGraphStore
 
 _log = get_logger("graph_retriever")
+
+# The neo4j driver is thread-safe (each store.rows() opens its own session), so
+# independent read queries run concurrently instead of one-at-a-time in a Python loop.
+_POOL = ThreadPoolExecutor(max_workers=24, thread_name_prefix="retr")
 
 SOLUTION_LABELS = ["TechnologySolution", "Method"]
 CANDIDATE_LABELS = [*SOLUTION_LABELS, "ProcessingRegime", "Material", "Equipment"]
@@ -96,13 +101,17 @@ class GraphRetriever:
             for t in (e.canonical_ru, e.canonical_en, *e.aliases):
                 if t and len(t) >= 4:
                     terms.add(t.lower())
-        for term in terms:
-            for r in self.store.rows(
+        def _scan(term: str) -> list[Any]:
+            return self.store.rows(
                 "MATCH (n:Node) WHERE n.label IN $labels AND "
                 "(lower(n.aliases_text) CONTAINS $t OR lower(n.canonical_name) CONTAINS $t "
                 "OR lower(n.name) CONTAINS $t) RETURN n LIMIT 25",
                 {"labels": CANDIDATE_LABELS, "t": term},
-            ):
+            )
+
+        # Each term is an independent (unindexed) CONTAINS scan — run them concurrently.
+        for rows in _POOL.map(_scan, list(terms)):
+            for r in rows:
                 nd = self.store._node_dict(r[0])
                 found[nd["id"]] = nd
         return list(found.values())
@@ -227,9 +236,17 @@ class GraphRetriever:
         if intent.last_n_years:
             cutoff_year = datetime.now(UTC).year - intent.last_n_years
 
+        # Fire every candidate's neighbour + edge-evidence query CONCURRENTLY instead of
+        # looping one-at-a-time — the biggest single chunk of retrieval wall-time.
+        cand_ids = [c["id"] for c in candidates]
+        neigh_map = dict(zip(cand_ids, _POOL.map(self._neighbors, cand_ids), strict=False))
+        edge_ev_map = dict(
+            zip(cand_ids, _POOL.map(self._edge_evidence_ids, cand_ids), strict=False)
+        )
+
         for cand in candidates:
             label = cand.get("label")
-            neigh = self._neighbors(cand["id"])
+            neigh = neigh_map.get(cand["id"], [])
             if label in SOLUTION_LABELS or label == "ProcessingRegime":
                 sol = dict(cand)
                 sol["measurements"] = []
@@ -253,7 +270,7 @@ class GraphRetriever:
                         gap_ids.add(nb["id"])
                     elif nl == "Contradiction":
                         contra_ids.add(nb["id"])
-                ev_ids.update(self._edge_evidence_ids(cand["id"]))
+                ev_ids.update(edge_ev_map.get(cand["id"], set()))
                 res.solutions.append(sol)
 
             # facts: measurements attached to this candidate
