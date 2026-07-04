@@ -328,7 +328,8 @@ def _brief_conclusion(retrieval: RetrievalResult) -> str:
         parts.append(f"⚠ Есть противоречивые данные ({len(retrieval.contradictions)}) — см. ниже.")
     if not parts:
         return ""
-    parts.append("_Подробный разбор с доказательствами формируется…_")
+    # NB: no «формируется…» trailer — the UI shows a spinner next to «Краткий вывод»
+    # while the detailed answer streams, so the brief stays a clean standalone summary.
     return " ".join(parts)
 
 
