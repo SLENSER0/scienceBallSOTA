@@ -9,7 +9,6 @@ import {
   BookMarked,
   TriangleAlert,
   Columns3,
-  MessagesSquare,
   LogOut,
   Library,
   Boxes,
@@ -233,9 +232,9 @@ type NavItem = { id: View; label: string; icon: typeof Network; roles?: string[]
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Обзор базы знаний', icon: Radar, group: 'overview' },
 
-  { id: 'chat', label: 'Диалог с клубком', icon: MessagesSquare, group: 'qa' },
-  { id: 'advisor', label: 'Советник (рекомендации)', icon: Bot, group: 'qa' },
+  // { id: 'chat', label: 'Диалог с клубком', icon: MessagesSquare, group: 'qa' }, // слито в «Запрос к графу» (тот же ответ + гео-фильтр); роут жив, вернуть = раскомментировать
   { id: 'ask', label: 'Запрос к графу', icon: Network, group: 'qa' },
+  { id: 'advisor', label: 'Советник (рекомендации)', icon: Bot, group: 'qa' },
   { id: 'compare', label: 'Сравнение технологий', icon: Columns3, group: 'qa' },
   { id: 'library', label: 'Библиотека · deep-research', icon: Library, roles: INTERNAL, group: 'qa' },
 
