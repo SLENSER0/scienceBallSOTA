@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ChevronDown,
@@ -27,6 +27,7 @@ import {
 import { api } from './api';
 import { useStore, type View } from './store';
 import { LoginView, useOidcCallback } from './components/LoginView';
+import { startGapMap } from './lib/gapMapStream';
 import { ChatView } from './components/ChatView';
 import { AskView } from './components/AskView';
 import { LibraryView } from './components/LibraryView';
@@ -221,6 +222,12 @@ export function App() {
   const stats = useQuery({ queryKey: ['stats'], queryFn: api.stats, enabled: !!user });
   const [filter, setFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Прогреваем «Карту пробелов» сразу после входа: приоритизация стримится в фоне и
+  // кэшируется в сторе, поэтому к моменту открытия экрана карточки уже готовы (no-op при повторе).
+  useEffect(() => {
+    if (user) startGapMap();
+  }, [user]);
 
   const nav = useMemo(() => NAV.filter((n) => !n.roles || n.roles.includes(role)), [role]);
   const q = filter.trim().toLowerCase();
