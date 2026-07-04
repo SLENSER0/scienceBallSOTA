@@ -124,16 +124,34 @@ def coverage_cell(
     meas_rows = store.rows(
         f"MATCH (s:Node {{id:$mid}})-[:Rel*1..{depth}]-(meas:Node) "
         "WHERE meas.label='Measurement' AND meas.property_name=$prop "
-        "RETURN DISTINCT meas.id, coalesce(meas.name,''), meas.verified, meas.confidence "
+        "RETURN DISTINCT meas.id, coalesce(meas.name,''), meas.verified, "
+        "meas.review_status, meas.value_normalized, meas.normalized_unit "
         f"LIMIT {int(limit)}",
         {"mid": material_id, "prop": property},
     )
+
+    # Rule extraction stamps a flat prior confidence (0.6 on ~all measurements), so the raw
+    # stored value made every drill-down read the same "0.6". Derive a meaningful per-measurement
+    # confidence from signals the node actually carries: curator review, unit-normalization, and
+    # how many measurements corroborate this exact (material × property) pair. Read-only — the
+    # stored node value is left untouched.
+    _corrob = min(0.12, 0.02 * max(0, len(meas_rows) - 1))
+
+    def _confidence(verified: object, review_status: object, vnorm: object, unit: object) -> float:
+        score = 0.5
+        if bool(verified) or review_status == "accepted":
+            score += 0.28
+        if vnorm is not None and unit:
+            score += 0.10
+        score += _corrob
+        return round(min(0.98, max(0.3, score)), 2)
+
     measurements = [
         {
             "id": r[0],
             "name": r[1] or r[0],
             "verified": bool(r[2]),
-            "confidence": r[3],
+            "confidence": _confidence(r[2], r[3], r[4], r[5]),
         }
         for r in meas_rows
     ]

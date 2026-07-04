@@ -10,7 +10,6 @@ import {
   Lock,
   PencilLine,
   ScrollText,
-  Search,
   ShieldCheck,
   Unlock,
   UserRound,
@@ -160,14 +159,15 @@ function StatTile({ label, value, hint }: { label: string; value: string; hint?:
 
 export function FactTimeMachineView() {
   const qc = useQueryClient();
-  const [entityInput, setEntityInput] = useState('');
+  const [label, setLabel] = useState('Measurement');
   const [entityId, setEntityId] = useState<string | null>(null);
   const [field, setField] = useState<string | null>(null);
 
-  // Small picker: a handful of measurement/property nodes to start from.
+  // Small picker: entities of the chosen type to start from.
   const picker = useQuery({
-    queryKey: ['ftm-picker'],
-    queryFn: () => apiGet<NodesResponse>('/api/v1/graph/nodes?label=Measurement&limit=25'),
+    queryKey: ['ftm-picker', label],
+    queryFn: () =>
+      apiGet<NodesResponse>(`/api/v1/graph/nodes?label=${encodeURIComponent(label)}&limit=100`),
   });
 
   const facts = useQuery({
@@ -189,7 +189,6 @@ export function FactTimeMachineView() {
     const trimmed = id.trim();
     if (!trimmed) return;
     setEntityId(trimmed);
-    setEntityInput(trimmed);
     setField(null);
   }
 
@@ -202,7 +201,7 @@ export function FactTimeMachineView() {
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-6xl">
         <div className="eyebrow mb-1">история изменений факта</div>
-        <h2 className="mb-1 font-display text-2xl font-semibold">Машина времени факта</h2>
+        <h2 className="mb-1 font-display text-2xl font-semibold">Версионирование фактов</h2>
         <p className="mb-5 max-w-3xl text-sm text-faint">
           Как менялось каждое число: первая версия — из исходного документа, а каждая
           правка эксперта создаёт <b>новую версию</b> со ссылкой на обоснование — не
@@ -213,48 +212,63 @@ export function FactTimeMachineView() {
         {/* Entity picker */}
         <div className="panel mb-5 p-4">
           <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[180px]">
+              <label className="mb-1 block text-xs uppercase tracking-wide text-faint">
+                Тип сущности
+              </label>
+              <select
+                value={label}
+                onChange={(e) => {
+                  // Switching type invalidates the current pick — clear it so the
+                  // fields/timeline below don't keep showing the old-type entity.
+                  setLabel(e.target.value);
+                  setEntityId(null);
+                  setField(null);
+                }}
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50"
+              >
+                <option value="Measurement">Измерение</option>
+                <option value="Material">Материал</option>
+                <option value="Composition">Состав</option>
+                <option value="Solution">Решение</option>
+              </select>
+            </div>
             <div className="flex-1 min-w-[240px]">
               <label className="mb-1 block text-xs uppercase tracking-wide text-faint">
                 Идентификатор сущности
               </label>
-              <div className="flex gap-2">
-                <input
-                  value={entityInput}
-                  onChange={(e) => setEntityInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && loadEntity(entityInput)}
-                  placeholder="meas:water-сульфаты-so4"
-                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50"
-                />
-                <button
-                  onClick={() => loadEntity(entityInput)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-copper/20 px-3 py-2 text-sm text-copper hover:bg-copper/30"
+              {picker.isLoading ? (
+                <select
+                  disabled
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50 disabled:opacity-60"
                 >
-                  <Search size={14} /> Открыть
-                </button>
-              </div>
+                  <option>загрузка…</option>
+                </select>
+              ) : picker.data && picker.data.nodes.length > 0 ? (
+                <select
+                  value={entityId ?? ''}
+                  onChange={(e) => loadEntity(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50"
+                >
+                  <option value="" disabled>
+                    — выберите сущность —
+                  </option>
+                  {picker.data.nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.name || n.id}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  disabled
+                  className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-ink outline-none focus:border-copper/50 disabled:opacity-60"
+                >
+                  <option>нет сущностей этого типа</option>
+                </select>
+              )}
             </div>
           </div>
-          {picker.data && picker.data.nodes.length > 0 && (
-            <div className="mt-3">
-              <div className="mb-1 text-xs text-faint">Примеры измерений:</div>
-              <div className="flex flex-wrap gap-1.5">
-                {picker.data.nodes.slice(0, 12).map((n) => (
-                  <button
-                    key={n.id}
-                    onClick={() => loadEntity(n.id)}
-                    title={n.id}
-                    className={`rounded-full border px-2.5 py-1 text-xs ${
-                      entityId === n.id
-                        ? 'border-copper/60 bg-copper/15 text-copper'
-                        : 'border-white/10 bg-white/[0.03] text-faint hover:text-ink'
-                    }`}
-                  >
-                    {n.name || n.id}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {facts.isLoading && (
