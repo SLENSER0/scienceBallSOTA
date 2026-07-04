@@ -11,6 +11,7 @@ import {
   DatabaseZap,
   ExternalLink,
   FlaskConical,
+  ImagePlus,
   Library,
   Loader2,
   Search,
@@ -122,9 +123,12 @@ function LibrarySearchTab() {
           Найти и добавить научные статьи
         </h1>
         <p className="mt-1 text-sm text-faint">
-          Deep-research разбивает вопрос на под-вопросы и строит ссылки на поиск по научным базам.
-          Найденную статью добавьте в граф вручную формой ниже.
+          Дип рисёрч анализирует ваш промпт и текущие данные корпуса, находит пробелы, ищет
+          источники в вебе и даёт отчёт — каждую статью можно проверить на доверие и добавить в базу.
         </p>
+
+        {/* Gap-informed (optionally multimodal) research */}
+        <GapResearchPanel />
 
         {/* Deep-research search */}
         <div className="panel mt-5 p-4">
@@ -324,6 +328,129 @@ function DeepResearchPanel() {
 
       {/* «Загрузить в граф» + Source Trust gate + low-trust review */}
       {!deep.running && deep.sources.length > 0 && <LoadToGraphPanel />}
+    </div>
+  );
+}
+
+// Gap-informed research: промпт (+ картинка) → анализ пробелов → веб-поиск → отчёт + статьи.
+function GapResearchPanel() {
+  const deep = useStore((s) => s.deep);
+  const setDeep = useStore((s) => s.setDeep);
+  const [question, setQuestion] = useState('');
+  const [image, setImage] = useState<string | null>(null);
+  const a = deep.analysis;
+
+  const analyze = useMutation({
+    mutationFn: () => api.analyzeGaps(question, image),
+    onSuccess: (r) => setDeep({ analysis: r, report: '', sources: [], promote: null }),
+  });
+  const run = useMutation({
+    mutationFn: () => api.runResearch(a!.question, a!.queries),
+    onSuccess: (r) => setDeep({ report: r.report, sources: r.sources }),
+  });
+
+  const onImage = (f: File | null) => {
+    if (!f) return setImage(null);
+    const reader = new FileReader();
+    reader.onload = () => setImage(String(reader.result));
+    reader.readAsDataURL(f);
+  };
+
+  return (
+    <div className="panel mt-5 border-copper/30 p-4">
+      <div className="mb-2 flex items-center gap-2 text-sm text-nickel">
+        <Sparkles size={15} className="text-copper" /> Дип рисёрч с анализом пробелов
+      </div>
+      <textarea
+        value={question}
+        onChange={(e) => setQuestion(e.target.value)}
+        placeholder="Что нужно исследовать? Напр.: способы закачки шахтных вод в глубокие горизонты и требования к изоляции"
+        rows={2}
+        className="w-full resize-none rounded-md border border-line bg-surface/60 px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-copper/50"
+      />
+      <div className="mt-2 flex items-center gap-2">
+        <label className="flex cursor-pointer items-center gap-1.5 rounded border border-line px-2.5 py-1.5 text-xs text-faint hover:text-nickel">
+          <ImagePlus size={13} /> {image ? 'картинка ✓' : 'картинка (опц.)'}
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => onImage(e.target.files?.[0] ?? null)} />
+        </label>
+        {image && <img src={image} alt="" className="h-10 rounded border border-line" />}
+        <button
+          onClick={() => question.trim() && analyze.mutate()}
+          disabled={analyze.isPending || !question.trim()}
+          className="ml-auto flex items-center gap-1.5 rounded-md bg-copper/20 px-4 py-1.5 text-sm text-copper transition enabled:hover:bg-copper/30 disabled:opacity-40"
+        >
+          {analyze.isPending ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+          Анализ пробелов
+        </button>
+      </div>
+      {analyze.isError && <div className="mt-1 text-[11px] text-contradiction">анализ не удался</div>}
+
+      {a && (
+        <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap gap-2 font-mono text-[10px] text-faint">
+            <span className="chip">в корпусе · решений {a.have.n_solutions}</span>
+            <span className="chip">фактов {a.have.n_facts}</span>
+            <span className="chip">статей {a.have.n_papers}</span>
+            <span className="chip border-gap/40 text-gap">пробелов {a.have.n_gaps}</span>
+          </div>
+          {a.vision && (
+            <div className="rounded border border-line/60 bg-graphite/30 px-3 py-2 text-[12px] text-muted">
+              <span className="text-faint">из изображения:</span> {a.vision}
+            </div>
+          )}
+          {a.missing.length > 0 && (
+            <GapList title="Чего не хватает" items={a.missing} tone="gap" />
+          )}
+          {a.attention.length > 0 && (
+            <GapList title="На что обратить внимание" items={a.attention} tone="copper" />
+          )}
+          {a.queries.length > 0 && (
+            <div>
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-faint">поисковые запросы</div>
+              <div className="flex flex-wrap gap-1.5">
+                {a.queries.map((q, i) => (
+                  <span key={i} className="chip border-line/60 text-[11px] text-muted">{q}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => run.mutate()}
+            disabled={run.isPending}
+            className="flex items-center gap-1.5 rounded-md border border-copper/40 bg-copper/10 px-4 py-1.5 text-sm text-copper transition enabled:hover:bg-copper/20 disabled:opacity-40"
+          >
+            {run.isPending ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+            Начать дип рисёрч
+          </button>
+        </div>
+      )}
+
+      {deep.report && (
+        <div className="md mt-3 max-h-[440px] overflow-y-auto rounded border border-line bg-graphite/30 p-3">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{deep.report}</ReactMarkdown>
+        </div>
+      )}
+      {run.isPending && !deep.report && (
+        <div className="mt-2 font-mono text-[11px] text-faint">Ищу источники и собираю отчёт…</div>
+      )}
+      {!run.isPending && deep.sources.length > 0 && <LoadToGraphPanel />}
+    </div>
+  );
+}
+
+function GapList({ title, items, tone }: { title: string; items: string[]; tone: 'gap' | 'copper' }) {
+  const color = tone === 'gap' ? 'text-gap' : 'text-copper';
+  return (
+    <div>
+      <div className={`mb-1 text-[10px] uppercase tracking-wide ${color}`}>{title}</div>
+      <ul className="space-y-1">
+        {items.map((it, i) => (
+          <li key={i} className="flex gap-2 rounded border border-line/60 px-2.5 py-1.5 text-[12px] text-muted">
+            <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${tone === 'gap' ? 'bg-gap' : 'bg-copper'}`} />
+            <span className="text-ink">{it}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -95,6 +95,20 @@ export interface PendingSource {
   trust: SourceTrust;
   status: string;
 }
+export interface DeepResearchSource {
+  title: string;
+  url: string;
+  snippet?: string;
+  year?: number | null;
+}
+export interface GapAnalysisResult {
+  question: string;
+  have: { n_solutions: number; n_facts: number; n_papers: number; n_gaps: number };
+  missing: string[];
+  attention: string[];
+  queries: string[];
+  vision?: string;
+}
 
 export const api = {
   authConfig(): Promise<AuthConfig> {
@@ -308,6 +322,27 @@ export const api = {
   },
   deepStatus(): Promise<{ available: boolean; engine: string }> {
     return req('/api/v1/research/deep/status');
+  },
+  // Gap-informed research — step 1: analyze the prompt (+ optional image) against the
+  // corpus → what's missing / on-what-to-focus + web-search queries.
+  analyzeGaps(
+    question: string,
+    image?: string | null,
+  ): Promise<GapAnalysisResult> {
+    return req('/api/v1/research/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ question, image: image ?? null }),
+    });
+  },
+  // step 2: web-search the focus queries → cited report + found sources.
+  runResearch(
+    question: string,
+    queries: string[],
+  ): Promise<{ question: string; report: string; sources: DeepResearchSource[] }> {
+    return req('/api/v1/research/run', {
+      method: 'POST',
+      body: JSON.stringify({ question, queries }),
+    });
   },
   // «Загрузить в граф»: run found sources through Source Trust, ingest high-trust,
   // route low-trust to review. Returns {ingested:[...], review:[...]} with per-source trust.
