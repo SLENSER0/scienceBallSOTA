@@ -43,7 +43,6 @@ import {
   Shapes,
   Fingerprint,
   GitBranch,
-  Palette,
   HeartPulse,
   Highlighter,
   Quote,
@@ -257,8 +256,8 @@ const NAV: NavItem[] = [
   // { id: 'communities', label: 'Сообщества (GraphRAG)', icon: Sparkles, group: 'knowledge' },
   { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR, group: 'knowledge' },
   { id: 'graphintegrity', label: 'Целостность графа', icon: ShieldAlert, roles: CURATOR, group: 'knowledge' },
-  { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' },
   { id: 'glossary', label: 'Глоссарий', icon: BookMarked, group: 'knowledge' },
+  // { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' }, // убрано — легенда лучше inline на графе
 
   { id: 'entities', label: 'Сущности (детали)', icon: Boxes, group: 'graph' },
   { id: 'largegraph', label: 'Клубок корпуса (WebGL)', icon: Waypoints, group: 'graph' },
