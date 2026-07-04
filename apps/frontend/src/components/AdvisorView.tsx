@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import type { AdvisorCandidate } from '../types';
+import { AgentProgress } from './AgentProgress';
 
 // Agentic Technology Advisor — the platform doesn't just search, it REASONS: one agent
 // per candidate technology (GLM-5.2, in parallel) scores fit against the user's
@@ -175,9 +176,18 @@ export function AdvisorView() {
         )}
 
         {constraints && (
-          <div className="mt-4 font-mono text-[11px] text-faint">
-            распознано → {constraints}
-            {expected > 0 && ` · агентов: ${expected}`}
+          <div className="mt-4 font-mono text-[11px] text-faint">распознано → {constraints}</div>
+        )}
+
+        {/* Honest progress: fills as each candidate agent finishes */}
+        {(phase === 'running' || (expected > 0 && cards.length < expected)) && (
+          <div className="mt-3">
+            <AgentProgress
+              done={cards.length}
+              total={expected}
+              running={phase === 'running'}
+              label="агентов оценили технологии"
+            />
           </div>
         )}
 

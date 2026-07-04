@@ -18,7 +18,7 @@ from typing import Any
 from kg_common import get_logger, get_settings
 
 _log = get_logger("gap_prioritizer")
-_MAX_WORKERS = 8
+_MAX_WORKERS = 10  # fan out up to 10 scoring agents at once (user-requested)
 
 _GAPS_CYPHER = (
     "MATCH (g:Node {label:'Gap'}) "
@@ -104,24 +104,47 @@ def _score_gap(g: dict[str, Any]) -> PrioritizedGap:
     )
 
 
-def prioritize_gaps(store: Any, *, limit: int = 12) -> dict[str, Any]:
-    """Fan out prioritization agents over the top gaps and return a ranked backlog."""
-    gaps = [
+def _fetch_gaps(store: Any, limit: int) -> list[dict[str, Any]]:
+    return [
         {"id": r[0], "name": r[1], "type": r[2], "domain": r[3], "materials": r[4]}
         for r in store.rows(_GAPS_CYPHER, {"lim": max(1, min(limit, 24))})
         if r[0] and r[1]
     ]
+
+
+def _rank(result: list[PrioritizedGap]) -> dict[str, Any]:
+    # Scored gaps ranked by priority; unscored (model failures) kept but pushed to the end
+    # and clearly flagged — never mixed into the ranking with a misleading default.
+    result.sort(key=lambda g: (g.scored, g.priority), reverse=True)
+    return {
+        "gaps": [asdict(g) for g in result],
+        "count": len(result),
+        "usedModels": sorted({m for g in result if (m := g.model)}),
+    }
+
+
+def prioritize_gaps(store: Any, *, limit: int = 12) -> dict[str, Any]:
+    """Fan out prioritization agents over the top gaps and return a ranked backlog."""
+    gaps = _fetch_gaps(store, limit)
     result: list[PrioritizedGap] = []
     if gaps:
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as pool:
             result = list(pool.map(_score_gap, gaps))
-    # Scored gaps ranked by priority; unscored (model failures) kept but pushed to the end
-    # and clearly flagged — never mixed into the ranking with a misleading default.
-    result.sort(key=lambda g: (g.scored, g.priority), reverse=True)
-    used = sorted({m for g in result if (m := g.model)})
-    scored = result
-    return {
-        "gaps": [asdict(g) for g in scored],
-        "count": len(scored),
-        "usedModels": used,
-    }
+    return _rank(result)
+
+
+def stream_prioritize_gaps(store: Any, *, limit: int = 12):  # type: ignore[no-untyped-def]
+    """Stream each gap the instant its scoring agent finishes (honest done/total progress)."""
+    from agent_service.fanout import stream_fanout
+
+    gaps = _fetch_gaps(store, limit)
+    scored: list[PrioritizedGap] = []
+    for ev, data in stream_fanout(gaps, _score_gap, max_workers=_MAX_WORKERS, label="gap"):
+        if ev == "item" and isinstance(data.get("result"), PrioritizedGap):
+            g = data["result"]
+            scored.append(g)
+            yield "gap", {"done": data["done"], "total": data["total"], "gap": asdict(g)}
+        elif ev == "start":
+            yield "start", data
+    ranked = _rank(scored)
+    yield "done", {"ranked": [g["id"] for g in ranked["gaps"]], "usedModels": ranked["usedModels"]}

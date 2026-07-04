@@ -24,8 +24,8 @@ from kg_extractors.query_parser import parse_query
 from kg_retrievers.graph_retriever import GraphRetriever
 
 _log = get_logger("advisor")
-_MAX_CANDIDATES = 6
-_MAX_WORKERS = 6
+_MAX_CANDIDATES = 8
+_MAX_WORKERS = 10  # fan out up to 10 candidate-evaluation agents at once (user-requested)
 
 
 @dataclass

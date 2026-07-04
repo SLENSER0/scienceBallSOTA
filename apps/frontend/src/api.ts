@@ -322,6 +322,9 @@ export const api = {
   gapsPrioritized(limit = 12): Promise<{ gaps: PrioritizedGap[]; count: number; usedModels: string[] }> {
     return req(`/api/v1/insights/gaps-prioritized?limit=${limit}`);
   },
+  gapsPrioritizedStreamUrl(limit = 14): string {
+    return `/api/v1/insights/gaps-prioritized/stream?limit=${limit}`;
+  },
 
   // -- §17.7 Agent reasoning trace (tool-call timeline) ---------------------
   agentReasoningTrace(

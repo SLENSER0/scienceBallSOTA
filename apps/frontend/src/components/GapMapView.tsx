@@ -1,12 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Loader2, ListChecks, Sparkles, Target } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, ListChecks, Sparkles, Target } from 'lucide-react';
 import { api } from '../api';
 import type { PrioritizedGap } from '../types';
+import { AgentProgress } from './AgentProgress';
 
 // Карта пробелов с приоритизацией (agentic). The gap-scanner says WHERE knowledge is
-// missing; here a prioritization agent per gap (GLM-5.2) scores research priority as
-// impact × feasibility with a rationale and a concrete next action — a ranked backlog
-// for an R&D lead, not a flat list of holes.
+// missing; here a prioritization agent per gap (GLM-5.2, up to 10 in parallel) scores
+// research priority — impact × feasibility + a concrete next action. Cards stream in
+// the instant each agent finishes, behind an HONEST progress bar (done/total).
 
 const DOMAIN_RU: Record<string, string> = {
   hydrometallurgy: 'Гидромет',
@@ -18,13 +19,45 @@ const DOMAIN_RU: Record<string, string> = {
   electrometallurgy: 'Электромет',
 };
 
+function rankGaps(gs: PrioritizedGap[]): PrioritizedGap[] {
+  // Scored first (by priority), unscored last — mirrors the backend ranking.
+  return [...gs].sort(
+    (a, b) => Number(b.scored) - Number(a.scored) || b.priority - a.priority,
+  );
+}
+
 export function GapMapView() {
-  const q = useQuery({
-    queryKey: ['gaps-prioritized'],
-    queryFn: () => api.gapsPrioritized(14),
-    staleTime: 5 * 60_000,
-  });
-  const gaps = q.data?.gaps ?? [];
+  const [gaps, setGaps] = useState<PrioritizedGap[]>([]);
+  const [done, setDone] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [running, setRunning] = useState(true);
+  const esRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    setGaps([]);
+    setDone(0);
+    setTotal(0);
+    setRunning(true);
+    const es = new EventSource(api.gapsPrioritizedStreamUrl(14));
+    esRef.current = es;
+    es.addEventListener('start', (e) => {
+      setTotal(JSON.parse((e as MessageEvent).data).total ?? 0);
+    });
+    es.addEventListener('gap', (e) => {
+      const d = JSON.parse((e as MessageEvent).data);
+      setDone(d.done ?? 0);
+      setGaps((prev) => rankGaps([...prev, d.gap as PrioritizedGap]));
+    });
+    es.addEventListener('done', () => {
+      setRunning(false);
+      es.close();
+    });
+    es.addEventListener('error', () => {
+      setRunning(false);
+      es.close();
+    });
+    return () => es.close();
+  }, []);
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -35,26 +68,26 @@ export function GapMapView() {
         </h1>
         <p className="mt-1 text-sm text-faint">
           Каждый пробел знаний оценивает отдельный агент-приоритизатор (
-          <span className="font-mono text-copper">glm-5.2</span>): важность × осуществимость +
-          конкретный следующий шаг. Ранжированный бэклог, а не плоский список.
+          <span className="font-mono text-copper">glm-5.2</span>, до 10 параллельно): важность ×
+          осуществимость + конкретный следующий шаг. Карточки появляются по мере готовности агентов.
         </p>
 
-        {q.isLoading ? (
-          <div className="mt-8 flex items-center gap-2 font-mono text-sm text-faint">
-            <Loader2 size={15} className="animate-spin text-copper" /> агенты оценивают пробелы…
-          </div>
-        ) : (
-          <div className="mt-5 space-y-3">
-            {gaps.map((g, i) => (
-              <GapCard key={g.id} g={g} rank={i + 1} />
-            ))}
-            {gaps.length === 0 && (
-              <div className="panel py-10 text-center font-mono text-[11px] text-faint">
-                пробелов не найдено
-              </div>
-            )}
+        {(running || total > 0) && (
+          <div className="mt-4">
+            <AgentProgress done={done} total={total} running={running} label="агентов оценили" />
           </div>
         )}
+
+        <div className="mt-5 space-y-3">
+          {gaps.map((g, i) => (
+            <GapCard key={g.id} g={g} rank={i + 1} />
+          ))}
+          {!running && gaps.length === 0 && (
+            <div className="panel py-10 text-center font-mono text-[11px] text-faint">
+              пробелов не найдено
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
