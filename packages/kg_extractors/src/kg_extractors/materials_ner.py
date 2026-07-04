@@ -515,11 +515,37 @@ def _combine_score(a: float, b: float) -> float:
     return _clamp01(a + b - a * b)
 
 
+def _merge_span_text(fm: FusedMention, span: NerSpan, lo: int, hi: int) -> str:
+    """Reconstruct the surface text for a widened span from two overlapping spans.
+
+    Fallback used when the original ``source_text`` is not available: the two
+    spans overlap (IoU ≥ threshold ⇒ non-empty char intersection), so their union
+    ``[lo, hi)`` is contiguous and can be rebuilt from the two known substrings.
+    """
+    left_text, left_start, left_end = (
+        (fm.text, fm.char_start, fm.char_end)
+        if fm.char_start <= span.start
+        else (span.text, span.start, span.end)
+    )
+    right_text, right_start, right_end = (
+        (span.text, span.start, span.end)
+        if fm.char_start <= span.start
+        else (fm.text, fm.char_start, fm.char_end)
+    )
+    if right_end <= left_end:
+        # Right span fully contained in the left one → union is just the left text.
+        return left_text if (left_start, left_end) == (lo, hi) else left_text[: hi - lo]
+    if right_start <= left_end:  # overlapping and contiguous → safe to stitch
+        return left_text + right_text[left_end - right_start :]
+    return fm.text  # non-contiguous (shouldn't happen for IoU-merged spans)
+
+
 def fuse_mentions(
     gliner_spans: Sequence[NerSpan],
     mat_spans: Sequence[NerSpan],
     *,
     iou_threshold: float = 0.5,
+    source_text: str | None = None,
 ) -> list[FusedMention]:
     """Fuse GLiNER and MatEntityRecognition mentions, deduping on span overlap.
 
@@ -528,6 +554,11 @@ def fuse_mentions(
     the inputs (so agreement raises it) and whose label is taken from the more
     confident span. A **full overlap therefore yields exactly one** mention — no
     duplicate — which is the §6.8 acceptance guarantee.
+
+    When a partial overlap widens the fused span to the union of the two inputs,
+    ``text`` is re-sliced from ``source_text`` (when provided) so the provenance
+    invariant ``fm.text == source_text[fm.char_start:fm.char_end]`` always holds;
+    without it the surface form is reconstructed from the two spans instead.
     """
     tagged = [("gliner", s) for s in gliner_spans] + [("mat-entity", s) for s in mat_spans]
     # Process most-confident first so the winning label is the strongest one.
@@ -545,6 +576,11 @@ def fuse_mentions(
                 # Widen to the union of the two spans, keep the stronger label.
                 if span.start < fm.char_start or span.end > fm.char_end:
                     lo, hi = min(fm.char_start, span.start), max(fm.char_end, span.end)
+                    # Keep text in sync with the widened span (provenance invariant).
+                    if source_text is not None:
+                        fm.text = source_text[lo:hi]
+                    else:
+                        fm.text = _merge_span_text(fm, span, lo, hi)
                     fm.char_start, fm.char_end = lo, hi
                 merged = True
                 break
@@ -611,7 +647,9 @@ def fuse_text(
         g_backend, g_spans = _gliner_spans(text, threshold=threshold, device=device)
         recognizer = get_mat_recognizer(device)
         m_spans = recognizer.extract(text or "")
-        fused = fuse_mentions(g_spans, m_spans, iou_threshold=iou_threshold)
+        fused = fuse_mentions(
+            g_spans, m_spans, iou_threshold=iou_threshold, source_text=text or ""
+        )
     latency_ms = round((time.perf_counter() - started) * 1000.0, 2)
     n_agreement = sum(1 for fm in fused if len(fm.sources) > 1)
     report = FusionReport(

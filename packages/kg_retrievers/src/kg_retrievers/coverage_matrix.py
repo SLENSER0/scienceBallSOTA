@@ -246,27 +246,51 @@ class CoverageTimelinePoint:
         }
 
 
-def _supported_count(store: KuzuGraphStore, label: str, year: int) -> int:
-    rows = store.rows(
-        "MATCH (x:Node)-[:Rel {type:'SUPPORTED_BY'}]->(p:Node) "
-        "WHERE x.label=$label AND p.label='Paper' AND p.year=$y "
-        "RETURN count(DISTINCT x.id)",
-        {"label": label, "y": year},
-    )
-    return int(rows[0][0]) if rows else 0
+# A subject (Measurement / Gap) is dated to a year through either the direct
+# ``SUPPORTED_BY`` edge to a dated source (seed graph: ``Paper``) or the real
+# server-graph provenance chain ``->Evidence-FROM_CHUNK->Chunk<-HAS_CHUNK-Document``
+# (§8.2). Both the source node and the reached Document may carry ``year``, so a
+# subject is counted in *every* year it is evidenced by (distinct per year).
+_DATED_COUNTS_CYPHER = (
+    "MATCH (x:Node)-[:Rel {type:'SUPPORTED_BY'}]->(src:Node) "
+    "WHERE x.label=$label "
+    "OPTIONAL MATCH (src)-[:Rel {type:'FROM_CHUNK'}]->(:Node)"
+    "<-[:Rel {type:'HAS_CHUNK'}]-(doc:Node) "
+    "UNWIND ["
+    "  CASE WHEN src.label IN ['Paper', 'Document'] THEN src.year ELSE NULL END, "
+    "  CASE WHEN doc.label = 'Document' THEN doc.year ELSE NULL END"
+    "] AS yr "
+    "WITH x.id AS xid, yr WHERE yr IS NOT NULL "
+    "RETURN yr, count(DISTINCT xid)"
+)
+
+
+def _dated_counts(store: KuzuGraphStore, label: str) -> dict[int, int]:
+    """Map ``year -> distinct count`` of ``label`` subjects dated to that year (§15.5).
+
+    Traverses the real provenance path (``SUPPORTED_BY`` to a dated ``Paper`` /
+    ``Document``, or via ``Evidence -> Chunk <- Document``) in a single query, so
+    the timeline reflects the actual server graph rather than the non-existent
+    ``Measurement -SUPPORTED_BY-> Paper`` shortcut.
+    """
+    rows = store.rows(_DATED_COUNTS_CYPHER, {"label": label})
+    return {int(yr): int(cnt) for yr, cnt in rows}
 
 
 def build_coverage_timeline(store: KuzuGraphStore) -> list[CoverageTimelinePoint]:
     """Coverage timeline bucketed by ``Paper.year`` (§15.5).
 
     For each distinct paper year (ascending) counts the papers, the distinct
-    Measurements ``SUPPORTED_BY`` a paper of that year, and the distinct Gaps
-    likewise dated. All counts are non-negative ints.
+    Measurements evidenced by a source of that year, and the distinct Gaps
+    likewise dated (via the real ``->Evidence->Document`` provenance chain).
+    All counts are non-negative ints.
     """
     year_rows = store.rows(
         "MATCH (p:Node) WHERE p.label='Paper' AND p.year IS NOT NULL "
         "RETURN p.year, count(DISTINCT p.id) ORDER BY p.year"
     )
+    measurement_by_year = _dated_counts(store, "Measurement")
+    gap_by_year = _dated_counts(store, "Gap")
     points: list[CoverageTimelinePoint] = []
     for year, paper_count in year_rows:
         yr = int(year)
@@ -274,8 +298,8 @@ def build_coverage_timeline(store: KuzuGraphStore) -> list[CoverageTimelinePoint
             CoverageTimelinePoint(
                 year=yr,
                 paper_count=int(paper_count),
-                measurement_count=_supported_count(store, "Measurement", yr),
-                gap_count=_supported_count(store, "Gap", yr),
+                measurement_count=measurement_by_year.get(yr, 0),
+                gap_count=gap_by_year.get(yr, 0),
             )
         )
     return points

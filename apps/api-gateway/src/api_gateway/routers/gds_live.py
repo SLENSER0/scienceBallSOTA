@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -38,8 +39,12 @@ router = APIRouter(prefix="/api/v1/gds-live", tags=["gds-live"])
 
 _log = get_logger("api.gds_live")
 
-# Имя in-memory GDS-проекции. Детерминированное — чтобы drop-if-exists был надёжен.
-_GRAPH = "sb_live_gds"
+# Префикс in-memory GDS-проекции. Каждый запрос получает УНИКАЛЬНОЕ имя
+# ``sb_live_gds_<uuid>`` (H-9): фиксированное имя + drop-then-project без блокировки
+# приводило к тому, что конкурентные запросы затирали проекцию друг друга (пустые/
+# неверные результаты, ошибки «graph does not exist»). Уникальное имя изолирует job,
+# а гарантированный drop в finally не даёт in-memory графам утекать.
+_GRAPH_PREFIX = "sb_live_gds"
 # Property, куда Louvain пишет метку сообщества (тот же, что читает node_to_dto).
 _COMM_PROP = "community_id"
 
@@ -72,39 +77,53 @@ def _gds(store: Any, cypher: str, params: dict | None = None) -> list[list[Any]]
         raise HTTPException(status_code=500, detail=f"GDS call failed: {msg[:200]}") from exc
 
 
-def _projection_exists(store: Any) -> bool:
-    rows = _gds(store, "CALL gds.graph.exists($g) YIELD exists RETURN exists", {"g": _GRAPH})
-    return bool(rows and rows[0][0])
+def _new_graph_name() -> str:
+    """Уникальное имя проекции на один job — чтобы конкурентные запросы не пересекались (H-9)."""
+    return f"{_GRAPH_PREFIX}_{uuid.uuid4().hex}"
 
 
-def _drop_projection(store: Any) -> None:
+def _live_projections(store: Any) -> int:
+    """Сколько наших in-memory проекций сейчас живо (все с префиксом ``sb_live_gds``)."""
+    rows = _gds(
+        store,
+        "CALL gds.graph.list() YIELD graphName "
+        "WITH graphName WHERE graphName STARTS WITH $p "
+        "RETURN count(*) AS c",
+        {"p": _GRAPH_PREFIX},
+    )
+    return int(rows[0][0]) if rows and rows[0] else 0
+
+
+def _drop_projection(store: Any, graph: str) -> None:
     """Освободить in-memory граф (критерий §3.14: список проекций пуст после job)."""
     _gds(
         store,
         "CALL gds.graph.exists($g) YIELD exists "
         "WITH exists WHERE exists "
         "CALL gds.graph.drop($g, false) YIELD graphName RETURN graphName",
-        {"g": _GRAPH},
+        {"g": graph},
     )
 
 
 def _project(store: Any) -> dict[str, Any]:
-    """Спроецировать ``:Node``/``:Rel`` в UNDIRECTED in-memory граф ``sb_live_gds``.
+    """Спроецировать ``:Node``/``:Rel`` в UNDIRECTED in-memory граф с уникальным именем.
 
-    Идемпотентно: сначала drop-if-exists, затем native-projection. Возвращает
-    статистику проекции (кол-во узлов/рёбер).
+    Имя проекции уникально на запрос (``sb_live_gds_<uuid>``), поэтому drop-if-exists
+    больше не нужен — коллизия имени исключена, а конкурентные job'ы изолированы (H-9).
+    Возвращает имя проекции и её статистику (кол-во узлов/рёбер); вызывающий обязан
+    сделать ``_drop_projection(store, proj["name"])`` в ``finally``.
     """
-    _drop_projection(store)
+    graph = _new_graph_name()
     rows = _gds(
         store,
         "CALL gds.graph.project($g, 'Node', "
         "{Rel: {orientation: 'UNDIRECTED'}}) "
         "YIELD nodeCount, relationshipCount "
         "RETURN nodeCount, relationshipCount",
-        {"g": _GRAPH},
+        {"g": graph},
     )
     n, r = (rows[0][0], rows[0][1]) if rows else (0, 0)
-    return {"nodes": int(n), "relationships": int(r)}
+    return {"name": graph, "nodes": int(n), "relationships": int(r)}
 
 
 def _require_server() -> Any:
@@ -163,7 +182,7 @@ def status() -> dict:
         "profile": "server",
         "clustered": bool(rows),
         "communities": len(rows),
-        "projection_live": _projection_exists(store),
+        "projection_live": _live_projections(store) > 0,
     }
 
 
@@ -187,10 +206,10 @@ def louvain(
             "CALL gds.louvain.write($g, {writeProperty: $p}) "
             "YIELD communityCount, modularity, nodePropertiesWritten, ranLevels "
             "RETURN communityCount, modularity, nodePropertiesWritten, ranLevels",
-            {"g": _GRAPH, "p": _COMM_PROP},
+            {"g": proj["name"], "p": _COMM_PROP},
         )
     finally:
-        _drop_projection(store)  # гарантированная очистка in-memory графа
+        _drop_projection(store, proj["name"])  # гарантированная очистка in-memory графа
 
     comm_count, modularity, written, levels = (
         rows[0] if rows else (0, 0.0, 0, 0)
@@ -320,10 +339,10 @@ def similar(
             "RETURN b.id AS id, b.name AS name, b.label AS label, similarity "
             "ORDER BY similarity DESC "
             f"LIMIT {int(k)}",
-            {"g": _GRAPH, "k": int(k), "seed": seed},
+            {"g": proj["name"], "k": int(k), "seed": seed},
         )
     finally:
-        _drop_projection(store)
+        _drop_projection(store, proj["name"])
 
     node = store.get_node(seed)
     similar_nodes = [

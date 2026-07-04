@@ -52,6 +52,50 @@ _EVIDENCE_COUNT_CYPHER = (
     "WHERE ev.label='Evidence' RETURN count(ev)"
 )
 
+# --- Fallback: ProcessingRegime as the experiment unit (§14.8) ---------------
+# The live/server graph carries no ``Experiment`` nodes (nor USED_MATERIAL /
+# HAS_MEASUREMENT edges), so a plain Experiment scan returns nothing. A
+# ProcessingRegime *is* the experimental protocol in this ontology (§8.1): it
+# ``APPLIES_TO`` a Material, and Measurements hang off that Material via
+# ``ABOUT_MATERIAL``. These templates re-express the same list/detail shape over
+# those real edges; they are only ever used when the Experiment scan is empty,
+# so the hermetic Experiment tests keep their exact behaviour.
+_REGIME_LABEL = "ProcessingRegime"
+_REGIME_LIST_CYPHER = (
+    "MATCH (e:Node) WHERE e.label='ProcessingRegime' "
+    "OPTIONAL MATCH (e)-[:Rel {type:'APPLIES_TO'}]->(m:Node) "
+    "OPTIONAL MATCH (m)<-[:Rel {type:'ABOUT_MATERIAL'}]-(ms:Node {label:'Measurement'}) "
+    "RETURN e.id, e.label, e.name, e.domain, "
+    "collect(DISTINCT m.name), count(DISTINCT ms), collect(DISTINCT ms.property_name) "
+    "LIMIT 1000"
+)
+_REGIME_MATERIALS_CYPHER = (
+    "MATCH (e:Node {id:$e})-[:Rel {type:'APPLIES_TO'}]->(m:Node) RETURN m.id, m.name"
+)
+_REGIME_MEASUREMENTS_CYPHER = (
+    "MATCH (e:Node {id:$e})-[:Rel {type:'APPLIES_TO'}]->(mat:Node)"
+    "<-[:Rel {type:'ABOUT_MATERIAL'}]-(ms:Node {label:'Measurement'}) "
+    "RETURN DISTINCT ms.id, ms.name, ms.property_name, ms.value_normalized, ms.normalized_unit"
+)
+_REGIME_EVIDENCE_CYPHER = (
+    "MATCH (e:Node {id:$e})-[:Rel {type:'APPLIES_TO'}]->(mat:Node)"
+    "<-[:Rel {type:'ABOUT_MATERIAL'}]-(ms:Node {label:'Measurement'})"
+    "-[:Rel {type:'SUPPORTED_BY'}]->(ev:Node {label:'Evidence'}) "
+    "RETURN count(DISTINCT ev)"
+)
+
+# Labels served by this router as an "experiment": native Experiment, or the
+# ProcessingRegime fallback when the graph has no Experiment nodes.
+_EXPERIMENT_LABELS = {"Experiment", _REGIME_LABEL}
+
+
+def _templates_for(label: str | None) -> tuple[str, str, str]:
+    """(materials, measurements, evidence-count) cyphers for a node's label (§14.8)."""
+    if label == _REGIME_LABEL:
+        return (_REGIME_MATERIALS_CYPHER, _REGIME_MEASUREMENTS_CYPHER, _REGIME_EVIDENCE_CYPHER)
+    return (_MATERIALS_CYPHER, _MEASUREMENTS_CYPHER, _EVIDENCE_COUNT_CYPHER)
+
+
 _CSV_HEADER = ["id", "name", "property", "value", "unit"]
 
 
@@ -114,8 +158,15 @@ def _summary(row: list[Any]) -> ExperimentSummary:
 def _list_payload(
     material: str | None, prop: str | None, domain: str | None, limit: int, offset: int
 ) -> dict:
-    """Shared list/query implementation — filter then page over Experiment rows."""
-    rows = get_store().rows(_LIST_CYPHER)
+    """Shared list/query implementation — filter then page over Experiment rows.
+
+    Falls back to the ProcessingRegime projection when the graph has no
+    ``Experiment`` nodes (server profile), so the endpoint is never blank.
+    """
+    store = get_store()
+    rows = store.rows(_LIST_CYPHER)
+    if not rows:
+        rows = store.rows(_REGIME_LIST_CYPHER)
     matched = [r for r in rows if _row_matches(r, material, prop, domain)]
     limit = max(0, int(limit))
     offset = max(0, int(offset))
@@ -129,16 +180,17 @@ def _list_payload(
     }
 
 
-def _measurements(store: Any, eid: str) -> list[dict]:
+def _measurements(store: Any, eid: str, label: str | None = None) -> list[dict]:
+    _, meas_cypher, _ = _templates_for(label)
     return [
         {"id": r[0], "name": r[1], "property": r[2], "value": r[3], "unit": r[4]}
-        for r in store.rows(_MEASUREMENTS_CYPHER, {"e": eid})
+        for r in store.rows(meas_cypher, {"e": eid})
     ]
 
 
 def _require_experiment(store: Any, eid: str) -> dict:
     node = store.get_node(eid)
-    if node is None or node.get("label") != "Experiment":
+    if node is None or node.get("label") not in _EXPERIMENT_LABELS:
         raise HTTPException(status_code=404, detail="experiment not found")
     return node
 
@@ -179,9 +231,10 @@ def experiment_detail(eid: str) -> dict:
     """Full experiment view: props + linked materials, measurements, evidence count (§14.8)."""
     store = get_store()
     node = _require_experiment(store, eid)
-    materials = [{"id": r[0], "name": r[1]} for r in store.rows(_MATERIALS_CYPHER, {"e": eid})]
-    measurements = _measurements(store, eid)
-    ev_rows = store.rows(_EVIDENCE_COUNT_CYPHER, {"e": eid})
+    mat_cypher, _, ev_cypher = _templates_for(node.get("label"))
+    materials = [{"id": r[0], "name": r[1]} for r in store.rows(mat_cypher, {"e": eid})]
+    measurements = _measurements(store, eid, node.get("label"))
+    ev_rows = store.rows(ev_cypher, {"e": eid})
     evidence_count = int(ev_rows[0][0]) if ev_rows else 0
     return {
         "id": node["id"],
@@ -204,8 +257,8 @@ def export_experiment(eid: str, format: str = "json"):  # type: ignore[no-untype
     if format not in ("csv", "json"):
         raise HTTPException(status_code=400, detail="format must be csv or json")
     store = get_store()
-    _require_experiment(store, eid)
-    measurements = _measurements(store, eid)
+    node = _require_experiment(store, eid)
+    measurements = _measurements(store, eid, node.get("label"))
     if format == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf)
@@ -223,6 +276,6 @@ def verify_experiment(eid: str, role: str = Depends(current_role)) -> dict:
     if role not in _CURATOR:
         raise HTTPException(status_code=403, detail="curator role required")
     store = get_store()
-    _require_experiment(store, eid)
-    store.upsert_node(eid, "Experiment", verified=True)
+    node = _require_experiment(store, eid)
+    store.upsert_node(eid, node.get("label") or "Experiment", verified=True)
     return {"id": eid, "verified": True}

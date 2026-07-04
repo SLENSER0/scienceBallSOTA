@@ -78,6 +78,43 @@ def test_fusion_keeps_disjoint_mentions() -> None:
     assert len(fused) == 2
 
 
+def test_fusion_partial_overlap_updates_text_from_source() -> None:
+    """Partial-overlap merge widens the span AND re-slices text from source.
+
+    Regression for H-7: previously char_start/char_end were widened to the union
+    but ``.text`` was left stale, breaking ``text == source[start:end]``.
+    """
+    src = "нержавеющая сталь ХН77ТЮР высокой прочности материала"
+    # Two partially overlapping spans (IoU ≈ 0.69 ≥ 0.5) over the same region.
+    a = [NerSpan(src[12:26], "material", 12, 26, 0.9)]
+    b = [NerSpan(src[15:28], "alloy", 15, 28, 0.7)]
+    fused = fuse_mentions(a, b, source_text=src)
+    assert len(fused) == 1
+    fm = fused[0]
+    # Span widened to the union...
+    assert fm.char_start == 12 and fm.char_end == 28
+    # ...and text stays consistent with the widened span (the invariant).
+    assert fm.text == src[fm.char_start : fm.char_end]
+
+
+def test_fusion_partial_overlap_reconstructs_text_without_source() -> None:
+    """Without source_text the merged surface form is stitched from the spans.
+
+    The provenance invariant still holds for the returned union span, and the
+    result is independent of which overlapping span is processed first.
+    """
+    src = "нержавеющая сталь ХН77ТЮР высокой прочности материала"
+    # Higher-confidence span starts *after* the other → exercises both branches
+    # of the reconstruction (fm processed first is the later-starting one).
+    a = [NerSpan(src[15:28], "alloy", 15, 28, 0.9)]
+    b = [NerSpan(src[12:26], "material", 12, 26, 0.7)]
+    fused = fuse_mentions(a, b)  # no source_text → reconstruction path
+    assert len(fused) == 1
+    fm = fused[0]
+    assert fm.char_start == 12 and fm.char_end == 28
+    assert fm.text == src[fm.char_start : fm.char_end]
+
+
 def test_fuse_text_end_to_end() -> None:
     """fuse_text runs GLiNER ⊕ MatEntity and yields anchored fused mentions."""
     rep = fuse_text(_SENT)

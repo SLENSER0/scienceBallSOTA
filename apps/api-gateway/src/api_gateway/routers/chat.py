@@ -20,7 +20,7 @@ import uuid
 from collections.abc import Iterator
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -71,6 +71,20 @@ def _chunks(text: str, size: int = 40) -> Iterator[str]:
     text = text or ""
     for i in range(0, len(text), size):
         yield text[i : i + size]
+
+
+def _resolve_user(authorization: str | None, access_token: str | None) -> str:
+    """Resolve the caller for SSE endpoints.
+
+    Browsers' ``EventSource`` cannot attach an ``Authorization`` header, so
+    token-authorized SSE clients pass the bearer as an ``?access_token=`` query
+    parameter instead (the same convention used by other streaming surfaces).
+    We fold it into a synthetic ``Bearer`` header when no real one is present,
+    then reuse the shared :func:`current_user` resolution.
+    """
+    if access_token and not (authorization and authorization.lower().startswith("bearer ")):
+        authorization = f"Bearer {access_token}"
+    return current_user(authorization)
 
 
 def _owned_session(sid: str, user: str):  # type: ignore[no-untyped-def]
@@ -191,9 +205,16 @@ def post_message(
 def stream(
     sid: str,
     message_id: str,
-    user: str = Depends(current_user),
+    access_token: str | None = Query(default=None),
+    authorization: str | None = Header(default=None),
 ) -> StreamingResponse:
-    """Replay a stored assistant answer as typed SSE events (§5.3 format)."""
+    """Replay a stored assistant answer as typed SSE events (§5.3 format).
+
+    Accepts the bearer token via the ``?access_token=`` query parameter because
+    ``EventSource`` cannot send an ``Authorization`` header; ownership is still
+    enforced so foreign sessions never leak (§19).
+    """
+    user = _resolve_user(authorization, access_token)
     _owned_session(sid, user)
     payload = _load_answer(sid, message_id)
 

@@ -25,7 +25,12 @@ from dataclasses import dataclass
 from typing import Any
 
 # Severities that a re-plan/re-retrieve pass can plausibly resolve (исправимые).
-FIXABLE_SEVERITIES: frozenset[str] = frozenset({"missing_evidence", "empty_retrieval"})
+# "unsupported" is the tag :mod:`agent_service.verifier` puts on ungrounded
+# citations and uncited measurable numbers (L-43/L-49): re-retrieval may surface
+# the missing evidence, so it must route back to the planner like the others.
+FIXABLE_SEVERITIES: frozenset[str] = frozenset(
+    {"missing_evidence", "empty_retrieval", "unsupported"}
+)
 
 # Routing targets in the graph.
 _NODE_RETRY = "query_planner"

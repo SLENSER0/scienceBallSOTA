@@ -2,12 +2,33 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
+from api_gateway.auth import current_role
 from api_gateway.deps import get_store
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+# Internal roles allowed to read the admin/coverage dashboards (§19): everyone
+# except untrusted external partners. The mutating community-detection endpoint is
+# further restricted to curator/admin.
+_READ_ROLES = {"researcher", "analyst", "project_manager", "curator", "admin"}
+_WRITE_ROLES = {"curator", "admin"}
+
+
+def require_admin_read(role: str = Depends(current_role)) -> str:
+    """Gate admin reads: block external_partner (and any non-internal caller)."""
+    if role not in _READ_ROLES:
+        raise HTTPException(status_code=403, detail="admin dashboard requires an internal role")
+    return role
+
+
+def require_admin_write(role: str = Depends(current_role)) -> str:
+    """Gate mutating admin actions to curator/admin (§19)."""
+    if role not in _WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="curator/admin role required")
+    return role
 
 
 @router.get("/ready")
@@ -37,7 +58,7 @@ _DOMAINS = [
 
 
 @router.get("/stats")
-def stats() -> dict:
+def stats(_role: str = Depends(require_admin_read)) -> dict:
     store = get_store()
     return {
         "counts": store.counts(),
@@ -46,7 +67,7 @@ def stats() -> dict:
 
 
 @router.get("/lineage")
-def lineage() -> dict:
+def lineage(_role: str = Depends(require_admin_read)) -> dict:
     """Provenance lineage (§10): extractor/gap-scan runs and what they produced."""
     store = get_store()
     runs = store.rows(
@@ -78,7 +99,7 @@ def lineage() -> dict:
 
 
 @router.post("/communities")
-def communities() -> dict:
+def communities(_role: str = Depends(require_admin_write)) -> dict:
     """Detect GraphRAG communities + write summaries (§11)."""
     from kg_retrievers.community import detect_communities
 
@@ -86,7 +107,9 @@ def communities() -> dict:
 
 
 @router.get("/communities/global-search")
-def community_global_search(q: str, limit: int = 3) -> dict:
+def community_global_search(
+    q: str, limit: int = 3, _role: str = Depends(require_admin_read)
+) -> dict:
     """GraphRAG global search: map-reduce over community summaries (§11.7/§11.9)."""
     from kg_retrievers.community_search import global_search
 
@@ -94,7 +117,9 @@ def community_global_search(q: str, limit: int = 3) -> dict:
 
 
 @router.get("/communities/local-search")
-def community_local_search(seed: str, limit: int = 15) -> dict:
+def community_local_search(
+    seed: str, limit: int = 15, _role: str = Depends(require_admin_read)
+) -> dict:
     """GraphRAG local search: an entity's community members + neighbours (§11.7)."""
     from kg_retrievers.community_search import local_search
 
@@ -102,7 +127,9 @@ def community_local_search(seed: str, limit: int = 15) -> dict:
 
 
 @router.get("/technoeconomic")
-def technoeconomic(domain: str | None = None) -> dict:
+def technoeconomic(
+    domain: str | None = None, _role: str = Depends(require_admin_read)
+) -> dict:
     """Techno-economic comparison (CAPEX/OPEX/NPV) across solutions (§24.11)."""
     from kg_retrievers.technoeconomic import compare_technoeconomics
 
@@ -110,7 +137,9 @@ def technoeconomic(domain: str | None = None) -> dict:
 
 
 @router.get("/distribution-analysis")
-def distribution_analysis(domain: str | None = None) -> dict:
+def distribution_analysis(
+    domain: str | None = None, _role: str = Depends(require_admin_read)
+) -> dict:
     """Metal distribution-coefficient analysis across phases (matte/slag/gas) (§24.7)."""
     from kg_retrievers.distribution_analysis import analyze_distribution
 
@@ -118,7 +147,7 @@ def distribution_analysis(domain: str | None = None) -> dict:
 
 
 @router.get("/graph-algos")
-def graph_algos(top: int = 10) -> dict:
+def graph_algos(top: int = 10, _role: str = Depends(require_admin_read)) -> dict:
     """GDS-lite: degree + betweenness centrality over the entity graph (§12.8)."""
     from kg_retrievers.graph_algos import betweenness_centrality, degree_centrality
 
@@ -134,7 +163,7 @@ def graph_algos(top: int = 10) -> dict:
 
 
 @router.get("/community-hierarchy")
-def community_hierarchy() -> dict:
+def community_hierarchy(_role: str = Depends(require_admin_read)) -> dict:
     """2-level hierarchical community structure (§11.6)."""
     from kg_retrievers.community_hierarchy import build_hierarchy
 
@@ -142,7 +171,7 @@ def community_hierarchy() -> dict:
 
 
 @router.get("/retrieval-eval")
-def retrieval_eval() -> dict:
+def retrieval_eval(_role: str = Depends(require_admin_read)) -> dict:
     """Run the retrieval eval (Recall@k/MRR/nDCG) over the seed golden set (§4.11/§18.6)."""
     from kg_eval.retrieval_eval import run_retrieval_eval
 
@@ -151,7 +180,7 @@ def retrieval_eval() -> dict:
 
 
 @router.get("/validate-shapes")
-def validate_shapes(limit: int = 500) -> dict:
+def validate_shapes(limit: int = 500, _role: str = Depends(require_admin_read)) -> dict:
     """SHACL-style conformance report over graph nodes — FAIR/evidence-first (§24.19)."""
     from kg_schema.shapes import validate_nodes
 
@@ -162,7 +191,7 @@ def validate_shapes(limit: int = 500) -> dict:
 
 
 @router.get("/absence-map")
-def absence_map(domain: str | None = None) -> dict:
+def absence_map(domain: str | None = None, _role: str = Depends(require_admin_read)) -> dict:
     """Map of the unknown: material×property absence-confidence grid (§25.11)."""
     from kg_retrievers.absence_map import build_absence_map
 
@@ -170,7 +199,7 @@ def absence_map(domain: str | None = None) -> dict:
 
 
 @router.get("/coverage-matrix")
-def coverage_matrix() -> dict:
+def coverage_matrix(_role: str = Depends(require_admin_read)) -> dict:
     """Coverage matrix + by-owner + timeline (§15.5)."""
     from kg_retrievers.coverage_matrix import (
         aggregate_gaps_by_owner,
@@ -187,7 +216,7 @@ def coverage_matrix() -> dict:
 
 
 @router.get("/coverage")
-def coverage() -> dict:
+def coverage(_role: str = Depends(require_admin_read)) -> dict:
     """Per-domain coverage metrics (§24.15): sources, facts, gaps, contradictions."""
     store = get_store()
     rows = store.rows(

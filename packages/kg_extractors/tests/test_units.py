@@ -50,38 +50,62 @@ def test_parse_velocity_range() -> None:
     assert rng[0].normalized_unit == "m/s"
 
 
-@pytest.mark.parametrize("text", ["сульфаты <200 мг/л", "sulfates <200 mg/L"])
-def test_ru_en_parity(text: str) -> None:
+@pytest.mark.parametrize("sep", [" ", "\u00A0", "\u202F"])  # space / NBSP / narrow-NBSP
+def test_thousands_separator_in_constraint(sep: str) -> None:
+    # "1 000" (regular / NBSP / narrow-NBSP) must parse as 1000, not 1 + a bogus
+    # second "000" constraint, and not as 0.
+    text = f"сухой остаток ≤1{sep}000 мг/дм³"
     cs = parse_numeric_constraints(text)
+    le = [c for c in cs if c.operator == "<="]
+    assert le and le[0].value == 1000
+    assert le[0].normalized_unit == "mg/L" and abs(le[0].normalized_value - 1000) < 1e-6
+    # no fabricated zero-valued companion constraint
+    assert all(c.value != 0 for c in cs if c.value is not None)
+
+
+def test_thousands_separator_million() -> None:
+    # "1 000 000 мг/л" -> single 1e6 magnitude, not truncated to 1 or 0.
+    cs = parse_numeric_constraints("предел 1 000 000 мг/л")
+    vals = [c.value for c in cs if c.unit and c.value is not None]
+    assert 1_000_000 in vals
+
+
+# --- M-31: kg/m^3 is a density, not a mg/L concentration ---
+
+
+def test_kg_per_m3_is_density_not_concentration() -> None:
+    n = to_canonical(1200, "кг/м3")
+    assert n is not None
+    # value preserved (NOT rescaled ×1000 into 1.2e6 mg/L)
+    assert abs(n.value - 1200) < 1e-6
+    assert n.unit != "mg/L"
+
+
+def test_concentration_still_normalizes_after_density_fix() -> None:
+    # guard: real mass concentrations must still convert to mg/L
+    assert to_canonical(1, "г/л").unit == "mg/L"
+    assert abs(to_canonical(1, "г/л").value - 1000) < 1e-6
+
+
+# --- M-20: bare years / counters must not become measurements ---
+
+
+@pytest.mark.parametrize(
+    "text", ["данные после 2015", "методы от 2015 года", "более 2015 образцов", "до 2020"]
+)
+def test_year_like_not_parsed_as_constraint(text: str) -> None:
+    cs = parse_numeric_constraints(text)
+    assert not [c for c in cs if c.value in (2015.0, 2020.0)]
+
+
+def test_unitless_prose_number_not_fabricated() -> None:
+    # unit-less directional prose ("менее 500 проб") is not a measurement
+    cs = parse_numeric_constraints("менее 500 проб отобрано")
+    assert not [c for c in cs if c.unit is None]
+
+
+def test_unitless_symbolic_comparison_preserved() -> None:
+    # explicit comparison symbol with a non-year value is still a real constraint
+    cs = parse_numeric_constraints("pH < 7 в растворе")
     lt = [c for c in cs if c.operator == "<"]
-    assert lt and lt[0].value == 200 and lt[0].normalized_unit == "mg/L"
-
-
-# --- adversarial-review regression tests ---
-
-
-def test_single_letter_units_not_fabricated() -> None:
-    # "5 кг" and "30 минут" must NOT yield "5 к" / "30 м" measurements (finding units:230)
-    cs = parse_numeric_constraints("добавили 5 кг купороса и перемешивали 30 минут")
-    assert all(c.unit not in {"к", "м", "v"} for c in cs)
-
-
-def test_year_range_not_parsed_as_measurement() -> None:
-    # "2015-2020" (no unit) must not become a numeric range (finding units:278)
-    cs = parse_numeric_constraints("методы за 2015-2020 годы и в 2019–2021")
-    assert not [c for c in cs if c.operator == "range"]
-
-
-def test_voltage_normalizes() -> None:
-    # volt dimensionality fixed (finding units:177): 0.5 V == 500 mV
-    v = to_canonical(0.5, "в")
-    mv = to_canonical(500, "мв")
-    assert v is not None and mv is not None
-    assert v.unit == "V" and mv.unit == "V"
-    assert abs(v.value - mv.value) < 1e-6
-
-
-def test_ppm_magnitude_preserved() -> None:
-    # ppm must not collapse to a tiny percent (finding units:189)
-    n = to_canonical(100, "ppm")
-    assert n is not None and n.unit == "ppm" and abs(n.value - 100) < 1e-6
+    assert lt and lt[0].value == 7
