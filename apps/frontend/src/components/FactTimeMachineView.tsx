@@ -189,7 +189,9 @@ export function FactTimeMachineView() {
   const [entityId, setEntityId] = useState<string | null>(null);
   const [field, setField] = useState<string | null>(null);
   // Which source document to preview in the modal («Открыть источник»).
-  const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [openDoc, setOpenDoc] = useState<{ docId: string; page?: number; quote?: string } | null>(
+    null,
+  );
 
   // Small picker: entities of the chosen type to start from.
   const picker = useQuery({
@@ -340,7 +342,7 @@ export function FactTimeMachineView() {
             <FactSourcePanel
               data={source.data}
               isLoading={source.isLoading}
-              onOpenDoc={setOpenDoc}
+              onOpenDoc={(docId, page, quote) => setOpenDoc({ docId, page, quote })}
             />
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_1fr]">
@@ -430,7 +432,11 @@ export function FactTimeMachineView() {
                 <X size={16} />
               </button>
             </div>
-            <DocumentViewer docId={openDoc} />
+            <DocumentViewer
+              docId={openDoc.docId}
+              initialPage={openDoc.page}
+              highlight={openDoc.quote}
+            />
           </div>
         </div>
       )}
@@ -445,7 +451,7 @@ function FactSourcePanel({
 }: {
   data: FactSource | undefined;
   isLoading: boolean;
-  onOpenDoc: (docId: string) => void;
+  onOpenDoc: (docId: string, page?: number, quote?: string) => void;
 }) {
   return (
     <div className="panel mb-5 p-4">
@@ -509,8 +515,9 @@ function FactSourcePanel({
                     </span>
                   </div>
                   <button
-                    onClick={() => onOpenDoc(doc.docId)}
+                    onClick={() => onOpenDoc(doc.docId, quotes[0]?.page ?? undefined, quotes[0]?.text)}
                     className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-copper/20 px-3 py-1.5 text-sm text-copper hover:bg-copper/30"
+                    title="Открыть документ на месте цитаты"
                   >
                     <ExternalLink size={14} /> Открыть источник
                   </button>
@@ -527,16 +534,21 @@ function FactSourcePanel({
                           <Quote size={12} className="mt-0.5 shrink-0 text-copper/70" />
                           <span className="line-clamp-3 italic">{e.text}</span>
                         </div>
-                        {(e.page != null || e.evidenceStrength) && (
-                          <div className="mt-1 flex flex-wrap items-center gap-2 pl-[18px] text-[11px] text-faint/80">
-                            {e.page != null && <span>стр. {e.page}</span>}
-                            {e.evidenceStrength && (
-                              <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-copper">
-                                {e.evidenceStrength}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="mt-1 flex flex-wrap items-center gap-2 pl-[18px] text-[11px] text-faint/80">
+                          {e.page != null && <span>стр. {e.page}</span>}
+                          {e.evidenceStrength && (
+                            <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-copper">
+                              {e.evidenceStrength}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => onOpenDoc(doc.docId, e.page ?? undefined, e.text)}
+                            className="inline-flex items-center gap-1 text-copper hover:underline"
+                            title="Открыть документ и подсветить эту цитату"
+                          >
+                            <ExternalLink size={11} /> найти в документе
+                          </button>
+                        </div>
                       </blockquote>
                     ))}
                   </div>

@@ -185,14 +185,23 @@ function UploadResultView({
   );
 }
 
-export function DocumentViewer({ docId }: { docId: string }) {
-  const [page, setPage] = useState(1);
+export function DocumentViewer({
+  docId,
+  initialPage,
+  highlight,
+}: {
+  docId: string;
+  initialPage?: number;
+  highlight?: string;
+}) {
+  const [page, setPage] = useState(initialPage ?? 1);
   const [data, setData] = useState<{
     title: string;
     page_count: number;
     pages: { page: number; text: string }[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const markRef = useRef<HTMLElement | null>(null);
 
   // Load the parsed content whenever the document changes.
   useEffect(() => {
@@ -201,9 +210,7 @@ export function DocumentViewer({ docId }: { docId: string }) {
     api
       .documentParsed(docId)
       .then((d) => {
-        if (!alive) return;
-        setData(d);
-        setPage(1);
+        if (alive) setData(d);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -212,6 +219,21 @@ export function DocumentViewer({ docId }: { docId: string }) {
       alive = false;
     };
   }, [docId]);
+
+  // Jump to the page the evidence lives on (if it exists), else the first page.
+  useEffect(() => {
+    if (!data) return;
+    const target =
+      initialPage != null && data.pages.some((p) => p.page === initialPage)
+        ? initialPage
+        : data.pages[0]?.page ?? 1;
+    setPage(target);
+  }, [initialPage, data]);
+
+  // Scroll the highlighted quote into view once the page/highlight resolves.
+  useEffect(() => {
+    if (markRef.current) markRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [page, highlight, data]);
 
   if (loading || !data) {
     return (
@@ -249,8 +271,56 @@ export function DocumentViewer({ docId }: { docId: string }) {
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap px-3 py-2 text-[13px] leading-relaxed text-ink/90">
-        {current?.text || <span className="text-faint">пустая страница</span>}
+        {current?.text ? (
+          renderHighlighted(current.text, highlight, markRef)
+        ) : (
+          <span className="text-faint">пустая страница</span>
+        )}
       </div>
     </div>
+  );
+}
+
+// Highlight the evidence quote within a page's text — whitespace-flexible and
+// case-insensitive (the quote may differ from the parsed text only in spacing).
+// Attaches a ref to the first match so the viewer can scroll it into view.
+function renderHighlighted(
+  text: string,
+  query: string | undefined,
+  markRef: React.MutableRefObject<HTMLElement | null>,
+): React.ReactNode {
+  markRef.current = null;
+  if (!query || !query.trim()) return text;
+  const toRe = (q: string): RegExp | null => {
+    const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    try {
+      return new RegExp(esc, 'i');
+    } catch {
+      return null;
+    }
+  };
+  const clean = query.trim();
+  let m: RegExpExecArray | null = null;
+  for (const q of [clean.slice(0, 200), clean.slice(0, 40)]) {
+    const re = toRe(q);
+    m = re ? re.exec(text) : null;
+    if (m) break;
+  }
+  if (!m) return text;
+  const start = m.index;
+  const end = start + m[0].length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark
+        ref={(el) => {
+          markRef.current = el;
+        }}
+        className="rounded bg-copper/40 px-0.5 text-ink"
+      >
+        {text.slice(start, end)}
+      </mark>
+      {text.slice(end)}
+    </>
   );
 }
