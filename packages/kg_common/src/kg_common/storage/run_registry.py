@@ -24,6 +24,7 @@ from typing import Any
 
 from sqlalchemy import (
     Column,
+    Index,
     String,
     Table,
     select,
@@ -47,6 +48,12 @@ pipeline_runs = Table(
     Column("finished_at", String, nullable=True),
     Column("stats_json", String, nullable=False, default="{}"),
 )
+
+# -- index (§9.7): back recent()'s ``ORDER BY started_at DESC`` so *история запусков*
+# (run history) читается через индекс, а не полной сортировкой всей таблицы.
+# Attaching an ``Index`` to a bound column registers it on ``pipeline_runs``' metadata,
+# so the existing ``migrate()`` → ``_metadata.create_all`` path creates it идемпотентно.
+Index("ix_pipeline_runs_started", pipeline_runs.c.started_at)
 
 
 def _check_status(status: str) -> str:

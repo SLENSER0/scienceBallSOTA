@@ -22,6 +22,7 @@ from typing import Any
 
 from sqlalchemy import (
     Column,
+    Index,
     Integer,
     String,
     Table,
@@ -51,6 +52,19 @@ chat_messages = Table(
     Column("created_at", String, nullable=False, default=""),
     Column("seq", Integer, nullable=False, default=0),
 )
+
+# -- indexes (§14.4) ------------------------------------------------------
+# Индексы под горячие запросы / indexes for the hot per-session queries.
+# Every ``chat_messages`` read filters (and ``messages`` also orders) by
+# ``session_id``; the composite ``(session_id, seq)`` lets ``messages`` satisfy
+# both its WHERE and ORDER BY from the index, turns ``add_message``'s per-turn
+# ``max(seq)`` into an index-tip lookup, and makes ``delete_session`` an index
+# range instead of a full ``chat.db`` scan. ``list_sessions`` filters by
+# ``user_id`` and orders by ``created_at``; ``(user_id, created_at)`` serves both.
+# Attached to the shared MetaData, so migrate() -> _metadata.create_all emits
+# them idempotently (CREATE INDEX IF NOT EXISTS) — no migrate() change needed.
+Index("ix_chat_messages_session_seq", chat_messages.c.session_id, chat_messages.c.seq)
+Index("ix_chat_sessions_user_created", chat_sessions.c.user_id, chat_sessions.c.created_at)
 
 
 def _now() -> str:
@@ -113,16 +127,19 @@ class ChatStore:
             title=title,
             created_at=created_at,
         )
-        # re-create by PK updates user_id/title; created_at stays as first insert
+        # re-create by PK updates user_id/title; created_at stays as first insert.
+        # RETURNING hands back the persisted row (post-upsert user_id/title, the
+        # original created_at) in the SAME round-trip, so no second get_session
+        # SELECT is needed. SQLite ≥3.35 and Postgres both support RETURNING with
+        # ON CONFLICT DO UPDATE.
         stmt = stmt.on_conflict_do_update(
             index_elements=["session_id"],
             set_={"user_id": stmt.excluded.user_id, "title": stmt.excluded.title},
-        )
+        ).returning(chat_sessions)
         with self.engine.begin() as conn:
-            conn.execute(stmt)
-        got = self.get_session(session_id)
-        assert got is not None  # just inserted
-        return got
+            row = conn.execute(stmt).first()
+        assert row is not None  # DO UPDATE always returns the persisted row
+        return ChatSession(**row._mapping)
 
     def get_session(self, session_id: str) -> ChatSession | None:
         q = select(chat_sessions).where(chat_sessions.c.session_id == session_id)
@@ -229,3 +246,26 @@ class ChatStore:
         )
         with self.engine.begin() as conn:
             return [ChatMessage(**r._mapping) for r in conn.execute(q).all()]
+
+    def last_message_ats(self, session_ids: list[str]) -> dict[str, str]:
+        """Batched last-message timestamps — {session_id: max(created_at)} (§14.4).
+
+        Одним сгруппированным запросом возвращает время последнего сообщения для
+        каждой сессии из ``session_ids`` — без загрузки самих сообщений. Заменяет
+        N вызовов :meth:`messages` (по одному на сессию) при рендере списка чатов.
+
+        One grouped aggregate instead of an N+1 per-session scan: reads only the
+        timestamps, never the (large) ``content`` payloads. ``created_at`` is
+        stamped at insert time and rises with the append-only ``seq``, so
+        ``max(created_at)`` equals the last-by-``seq`` message's ``created_at``.
+        Sessions with no messages are simply absent from the returned mapping.
+        """
+        if not session_ids:
+            return {}
+        q = (
+            select(chat_messages.c.session_id, func.max(chat_messages.c.created_at))
+            .where(chat_messages.c.session_id.in_(session_ids))
+            .group_by(chat_messages.c.session_id)
+        )
+        with self.engine.begin() as conn:
+            return dict(conn.execute(q).all())

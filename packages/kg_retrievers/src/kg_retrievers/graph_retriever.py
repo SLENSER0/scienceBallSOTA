@@ -236,13 +236,42 @@ class GraphRetriever:
         if intent.last_n_years:
             cutoff_year = datetime.now(UTC).year - intent.last_n_years
 
-        # Fire every candidate's neighbour + edge-evidence query CONCURRENTLY instead of
-        # looping one-at-a-time — the biggest single chunk of retrieval wall-time.
+        # Assemble every candidate's neighbours + edge-evidence in TWO batched
+        # `WHERE a.id IN $ids` queries instead of 2*N per-candidate queries. The
+        # old _POOL.map(self._neighbors/_edge_evidence_ids, ...) fan-out could not
+        # actually overlap: the embedded KuzuGraphStore serialises every rows()
+        # on a single-connection RLock, so the 2*N (up to 32) queries ran back-to-
+        # back with added thread-dispatch overhead. Grouping the batched rows back
+        # by a.id (setdefault preserves per-source row order) reconstructs the exact
+        # same per-candidate neigh_map / edge_ev_map the loop produced — только за
+        # два запроса вместо 2*N. Downstream reads use .get(cid, [] / set()), so a
+        # candidate with no neighbours (absent key) behaves identically to the old
+        # empty-list/-set value.
+        import json as _json
+
         cand_ids = [c["id"] for c in candidates]
-        neigh_map = dict(zip(cand_ids, _POOL.map(self._neighbors, cand_ids), strict=False))
-        edge_ev_map = dict(
-            zip(cand_ids, _POOL.map(self._edge_evidence_ids, cand_ids), strict=False)
-        )
+        neigh_map: dict[str, list[tuple[dict[str, Any], str]]] = {}
+        edge_ev_map: dict[str, set[str]] = {}
+        if cand_ids:
+            # neighbours: MATCH (a)-[e]-(b) keyed by a.id (was self._neighbors per cand)
+            for row in self.store.rows(
+                "MATCH (a:Node)-[e:Rel]-(b:Node) WHERE a.id IN $ids "
+                "RETURN a.id, b, e.type",
+                {"ids": cand_ids},
+            ):
+                neigh_map.setdefault(row[0], []).append(
+                    (self.store._node_dict(row[1]), row[2])
+                )
+            # edge-level evidence ids (same pattern proven in _evidence_for_many)
+            for row in self.store.rows(
+                "MATCH (a:Node)-[e:Rel]-(:Node) WHERE a.id IN $ids "
+                "AND e.evidence_ids IS NOT NULL RETURN a.id, e.evidence_ids",
+                {"ids": cand_ids},
+            ):
+                try:
+                    edge_ev_map.setdefault(row[0], set()).update(_json.loads(row[1]))
+                except (_json.JSONDecodeError, TypeError):
+                    continue
 
         for cand in candidates:
             label = cand.get("label")

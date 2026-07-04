@@ -22,8 +22,11 @@ def get_store() -> Any:
     s = get_settings()
     s.ensure_runtime_dirs()
     store = make_graph_store(s)
-    counts = store.counts()
-    if counts["nodes"] == 0:
+    # Cheap emptiness probe instead of counts(): a LIMIT-1 node scan short-circuits
+    # at the first node and skips counts()' second full relationship scan, which is
+    # computed and discarded here. Same seed-iff-empty decision. Uses rows(), shared
+    # by both the Kuzu and Neo4j stores. / дешёвая проверка "пусто ли" вместо counts().
+    if not store.rows("MATCH (n:Node) RETURN n LIMIT 1"):
         _log.info("api.seeding_empty_graph")
         from kg_retrievers.seed import build_seed_graph
 

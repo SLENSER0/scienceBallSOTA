@@ -120,7 +120,12 @@ def create_app() -> FastAPI:
 
         checks: dict[str, str] = {}
         try:
-            get_store().rows("MATCH (n:Node) RETURN count(n) LIMIT 1")
+            # Existence probe, not a count(): `RETURN n LIMIT 1` short-circuits after
+            # the first row, whereas `count(n) LIMIT 1` forces a full Node-table scan
+            # (the LIMIT can't bound an aggregate). Health is polled continuously, so
+            # this must not grow linearly with graph size. Semantically identical here
+            # — we only need the store to answer a query without raising.
+            get_store().rows("MATCH (n:Node) RETURN n LIMIT 1")
             checks["graph"] = "ok"
         except Exception as e:
             checks["graph"] = f"error: {type(e).__name__}"

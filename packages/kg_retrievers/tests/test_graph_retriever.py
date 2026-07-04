@@ -63,3 +63,64 @@ def test_evidence_present(retriever: GraphRetriever) -> None:
     q = parse_query("обессоливание воды обратный осмос")
     res = retriever.retrieve(q)
     assert res.evidence  # every answer must be evidence-backed
+
+
+# -- n+1 batching optimization: batched neigh/edge == per-candidate loop --------
+def _batched_maps(retriever: GraphRetriever, cand_ids: list[str]):  # type: ignore[no-untyped-def]
+    """Replicate retrieve()'s two batched queries → (neigh_map, edge_ev_map)."""
+    import json as _json
+
+    store = retriever.store
+    neigh_map: dict[str, list] = {}
+    edge_ev_map: dict[str, set] = {}
+    for row in store.rows(
+        "MATCH (a:Node)-[e:Rel]-(b:Node) WHERE a.id IN $ids RETURN a.id, b, e.type",
+        {"ids": cand_ids},
+    ):
+        neigh_map.setdefault(row[0], []).append((store._node_dict(row[1]), row[2]))
+    for row in store.rows(
+        "MATCH (a:Node)-[e:Rel]-(:Node) WHERE a.id IN $ids "
+        "AND e.evidence_ids IS NOT NULL RETURN a.id, e.evidence_ids",
+        {"ids": cand_ids},
+    ):
+        try:
+            edge_ev_map.setdefault(row[0], set()).update(_json.loads(row[1]))
+        except (_json.JSONDecodeError, TypeError):
+            continue
+    return neigh_map, edge_ev_map
+
+
+def test_batched_assembly_matches_per_candidate_loop() -> None:
+    """The 2 batched WHERE-id-IN queries reconstruct the exact per-candidate results
+    the old 2*N _POOL.map(self._neighbors / self._edge_evidence_ids) loop produced."""
+    d = tempfile.mkdtemp()
+    store = KuzuGraphStore(str(Path(d) / "g"))
+    try:
+        for nid in ("A", "B", "C", "D"):
+            store.upsert_node(nid, "Node", name=nid)
+        store.upsert_edge("A", "B", "REL1", evidence_ids=["ev1"])
+        store.upsert_edge("A", "C", "REL2")
+        store.upsert_edge("C", "D", "REL3", evidence_ids=["ev2", "ev3"])
+        retriever = GraphRetriever(store)
+        cand_ids = ["A", "C", "Z"]  # Z is absent → must behave like empty result
+
+        # old path: one query per candidate
+        old_neigh = {cid: retriever._neighbors(cid) for cid in cand_ids}
+        old_edge = {cid: retriever._edge_evidence_ids(cid) for cid in cand_ids}
+        # new path: two batched queries, grouped by a.id
+        new_neigh, new_edge = _batched_maps(retriever, cand_ids)
+
+        def _key(pairs):  # type: ignore[no-untyped-def]
+            return sorted((nd["id"], rt) for nd, rt in pairs)
+
+        for cid in cand_ids:
+            # .get default mirrors retrieve()'s neigh_map.get(cid, []) / (cid, set())
+            assert _key(new_neigh.get(cid, [])) == _key(old_neigh[cid])
+            assert new_edge.get(cid, set()) == old_edge[cid]
+        # sanity: the fixture actually exercises neighbours + edge evidence
+        assert _key(old_neigh["A"]) == [("B", "REL1"), ("C", "REL2")]
+        assert old_edge["A"] == {"ev1"}
+        assert old_edge["C"] == {"ev2", "ev3"}
+        assert old_neigh["Z"] == [] and old_edge["Z"] == set()
+    finally:
+        store.close()

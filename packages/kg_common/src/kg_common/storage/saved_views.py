@@ -24,6 +24,7 @@ from typing import Any
 
 from sqlalchemy import (
     Column,
+    Index,
     String,
     Table,
     select,
@@ -42,6 +43,14 @@ saved_views = Table(
     Column("payload_json", String, nullable=False, default="{}"),
     Column("created_at", String, nullable=False, default=""),
 )
+
+# list_views() filters WHERE user_id=? ORDER BY created_at, view_id, but only
+# view_id (the PK) is indexed — so per-user listing is a full-table scan of
+# saved_views. A composite (user_id, created_at) index turns that into an index
+# seek that also serves the primary ORDER BY key (created_at); the view_id
+# tie-break is the PK. Created automatically by migrate() -> create_all.
+# Индекс для выборки видов пользователя (§14.15 /views) без полного скана.
+Index("ix_saved_views_user", saved_views.c.user_id, saved_views.c.created_at)
 
 user_settings = Table(
     "user_settings",

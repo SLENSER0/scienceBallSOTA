@@ -24,12 +24,16 @@ from kg_common import Citation, EvidenceRef
 if TYPE_CHECKING:
     from kg_retrievers.graph_store import KuzuGraphStore
 
-# Cypher: outgoing SUPPORTED_BY edges from a fact node to its Evidence spans.
-# Mirrors the Evidence Inspector query (api_gateway.routers.evidence) so the agent
-# and the API surface the same provenance for a node.
+# Cypher: outgoing SUPPORTED_BY edges from a *set* of fact nodes to their Evidence
+# spans, matched in one batched read (f.id IN $ids — без N+1 обходов графа). Mirrors
+# the Evidence Inspector query (api_gateway.routers.evidence) so the agent and the API
+# surface the same provenance; the leading ``f.id`` column lets us regroup rows per
+# fact node. The ``f.id IN $ids`` list-param shape is the store's standard batch read
+# (kg_retrievers.graph_retriever).
 _SUPPORTED_BY_Q = (
-    "MATCH (f:Node {id:$id})-[:Rel {type:'SUPPORTED_BY'}]->(e:Node {label:'Evidence'}) "
-    "RETURN e.id, e.doc_id, e.page, e.text, e.evidence_strength, e.confidence"
+    "MATCH (f:Node)-[:Rel {type:'SUPPORTED_BY'}]->(e:Node {label:'Evidence'}) "
+    "WHERE f.id IN $ids "
+    "RETURN f.id, e.id, e.doc_id, e.page, e.text, e.evidence_strength, e.confidence"
 )
 
 # Evidence-strength vocabulary ranked strongest→weakest (kg_schema EvidenceStrength).
@@ -98,11 +102,25 @@ def _dedup_key(ref: EvidenceRef) -> tuple[Any, Any, Any]:
     return (ref.doc_id, ref.page, ref.text)
 
 
-def _refs_for_node(store: KuzuGraphStore, node_id: str) -> list[EvidenceRef]:
-    """All SUPPORTED_BY Evidence refs for one fact node, strongest-first."""
-    refs = [_row_to_ref(row, node_id) for row in store.rows(_SUPPORTED_BY_Q, {"id": node_id})]
-    refs.sort(key=_order_key)
-    return refs
+def _refs_by_node(store: KuzuGraphStore, node_ids: list[str]) -> dict[str, list[EvidenceRef]]:
+    """SUPPORTED_BY Evidence refs for every fact node, grouped by node id, strongest-first.
+
+    Один пакетный запрос вместо запроса на каждый узел (no N+1 graph round-trips): a
+    single ``f.id IN $ids`` MATCH whose rows are folded into ``node_id -> [EvidenceRef]``
+    and each group sorted by :func:`_order_key`. Empty ``node_ids`` issues no query and
+    returns an empty mapping (mirrors the old per-node loop, which never ran a query for
+    a node not in the input).
+    """
+    grouped: dict[str, list[EvidenceRef]] = {}
+    if not node_ids:
+        return grouped
+    for row in store.rows(_SUPPORTED_BY_Q, {"ids": node_ids}):
+        # row[0] is f.id (the fact node); row[1:] is the original _row_to_ref shape.
+        source_id = str(row[0])
+        grouped.setdefault(source_id, []).append(_row_to_ref(row[1:], source_id))
+    for refs in grouped.values():
+        refs.sort(key=_order_key)
+    return grouped
 
 
 def assemble_evidence(
@@ -119,10 +137,14 @@ def assemble_evidence(
     confidence, and numbered ``[1]``, ``[2]``, … Empty ``node_ids`` yields an empty
     :class:`AssembledEvidence`.
     """
+    # One batched read for the whole set (замена N+1); the per-node loop below then
+    # walks ``node_ids`` in the SAME original order over each node's strongest-first
+    # refs, so dedup/cap/ordering semantics are identical to the per-node version.
+    refs_by_node = _refs_by_node(store, node_ids)
     picked: dict[tuple[Any, Any, Any], EvidenceRef] = {}
     for node_id in node_ids:
         kept = 0
-        for ref in _refs_for_node(store, node_id):
+        for ref in refs_by_node.get(node_id, ()):
             if kept >= max(0, max_per_claim):
                 break
             key = _dedup_key(ref)

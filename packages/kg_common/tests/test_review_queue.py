@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import inspect
 
 from kg_common.storage.review_queue import (
     STATUS_IN_REVIEW,
@@ -95,3 +96,31 @@ def test_next_tasks_respects_limit(queue: ReviewQueue) -> None:
         queue.enqueue(ReviewTask(f"t:{i}", priority=float(i), dedup_key=f"d{i}"))
     top2 = [t.task_id for t in queue.next_tasks(limit=2)]
     assert top2 == ["t:4", "t:3"]  # two highest priorities only
+
+
+def test_migrate_creates_queue_polling_indexes(queue: ReviewQueue) -> None:
+    # perf-opt: migrate() must build the composite indexes that serve the
+    # open-queue ordering and the per-reviewer worklist filter.
+    idx = {i["name"] for i in inspect(queue.engine).get_indexes("review_tasks")}
+    assert "ix_review_tasks_status_priority" in idx
+    assert "ix_review_tasks_assignee_status" in idx
+
+
+def test_status_priority_index_columns(queue: ReviewQueue) -> None:
+    # the ordering index must cover status (equality) then the sort keys, in the
+    # exact order next_tasks() filters/sorts on.
+    by_name = {i["name"]: i for i in inspect(queue.engine).get_indexes("review_tasks")}
+    cols = by_name["ix_review_tasks_status_priority"]["column_names"]
+    assert cols == ["status", "priority", "created_at", "task_id"]
+
+
+def test_ordering_unchanged_with_index(queue: ReviewQueue) -> None:
+    # behavior-preserving: identical results to the pre-index query. Mix
+    # equal-priority tasks so the created_at/task_id tiebreakers exercise too.
+    queue.enqueue(ReviewTask("t:a", priority=0.5, created_at="2026-01-01", dedup_key="d1"))
+    queue.enqueue(ReviewTask("t:c", priority=0.5, created_at="2026-01-02", dedup_key="d2"))
+    queue.enqueue(ReviewTask("t:b", priority=0.5, created_at="2026-01-02", dedup_key="d3"))
+    queue.enqueue(ReviewTask("t:top", priority=0.9, created_at="2026-01-03", dedup_key="d4"))
+    ordered = [t.task_id for t in queue.next_tasks()]
+    # priority desc, then created_at asc, then task_id asc as the final tiebreak
+    assert ordered == ["t:top", "t:a", "t:b", "t:c"]

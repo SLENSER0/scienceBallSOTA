@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import inspect
 
 from kg_common.storage.saved_views import SavedView, ViewStore
 
@@ -101,3 +102,29 @@ def test_empty_graceful(store: ViewStore) -> None:
     assert store.list_views("nobody") == []
     assert store.get_settings("nobody") == {}
     assert store.get_view("nobody") is None
+
+
+# -- performance: user_id index for list_views (sqlite-index optimization) ------
+def test_user_index_created_by_migrate(store: ViewStore) -> None:
+    """migrate() must create the composite (user_id, created_at) list_views index."""
+    indexes = inspect(store.engine).get_indexes("saved_views")
+    by_name = {ix["name"]: ix for ix in indexes}
+    assert "ix_saved_views_user" in by_name, f"missing index; have {list(by_name)}"
+    # composite: seeks WHERE user_id=? and serves the ORDER BY created_at key
+    assert by_name["ix_saved_views_user"]["column_names"] == ["user_id", "created_at"]
+
+
+def test_index_is_behavior_preserving_for_list_views(store: ViewStore) -> None:
+    """Adding the index changes access path only — same rows, same order out."""
+    store.save_view("v1", "alice", "A", "table", {"a": 1})
+    store.save_view("v2", "alice", "B", "graph", {"b": 2})
+    store.save_view("v3", "bob", "C", "table", {"c": 3})
+    alice = store.list_views("alice")
+    # WHERE user_id still isolates the user; ORDER BY (created_at, view_id) still holds
+    assert {v.view_id for v in alice} == {"v1", "v2"}
+    assert [v.view_id for v in alice] == sorted(
+        (v.view_id for v in alice),
+        key=lambda vid: ({v.view_id: v.created_at for v in alice}[vid], vid),
+    )
+    assert all(isinstance(v, SavedView) for v in alice)
+    assert store.list_views("alice") == store.list_views("alice")  # deterministic

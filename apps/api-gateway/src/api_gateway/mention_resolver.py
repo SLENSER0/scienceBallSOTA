@@ -63,6 +63,40 @@ _SPLINK_MIN = 0.5
 # Rebuilt when the entity-node count changes (cheap signature).
 _MATRIX: dict[str, dict[str, Any]] = {}
 
+# In-process AliasIndex cache (mirrors _MATRIX and the /entities/resolve router's
+# _alias_cache): db_path -> {signature, index}. Кэш индекса алиасов по db_path.
+# Rebuilt when the entity-node count changes so an ingestion refreshes it while
+# repeated resolve_mention calls over a static graph reuse the same index.
+_ALIAS_INDEX: dict[str, dict[str, Any]] = {}
+
+
+def _alias_index(store: Any) -> AliasIndex:
+    """Cached :class:`AliasIndex` for ``store`` (§8.4), rebuilt only on graph change.
+
+    ``AliasIndex.build_from_store`` scans every entity node and folds all surfaces;
+    doing that on every :func:`resolve_mention` call rebuilds an identical index when
+    the graph has not changed. This memoizes it by ``db_path`` and invalidates on a
+    cheap entity-count signature — the same pattern :func:`_matrix` and the search
+    router already use — so it stays correct after ingestion. Any failure computing
+    the signature falls back to an uncached build (original behavior).
+    """
+    key = str(getattr(store, "db_path", "default"))
+    try:
+        rows = store.rows(
+            "MATCH (n:Node) WHERE n.label IN $labels RETURN count(n)",
+            {"labels": _ENTITY_LABELS},
+        )
+        signature = int(rows[0][0]) if rows and rows[0] and rows[0][0] is not None else 0
+    except Exception as exc:  # non-graph store / query error — do not cache
+        _log.debug("mention_resolver.alias_signature_unavailable", error=str(exc)[:160])
+        return AliasIndex.build_from_store(store)
+    cached = _ALIAS_INDEX.get(key)
+    if cached is not None and cached["signature"] == signature:
+        return cached["index"]
+    index = AliasIndex.build_from_store(store)
+    _ALIAS_INDEX[key] = {"signature": signature, "index": index}
+    return index
+
 
 # --------------------------------------------------------------------------- #
 # Result type (§7.3 EntityMention — superset with candidates for the UI/agent)  #
@@ -316,7 +350,7 @@ def resolve_mention(
         return EntityMention(text=text or "", canonical_id=None, entity_type=entity_type,
                              confidence=0.0, tier="empty")
 
-    index = AliasIndex.build_from_store(store)
+    index = _alias_index(store)
     label_filter = {entity_type} if entity_type else None
 
     def _label_of(eid: str) -> str | None:
