@@ -90,6 +90,7 @@ export type View =
   | 'dod'
   | 'extractionrecall'
   | 'facetsearch'
+  | 'corpusexplore'
   | 'facttimemachine'
   | 'goldendataset'
   | 'graphdiff'

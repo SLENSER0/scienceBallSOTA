@@ -59,7 +59,6 @@ import {
   Filter,
   History,
   Radio,
-  SlidersHorizontal,
   ListOrdered,
   TrendingDown,
   ClipboardCheck,
@@ -163,6 +162,7 @@ import { CurationDiffReagraphView } from './components/CurationDiffReagraphView'
 import DefinitionOfDoneView from './components/DefinitionOfDoneView';
 import { ExtractionRecallEvalView } from './components/ExtractionRecallEvalView';
 import { FacetSearchView } from './components/FacetSearchView';
+import { CorpusExplorerView } from './components/CorpusExplorerView';
 import { FactTimeMachineView } from './components/FactTimeMachineView';
 import { GoldenDatasetView } from './components/GoldenDatasetView';
 import { GraphDiffView } from './components/GraphDiffView';
@@ -256,7 +256,9 @@ const NAV: NavItem[] = [
   // { id: 'communities', label: 'Сообщества (GraphRAG)', icon: Sparkles, group: 'knowledge' },
   { id: 'kghealth', label: 'Здоровье графа', icon: HeartPulse, roles: CURATOR, group: 'knowledge' },
   { id: 'graphintegrity', label: 'Целостность графа', icon: ShieldAlert, roles: CURATOR, group: 'knowledge' },
-  { id: 'glossary', label: 'Глоссарий', icon: BookMarked, group: 'knowledge' },
+  { id: 'corpusexplore', label: 'Поиск по корпусу', icon: Filter, group: 'knowledge' },
+  // Слито в «Поиск по корпусу» (табы Фасеты · Диапазоны · Глоссарий); роуты живы:
+  // { id: 'glossary', label: 'Глоссарий', icon: BookMarked, group: 'knowledge' },
   // { id: 'graphencoding', label: 'Легенда достоверности', icon: Palette, group: 'knowledge' }, // убрано — легенда лучше inline на графе
 
   { id: 'entities', label: 'Сущности (детали)', icon: Boxes, group: 'graph' },
@@ -325,9 +327,9 @@ const NAV: NavItem[] = [
   // { id: 'arbiterEvidence', label: 'Арбитр (доказательный)', icon: Scale, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
   // { id: 'contradictionScan', label: 'Скан противоречий', icon: Radar, roles: INTERNAL, group: 'gaps' }, // дубль «Противоречий»
   { id: 'coveragedash', label: 'Дашборд покрытия', icon: LayoutGrid, group: 'knowledge' },
-  { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' },
+  // { id: 'facetsearch', label: 'Фасетный поиск', icon: Filter, group: 'knowledge' }, // → «Поиск по корпусу»
   { id: 'facttimemachine', label: 'Машина времени фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
-  { id: 'rangefacets', label: 'Диапазонные фасеты', icon: SlidersHorizontal, group: 'knowledge' },
+  // { id: 'rangefacets', label: 'Диапазонные фасеты', icon: SlidersHorizontal, group: 'knowledge' }, // → «Поиск по корпусу»
   { id: 'graphdiff', label: 'Diff графа (курирование)', icon: GitCompareArrows, roles: CURATOR, group: 'graph' },
   { id: 'subgraphchat', label: 'Чат с подграфом', icon: Lasso, roles: INTERNAL, group: 'graph' },
   { id: 'newdocsensor', label: 'Сенсор новых документов', icon: FolderInput, roles: INTERNAL, group: 'data' },
@@ -520,6 +522,7 @@ export function App() {
           {view === 'contradictions' && <ContradictionsView />}
           {view === 'entities' && <EntityDetailView />}
           {view === 'glossary' && <GlossaryView />}
+          {view === 'corpusexplore' && <CorpusExplorerView />}
           {view === 'curation' && <CurationView />}
           {view === 'admin' && <AdminView />}
           {/* -- Batch-1 feature screens -- */}
