@@ -15,8 +15,6 @@ import {
   Radar,
   Target,
   Sparkles,
-  Table2,
-  Hexagon,
   Search,
   Filter,
   History,
@@ -198,8 +196,9 @@ const NAV: NavItem[] = [
   { id: 'contradictions', label: 'Противоречия', icon: GitCompareArrows, roles: INTERNAL, group: 'gaps' },
 
   { id: 'corpusexplore', label: 'Поиск по корпусу', icon: Filter, group: 'knowledge' },
-  { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
-  { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
+  // Обе встроены в «Обзор базы знаний» — из меню убраны (роуты/компоненты в коде):
+  // { id: 'coverageMatrix', label: 'Матрица покрытия', icon: Table2, roles: INTERNAL, group: 'knowledge' },
+  // { id: 'clustergraph', label: 'Карта кластеров', icon: Hexagon, group: 'knowledge' },
   { id: 'facttimemachine', label: 'Версионирование фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
   { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
@@ -219,6 +218,9 @@ export function App() {
   const { view, setView, role, useLlm, setUseLlm, user, signOut } = useStore();
   useOidcCallback();
   const stats = useQuery({ queryKey: ['stats'], queryFn: api.stats, enabled: !!user });
+  // Прогреваем обзор базы знаний сразу после входа (тот же queryKey, что и в DashboardView →
+  // общий кэш), чтобы «Обзор» открывался мгновенно, а не ждал агент-аналитика.
+  useQuery({ queryKey: ['briefing'], queryFn: api.briefing, enabled: !!user, staleTime: 5 * 60_000 });
   const [filter, setFilter] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
