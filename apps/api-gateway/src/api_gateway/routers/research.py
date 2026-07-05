@@ -129,10 +129,16 @@ def add_article(
     if errs:
         raise HTTPException(status_code=422, detail={"errors": errs})
 
+    import time
+
     ops = build_graph_ops(art)
     store = get_store()
+    now = int(time.time())
     for node in ops["nodes"]:
-        store.upsert_node(node["id"], node["label"], **node["props"])
+        props = dict(node["props"])
+        if node["label"] == "Paper":
+            props["ingested_at"] = now  # recency signal so the corpus showcase surfaces it
+        store.upsert_node(node["id"], node["label"], **props)
     for edge in ops["edges"]:
         store.upsert_edge(edge["src"], edge["dst"], edge["type"], **edge["props"])
 
@@ -333,12 +339,16 @@ def _ingest_source(s: dict) -> dict:
         abstract=s.get("snippet", ""),
         source="deep-research",
     )
+    import time
+
     ops = build_graph_ops(art)
     store = get_store()
+    now = int(time.time())
     for node in ops["nodes"]:
         props = dict(node["props"])
         if node["label"] == "Paper":
             props.setdefault("source_status", "active")
+            props["ingested_at"] = now  # recency signal so the corpus showcase surfaces it
         store.upsert_node(node["id"], node["label"], **props)
     for edge in ops["edges"]:
         store.upsert_edge(edge["src"], edge["dst"], edge["type"], **edge["props"])

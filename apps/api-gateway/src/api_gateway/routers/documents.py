@@ -179,7 +179,9 @@ def _doc_storage(store: Any, doc_id: str) -> dict[str, Any]:
 
     graph = {
         "chunks": _c("MATCH (c:Node {label:'Chunk'}) WHERE c.doc_id=$id RETURN count(*)"),
-        "measurements": _c("MATCH (m:Node {label:'Measurement'}) WHERE m.doc_id=$id RETURN count(*)"),
+        "measurements": _c(
+            "MATCH (m:Node {label:'Measurement'}) WHERE m.doc_id=$id RETURN count(*)"
+        ),
         "evidence": _c("MATCH (e:Node {label:'Evidence'}) WHERE e.doc_id=$id RETURN count(*)"),
     }
     graph["in_graph"] = graph["chunks"] > 0 or graph["measurements"] > 0
@@ -454,17 +456,46 @@ def corpus_sources(
     dt = (doc_type or "").strip().lower()
     labels = [label_map[dt]] if dt in label_map else ["Paper", "Document"]
     labels_lit = "[" + ", ".join(f"'{lbl}'" for lbl in labels) + "]"
+
     # NB: LIMIT + labels are literals (bounded int / fixed label names, no user text) —
     # the embedded Kuzu store rejects a bound $param LIMIT, matching every other query
     # in the repo (graph.py, search.py). No injection surface.
-    rows = store.rows(
-        f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL "
-        f"RETURN n LIMIT {int(bounded)}",
+    # User-added sources (deep-research/manual :Paper + uploaded :Document) are few but MUST
+    # always surface. A plain "LIMIT n" over the whole corpus has no recency order, so once the
+    # seed corpus grows past the cap the just-loaded sources fall outside it and never show
+    # (the reported «после загрузки из дип-серч не показываются»). Fetch them first, then fill
+    # the remaining slots with the rest of the corpus.
+    def _rows(extra: str, order: str = "") -> list:
+        return list(
+            store.rows(
+                f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL {extra} "
+                f"RETURN n {order} LIMIT {int(bounded)}"
+            )
+        )
+
+    # Order the user-added set by ingest recency so the JUST-loaded source lands inside the cap
+    # (untimestamped legacy sources coalesce to 0 and sort after the freshly-loaded ones).
+    added_rows = _rows(
+        "AND (n.label = 'Document' OR n.source IN ['deep-research', 'manual'])",
+        "ORDER BY coalesce(n.ingested_at, 0) DESC",
     )
+    rest_rows = _rows("")
+
     sources: list[CorpusSource] = []
-    for r in rows:
+    added_ids: set[str] = set()
+    recency: dict[str, int] = {}
+    seen: set[str] = set()
+    for r, is_added in [(r, True) for r in added_rows] + [(r, False) for r in rest_rows]:
         nd = store._node_dict(r[0])
         node_id = nd.get("id") or ""
+        if not node_id or node_id in seen:
+            continue
+        seen.add(node_id)
+        if is_added:
+            added_ids.add(node_id)
+        ia = _as_int(nd.get("ingested_at"))
+        if ia:
+            recency[node_id] = ia
         label = nd.get("label") or ""
         title = nd.get("name") or nd.get("canonical_name") or node_id
         sources.append(
@@ -483,6 +514,8 @@ def corpus_sources(
                 has_parsed=_has_parsed(node_id),
             )
         )
+        if len(sources) >= bounded:
+            break
     if q:
         ql = q.lower()
         sources = [s for s in sources if ql in s.title.lower()]
@@ -502,8 +535,16 @@ def corpus_sources(
             counts = {}
         for s in sources:
             s.chunk_count = counts.get(s.doc_id, 0)
-    # Sources with real text (parsed sidecar or graph chunks) first, then by title.
-    sources.sort(key=lambda s: (0 if (s.has_parsed or s.chunk_count > 0) else 1, s.title.lower()))
+    # User-added sources first, most-recently-loaded of those first, then real-text, then title
+    # — so a just-loaded source lands at the very top of the showcase.
+    sources.sort(
+        key=lambda s: (
+            0 if s.doc_id in added_ids else 1,
+            -recency.get(s.doc_id, 0),
+            0 if (s.has_parsed or s.chunk_count > 0) else 1,
+            s.title.lower(),
+        )
+    )
     return {"sources": [s.model_dump() for s in sources], "count": len(sources)}
 
 
