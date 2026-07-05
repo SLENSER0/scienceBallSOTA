@@ -266,14 +266,21 @@ def _assess_source_trust(s: dict) -> dict:
             "age_days": age_days,
             "citation_count": cc,
             "primary": False,
-        }
+        },
+        # Publication age has annual granularity, not ingest recency: a paper from the last
+        # ~2 years is fresh; only >~5 years is stale. Without year-scaled thresholds the shared
+        # 30/180-day ingest defaults flag every non-current-year paper as «устарел» (red + false
+        # stale warning), which would gut the whole source-trust review on the demo path.
+        fresh_days=730,
+        stale_days=1826,
     )
     tier, score = ct.trust_tier, ct.trust_score
     warnings = list(ct.warning_messages)
     if dclass == "junk":
-        # not a scholarly source (social / course-notes / glossary / blog) → force to review
+        # not a scholarly source (social / course-notes / glossary / blog) → force to review.
+        # Prepend (don't replace) so the curator keeps the real signals (stale / unreviewed).
         tier, score = "low", min(score, 0.2)
-        warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью"]
+        warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью", *warnings]
     return {
         "doc_id": pid,
         "trust_score": round(score, 3),
@@ -377,9 +384,12 @@ def reject_source(
         raise HTTPException(status_code=403, detail="role may not reject sources")
     from api_gateway import audit, source_review_store
 
-    it = source_review_store.set_status(sid, source_review_store.REJECTED)
-    if not it:
+    # Only a still-pending source may be rejected — guard against rejecting one that was
+    # already approved (would leave it ingested-but-marked-rejected on an approve/reject race).
+    it = source_review_store.get(sid)
+    if not it or it.get("status") != source_review_store.PENDING:
         raise HTTPException(status_code=404, detail="pending source not found")
+    source_review_store.set_status(sid, source_review_store.REJECTED)
     audit.record("reject_source", user=user, role=role, detail={"id": sid})
     return {"rejected": sid}
 
