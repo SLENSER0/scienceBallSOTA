@@ -197,9 +197,11 @@ def _source_summary(s: dict) -> dict:
 # ScienceDirect paper ≠ an Instagram post). Journals/repositories/gov are peer-reviewed &
 # authoritative; social / course-notes / glossaries / fake test hosts are low-trust and MUST
 # go to review instead of being auto-ingested.
+# Full hosts (not bare tokens) so boundary-matching can't be spoofed: 'springer.com' matches
+# link.springer.com but not springer-fake.ru; 'pubmed.ncbi…' not pubmed.evil.com.
 _SCHOLARLY_HOSTS = (
-    "sciencedirect.com", "nature.com", "science.org", "mdpi.com", "wiley.com", "springer",
-    "tandfonline.com", "doi.org", "ncbi.nlm.nih.gov", "pubmed", "core.ac.uk",
+    "sciencedirect.com", "nature.com", "science.org", "mdpi.com", "wiley.com", "springer.com",
+    "tandfonline.com", "doi.org", "ncbi.nlm.nih.gov", "pubmed.ncbi.nlm.nih.gov", "core.ac.uk",
     "researchgate.net", "academia.edu", "cyberleninka.ru", "elibrary.ru", "dissercat.com",
     "rusneb.ru", "rucont.ru", "arxiv.org", "ssrn.com", ".edu",
 )
@@ -213,18 +215,40 @@ _JUNK_HOSTS = (
 )
 
 
+def _host_matches(host: str, domains: tuple[str, ...]) -> bool:
+    """True if ``host`` is (a subdomain of) any entry — matched on host BOUNDARIES, not as a
+    substring. Entry shapes: ``.edu``/``.gov`` = TLD suffix; ``sciencedirect.com`` = full host
+    or subdomain; ``springer`` = a whole host label. So ``x.edu.evil.com`` is NOT scholarly,
+    ``springer-fake.ru`` is NOT scholarly, and ``netflix.com`` is NOT junk (``x.com``)."""
+    labels = host.split(".")
+    for entry in domains:
+        d = entry.strip().lower()
+        if d.startswith("."):  # TLD/suffix — must sit at the end of the host
+            if host.endswith(d):
+                return True
+            continue
+        d = d.rstrip(".")  # tolerate list entries like 'pinterest.'
+        if "." in d:  # full host / registrable domain → exact or subdomain
+            if host == d or host.endswith("." + d):
+                return True
+        elif d and d in labels:  # bare token → match a whole host label, never a substring
+            return True
+    return False
+
+
 def _domain_reputation(url: str) -> tuple[str, bool]:
     """(domain_class, peer_reviewed) from the URL host: 'junk' | 'scholarly' | 'gov' | 'unknown'."""
     from urllib.parse import urlparse
 
-    host = (urlparse(url).netloc or url).lower()
+    # Add a scheme for bare 'example.com/x' so .hostname parses (and drops any :port / userinfo).
+    host = (urlparse(url if "//" in url else "//" + url).hostname or "").lower()
     if not host:
         return ("unknown", False)
-    if any(d in host for d in _JUNK_HOSTS):
+    if _host_matches(host, _JUNK_HOSTS):
         return ("junk", False)
-    if any(d in host for d in _SCHOLARLY_HOSTS):
+    if _host_matches(host, _SCHOLARLY_HOSTS):
         return ("scholarly", True)
-    if any(d in host for d in _GOV_HOSTS):
+    if _host_matches(host, _GOV_HOSTS):
         return ("gov", True)
     return ("unknown", False)
 

@@ -51,7 +51,13 @@ def _normalize_url(url: str) -> str:
 
     try:
         p = urlsplit(u)
-        return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), p.query, ""))
+        scheme, netloc = p.scheme.lower(), p.netloc.lower()
+        # drop the default port so ':443'/':80' and the bare host key identically
+        if scheme == "https" and netloc.endswith(":443"):
+            netloc = netloc[:-4]
+        elif scheme == "http" and netloc.endswith(":80"):
+            netloc = netloc[:-3]
+        return urlunsplit((scheme, netloc, p.path.rstrip("/"), p.query, ""))
     except ValueError:
         return u.rstrip("/")
 
@@ -64,7 +70,9 @@ def article_id(article: ManualArticle) -> str:
         return make_id("Paper", doi, use_hash=True)
     url = _normalize_url(article.url)
     if url:
-        return make_id("Paper", url, use_hash=True)
+        # Hash the raw URL via uuid5 — NOT make_id, whose canonical_key collapses '-./_'
+        # separators and would merge distinct URLs ('a-b.com' vs 'a.b.com', '/a/b' vs '/a-b').
+        return uuid5_id("Paper", "url", url)
     return make_id("Paper", article.title.strip())
 
 
