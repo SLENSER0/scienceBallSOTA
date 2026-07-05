@@ -290,19 +290,6 @@ export const api = {
   }> {
     return req('/api/v1/research/sources');
   },
-  researchPlan(question: string, sourceIds?: string[]): Promise<{
-    question: string;
-    keywords: string[];
-    sub_questions: {
-      text: string;
-      links: { source_id: string; source_name: string; access: string; url: string }[];
-    }[];
-  }> {
-    return req('/api/v1/research/plan', {
-      method: 'POST',
-      body: JSON.stringify({ question, source_ids: sourceIds ?? null }),
-    });
-  },
   addArticle(body: {
     title: string;
     authors?: string[];
@@ -319,9 +306,6 @@ export const api = {
     articles: { id: string; title: string; year: number | null; doi: string; url: string }[];
   }> {
     return req('/api/v1/research/articles');
-  },
-  deepStatus(): Promise<{ available: boolean; engine: string }> {
-    return req('/api/v1/research/deep/status');
   },
   // Gap-informed research — step 1: analyze the prompt (+ optional image) against the
   // corpus → what's missing / on-what-to-focus + web-search queries.
@@ -363,17 +347,6 @@ export const api = {
   rejectSource(id: string): Promise<{ rejected: string }> {
     return req(`/api/v1/research/sources/${encodeURIComponent(id)}/reject`, { method: 'POST' });
   },
-  deepResearch(question: string): Promise<{
-    question: string;
-    engine: string;
-    model?: string;
-    report: string;
-    notes?: string[];
-    plan?: unknown;
-  }> {
-    return req('/api/v1/research/deep', { method: 'POST', body: JSON.stringify({ question }) });
-  },
-
   // -- Document upload → graph + viewer (§17.19) --
   async uploadDocument(file: File, useLlm = false): Promise<UploadResult> {
     const form = new FormData();

@@ -3,8 +3,8 @@
 - ``GET  /research/sources``     — the scientific source catalog (ResearchGate,
   eLIBRARY, Springer, Google Patents, MDPI, CyberLeninka, Wiley, ScienceDirect,
   Sci-Hub — the last flagged as a shadow library, link-only).
-- ``POST /research/plan``        — deep-research: decompose a question into
-  sub-questions × ready-to-open per-source search links (OSS-LLM optional).
+- ``POST /research/analyze`` + ``/run`` — gap-informed research: analyze the corpus
+  for gaps, then web-search to close them and synthesize a cited report.
 - ``POST /research/articles``    — manually add an article to the graph as a
   ``:Paper`` (+ abstract chunk/evidence); curator/admin/researcher only.
 - ``GET  /research/articles``    — recently manually-added papers.
@@ -12,13 +12,9 @@
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from api_gateway.auth import current_role, current_user
@@ -39,12 +35,6 @@ _IMG_MIME = {
 _IMG_MAX_BYTES = 12 * 1024 * 1024  # 12 MB image cap
 
 
-class PlanBody(BaseModel):
-    question: str
-    source_ids: list[str] | None = None
-    use_llm: bool = False
-
-
 class ArticleBody(BaseModel):
     title: str
     authors: list[str] = []
@@ -62,24 +52,6 @@ def sources() -> dict:
     from kg_common.research_sources import all_sources
 
     return {"sources": all_sources()}
-
-
-@router.post("/plan")
-def plan(body: PlanBody) -> dict:
-    """Source-catalog plan: sub-questions × per-source search links (fast, offline)."""
-    from kg_common.deep_research import build_plan
-
-    if not body.question.strip():
-        raise HTTPException(status_code=422, detail="question is required")
-    return build_plan(body.question, source_ids=body.source_ids, use_llm=body.use_llm).as_dict()
-
-
-@router.get("/deep/status")
-def deep_status() -> dict:
-    """Whether the real open_deep_research engine is available (package + OSS key)."""
-    from api_gateway.deep_researcher_runner import deep_research_available
-
-    return {"available": deep_research_available(), "engine": "open_deep_research"}
 
 
 @router.post("/multimodal")
@@ -130,94 +102,6 @@ async def multimodal(
         "filename": file.filename,
         "analysis": analysis,
     }
-
-
-@router.post("/deep")
-async def deep(body: PlanBody, role: str = Depends(current_role)) -> dict:
-    """Run the REAL open_deep_research graph on our OSS LLM; return its report.
-
-    Falls back to the source-catalog plan when the engine is unavailable, so the
-    endpoint always returns something usable.
-    """
-    if not body.question.strip():
-        raise HTTPException(status_code=422, detail="question is required")
-    from api_gateway.deep_researcher_runner import deep_research_available, run_deep_research
-
-    if deep_research_available():
-        try:
-            return await run_deep_research(body.question)
-        except Exception as exc:
-            from kg_common import get_logger
-
-            get_logger("research").warning("deep_research.failed", error=str(exc)[:200])
-    from kg_common.deep_research import build_plan
-
-    return {
-        "question": body.question,
-        "report": "",
-        "engine": "source-catalog-fallback",
-        "plan": build_plan(body.question, source_ids=body.source_ids).as_dict(),
-    }
-
-
-def _sse(event: str, data: dict) -> bytes:
-    body = json.dumps(data, ensure_ascii=False, default=str)
-    return f"event: {event}\ndata: {body}\n\n".encode()
-
-
-@router.get("/deep/stream")
-async def deep_stream(
-    question: str = Query(min_length=1), role: str = Depends(current_role)
-) -> StreamingResponse:
-    """Stream the REAL open_deep_research run as SSE: live stages + reasoning + report.
-
-    Emits ``stage`` (which ODR node ran), ``reasoning`` (its intermediate output),
-    ``token`` (live LLM tokens), ``report`` (final), ``done`` — so the UI shows the
-    reasoning trace as it happens (open-webui «thinking» pattern).
-    """
-    from api_gateway.deep_researcher_runner import deep_research_available, stream_deep_research
-
-    async def gen():  # type: ignore[no-untyped-def]
-        if not deep_research_available():
-            yield _sse("error", {"message": "open_deep_research недоступен"})
-            return
-        # Drain the ODR run in a background task and pull events off a queue with a
-        # 15s timeout, emitting an SSE keep-alive comment while idle. Deep research
-        # can go minutes between events; without this, idle-timeout proxies (nginx,
-        # gunicorn, CDNs) sever the connection mid-run (M-24).
-        queue: asyncio.Queue = asyncio.Queue()
-        end_marker = object()
-
-        async def _produce() -> None:
-            try:
-                async for event, data in stream_deep_research(question):
-                    await queue.put(("event", (event, data)))
-            except Exception as exc:  # surface a failure mid-stream
-                await queue.put(("error", str(exc)[:200]))
-            finally:
-                await queue.put((end_marker, None))
-
-        task = asyncio.create_task(_produce())
-        try:
-            while True:
-                try:
-                    kind, payload = await asyncio.wait_for(queue.get(), timeout=15.0)
-                except TimeoutError:
-                    yield b": keepalive\n\n"  # SSE comment — ignored by EventSource
-                    continue
-                if kind is end_marker:
-                    break
-                if kind == "error":
-                    yield _sse("error", {"message": payload})
-                    break
-                event, data = payload
-                yield _sse(event, data)
-        finally:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await task
-
-    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 @router.post("/articles")
@@ -302,7 +186,11 @@ class PromoteBody(BaseModel):
 
 
 def _source_summary(s: dict) -> dict:
-    return {"title": s.get("title") or s.get("url") or "источник", "url": s.get("url", ""), "year": s.get("year")}
+    return {
+        "title": s.get("title") or s.get("url") or "источник",
+        "url": s.get("url", ""),
+        "year": s.get("year"),
+    }
 
 
 # Domain reputation — a web source's HOST is the strongest trust signal we have (a
@@ -320,7 +208,8 @@ _JUNK_HOSTS = (
     "instagram.com", "facebook.com", "youtube.com", "youtu.be", "twitter.com", "x.com",
     "tiktok.com", "pinterest.", "reddit.com", "studylib", "studocu", "studfile", "studopedia",
     "coursehero", "scribd.com", "quizlet", "example.org", "example.com", "citynews",
-    "ru-ecology.info", "sustainability-directory", "vk.com", "medium.com", "blogspot", "wordpress.com",
+    "ru-ecology.info", "sustainability-directory", "vk.com", "medium.com", "blogspot",
+    "wordpress.com",
 )
 
 
