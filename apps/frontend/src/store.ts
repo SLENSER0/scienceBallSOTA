@@ -173,6 +173,14 @@ export interface DeepSource {
   snippet?: string;
   year?: number | null;
 }
+export interface GapAnalysis {
+  question: string;
+  have: { n_solutions: number; n_facts: number; n_papers: number; n_gaps: number };
+  missing: string[];
+  attention: string[];
+  queries: string[];
+  vision?: string;
+}
 export interface DeepResearchState {
   question: string;
   running: boolean;
@@ -184,6 +192,7 @@ export interface DeepResearchState {
   error: string;
   sources: DeepSource[]; // machine-readable found sources (for «Загрузить в граф»)
   promote: unknown | null; // last promote result {ingested, review} — persists across tabs
+  analysis: GapAnalysis | null; // gap analysis (чего нет / на что обратить внимание)
 }
 const EMPTY_DEEP: DeepResearchState = {
   question: '',
@@ -196,6 +205,7 @@ const EMPTY_DEEP: DeepResearchState = {
   error: '',
   sources: [],
   promote: null,
+  analysis: null,
 };
 
 // Restore a persisted session so a reload keeps the user signed in.

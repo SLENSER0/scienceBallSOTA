@@ -176,7 +176,6 @@ const GROUPS: { id: Grp; label: string }[] = [
   { id: 'gaps', label: 'Пробелы и противоречия' },
   { id: 'knowledge', label: 'Аналитика знаний' },
   { id: 'graph', label: 'Граф и связи' },
-  { id: 'evidence', label: 'Доказательства и доверие' },
   { id: 'curation', label: 'Курирование' },
   { id: 'agent', label: 'Ассистент и демо' },
   { id: 'admin', label: 'Администрирование' },
@@ -202,9 +201,6 @@ const NAV: NavItem[] = [
   { id: 'facttimemachine', label: 'Версионирование фактов', icon: History, roles: INTERNAL, group: 'knowledge' },
 
   { id: 'graph-explore', label: 'Сущности и похожие', icon: Boxes, group: 'graph' },
-
-  // { id: 'evidence-inspector', label: 'Инспектор доказательств', icon: ScanSearch, roles: INTERNAL, group: 'evidence' }, // скрыт: пуст на сиде (bbox нужен upload-сайдкар, deep-link не срабатывает); проверяемость теперь inline — клик по [n] → drawer. Роут/компонент в коде.
-  { id: 'source-trust', label: 'Доверие к источникам', icon: ShieldCheck, roles: INTERNAL, group: 'evidence' },
 
   { id: 'curation-hub', label: 'Курирование', icon: ClipboardCheck, roles: CURATOR, group: 'curation' },
 

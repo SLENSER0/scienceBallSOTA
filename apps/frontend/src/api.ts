@@ -95,6 +95,20 @@ export interface PendingSource {
   trust: SourceTrust;
   status: string;
 }
+export interface DeepResearchSource {
+  title: string;
+  url: string;
+  snippet?: string;
+  year?: number | null;
+}
+export interface GapAnalysisResult {
+  question: string;
+  have: { n_solutions: number; n_facts: number; n_papers: number; n_gaps: number };
+  missing: string[];
+  attention: string[];
+  queries: string[];
+  vision?: string;
+}
 
 export const api = {
   authConfig(): Promise<AuthConfig> {
@@ -276,19 +290,6 @@ export const api = {
   }> {
     return req('/api/v1/research/sources');
   },
-  researchPlan(question: string, sourceIds?: string[]): Promise<{
-    question: string;
-    keywords: string[];
-    sub_questions: {
-      text: string;
-      links: { source_id: string; source_name: string; access: string; url: string }[];
-    }[];
-  }> {
-    return req('/api/v1/research/plan', {
-      method: 'POST',
-      body: JSON.stringify({ question, source_ids: sourceIds ?? null }),
-    });
-  },
   addArticle(body: {
     title: string;
     authors?: string[];
@@ -306,8 +307,26 @@ export const api = {
   }> {
     return req('/api/v1/research/articles');
   },
-  deepStatus(): Promise<{ available: boolean; engine: string }> {
-    return req('/api/v1/research/deep/status');
+  // Gap-informed research — step 1: analyze the prompt (+ optional image) against the
+  // corpus → what's missing / on-what-to-focus + web-search queries.
+  analyzeGaps(
+    question: string,
+    image?: string | null,
+  ): Promise<GapAnalysisResult> {
+    return req('/api/v1/research/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ question, image: image ?? null }),
+    });
+  },
+  // step 2: web-search the focus queries → cited report + found sources.
+  runResearch(
+    question: string,
+    queries: string[],
+  ): Promise<{ question: string; report: string; sources: DeepResearchSource[] }> {
+    return req('/api/v1/research/run', {
+      method: 'POST',
+      body: JSON.stringify({ question, queries }),
+    });
   },
   // «Загрузить в граф»: run found sources through Source Trust, ingest high-trust,
   // route low-trust to review. Returns {ingested:[...], review:[...]} with per-source trust.
@@ -328,17 +347,6 @@ export const api = {
   rejectSource(id: string): Promise<{ rejected: string }> {
     return req(`/api/v1/research/sources/${encodeURIComponent(id)}/reject`, { method: 'POST' });
   },
-  deepResearch(question: string): Promise<{
-    question: string;
-    engine: string;
-    model?: string;
-    report: string;
-    notes?: string[];
-    plan?: unknown;
-  }> {
-    return req('/api/v1/research/deep', { method: 'POST', body: JSON.stringify({ question }) });
-  },
-
   // -- Document upload → graph + viewer (§17.19) --
   async uploadDocument(file: File, useLlm = false): Promise<UploadResult> {
     const form = new FormData();
@@ -372,6 +380,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ use_llm: useLlm }),
     });
+  },
+  // Per-document storage confirmation: real graph counts + Qdrant/OpenSearch membership.
+  documentStorage(docId: string): Promise<DocStorage> {
+    return req(`/api/v1/documents/${encodeURIComponent(docId)}/storage`);
   },
 
   // -- Multimodal deep-research: analyse a figure/micrograph/screenshot (§ minimax-m3) --
@@ -959,6 +971,19 @@ export interface DocumentMeta {
   status: string;
 }
 
+export interface DocIndex {
+  chunks: number;
+  qdrant: number | null;
+  opensearch: number | null;
+  indexed: boolean;
+}
+export interface DocStorage {
+  doc_id: string;
+  graph: { chunks: number; measurements: number; evidence: number; in_graph: boolean };
+  qdrant: number | null;
+  opensearch: number | null;
+  indexed: boolean;
+}
 export interface UploadResult {
   doc_id: string;
   title: string;
@@ -967,6 +992,7 @@ export interface UploadResult {
   chunks: number;
   graph: GraphResponse;
   node_count: number;
+  index?: DocIndex;
 }
 
 // -- §6.13 Confidence-fusion в оркестраторе --------------------------------
