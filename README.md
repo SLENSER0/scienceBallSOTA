@@ -1,130 +1,210 @@
-# Научный клубок — SOTA-граф знаний для R&D в горном деле и металлургии
+# Научный клубок — Knowledge Graph for Mining & Metallurgy R&D
 
-Платформа графа знаний, которая превращает разнородный корпус R&D-документов по
-горному делу и металлургии (статьи, обзоры, внутренние отчёты, патенты,
-конференц-презентации, протоколы экспериментов — на русском и английском) в
-**единую, evidence-first, проверяемую карту знаний** и отвечает на сложные
-инженерные вопросы, например:
+Превращает разнородный корпус горно-металлургических R&D-материалов (статьи, обзоры,
+внутренние отчёты, патенты, материалы конференций, протоколы экспериментов — RU & EN) в
+**единую проверяемую карту знаний** и отвечает на сложные инженерные вопросы вида
+*материал + процесс + числовые условия + география + период*, например:
 
-> «Какие методы обессоливания воды подходят для обогатительной фабрики, если вода
-> содержит сульфаты/хлориды/Ca/Mg/Na по 200–300 мг/л, а требуемый сухой остаток
-> ≤1000 мг/дм³?»
+> «Какие методы обессоливания воды подходят для обогатительной фабрики, если вода содержит
+> сульфаты/хлориды/Ca/Mg/Na по 200–300 мг/л, а требуемый сухой остаток ≤ 1000 мг/дм³?»
 
-Каждый ответ несёт **источники, уверенность, дату актуализации, географию
-(отечественная/зарубежная практика), числовые диапазоны и пробелы/противоречия**.
+Каждый ответ несёт **источник + страницу + фрагмент + дату актуализации + гео (отеч./заруб.) +
+числовые диапазоны + пробелы/противоречия**, и любое число можно открыть в первоисточнике.
 
-## Архитектура
+> Полный архитектурно-бенчмарк-разбор (что реально подключено, измеренные числа, killer features,
+> сценарий демо): **[`docs/hackathon_architecture_benchmarks_killer_features.md`](docs/hackathon_architecture_benchmarks_killer_features.md)**.
 
-Монорепозиторий (`apps/*`, `packages/*`, `infra/*`) с конвейером
-ingestion → extraction → граф знаний → retrieval → агент → API → UI.
+---
 
-| Слой | Целевой стек (docker) | **Запускаемый embedded по умолчанию** |
+## Два профиля запуска
+
+| | **embedded** (быстрый просмотр) | **server** (полный масштаб — как в демо) |
 |---|---|---|
-| Граф (Cypher) | Neo4j + APOC/GDS | **Kuzu** (встроенный Cypher) |
-| Векторный поиск | Qdrant server | **qdrant-client** (локально/на диске) |
-| Полнотекстовый поиск | OpenSearch | **BM25** (в процессе) |
-| Эмбеддинги | — | **fastembed** multilingual-MiniLM (384d, RU/EN) |
-| Парсинг документов | Docling Serve | pypdf / pdfplumber / python-docx / python-pptx |
-| LLM | — | **OpenRouter, только OSS** (Qwen2.5 / DeepSeek-V3 / Mistral) |
-| Агент | LangGraph | LangGraph |
-| API / UI | FastAPI / React+Vite | FastAPI / React+Vite |
+| `RUNTIME_PROFILE` | `embedded` | `server` |
+| Граф | Kuzu (встроенный Cypher-файл) | **Neo4j 5.26** (bolt) |
+| Векторы | qdrant-client (on-disk) | **Qdrant server** |
+| Keyword | BM25 (in-process) | **OpenSearch 2.17** |
+| Инфра | не нужен Docker | `docker compose` стек (`infra/`) |
+| Данные | `make seed` (~89 узлов) / `make ingest` | реальный корпус → Neo4j (демо: **~152k узлов / 512k рёбер**) |
 
-**Embedded-профиль** (по умолчанию, `RUNTIME_PROFILE=embedded`) запускает всю
-систему без Docker-демона — см. `docs/adr/0005-embedded-runtime-profile.md`.
-**Серверный профиль** использует docker-compose-стек в `infra/`.
+Подробнее: `docs/adr/0005-embedded-runtime-profile.md`, `docs/architecture.md`.
 
-## Возможности
+---
 
-- **Приём документов (ingestion)** — парсинг PDF/DOCX/PPTX/XLSX (RU/EN), чанкинг,
-  извлечение сущностей/связей/измерений правилами + OSS-LLM с evidence-спанами,
-  нормализация единиц (pint), разрешение сущностей, evidence-first upsert;
-  возобновляемо, ~1.3 с/док.
-- **Граф знаний** — 33+ доменных меток, декларативная схема рёбер,
-  детерминированные ID, provenance/версионирование, сгенерированная
-  LinkML-онтология + миграции Neo4j.
-- **Retrieval** — структурные графовые шаблоны + вектор (fastembed→Qdrant) +
-  ключевые слова (BM25) + гибридное слияние RRF + GraphRAG community summaries.
-- **Агент (LangGraph)** — parse → retrieve → access-filter → синтез обоснованного,
-  **цитируемого** литобзорного ответа с уверенностью, таблицами, пробелами,
-  противоречиями.
-- **Верификация** — анализ пробелов (9 типов) + детекция противоречий; каждый
-  ответ evidence-first с источником/уверенностью/географией.
-- **Домен** — RU↔EN таксономия (218 терминов), числовые ограничения
-  (≤1000 мг/дм³ …), отечественная/зарубежная практика, сравнительные таблицы,
-  дашборды покрытия.
-- **Управление (governance)** — JWT-аутентификация + RBAC (6 ролей) + построчный
-  доступ, аудит-лог, экспертное курирование (правка/слияние/история, защищённая
-  переиндексация), уведомления, экспорт Markdown/JSON-LD, SHACL-схемы,
-  FAIR-метаданные.
-- **UI** — рабочее пространство React/Vite: чат + граф *клубок* (d3-force),
-  покрытие, пробелы и ревью, глоссарий, инспектор доказательств.
+## Требования
 
-## Проверено end-to-end
-
-- Все **4 обязательных приёмочных запроса** проходят (`make demo`; отчёт в
-  `docs/eval/domain_science_ball_report.md`) — с паритетом RU/EN, числовыми
-  фильтрами, географией, противоречиями и доказательствами.
-- **Реальный корпус**: 60 документов → 19.7k узлов / 57k связей; гибридный индекс
-  по 3.1k чанков; gap-скан нашёл 88 пробелов + 292 противоречия; OSS-LLM
-  DeepSeek-V3 отвечает на все четыре запроса на реальных данных
-  (`docs/eval/demo_report.md`).
-- **Adversarial-ревью** (мультиагентное), исправлено 15 багов корректности с
-  регрессионными тестами (`docs/eval/adversarial_review_findings.md`).
-- ~100 тестов проходят, ruff чист.
-
-## Лицензирование (только OSS)
-
-По правилам хакатона каждый компонент под разрешённой OSS-лицензией
-(Apache-2.0 / MIT / GPL-семейство). Это включает **LLM** (только Apache-2.0 / MIT
-модели — без Llama/Gemma). См. `docs/LICENSES.md` и
-`docs/adr/0006-oss-llm-and-licensing.md`. Лицензия проекта: **Apache-2.0**.
-
-## Быстрый старт (embedded, без Docker)
+- **Docker** + compose v2 (для server-профиля).
+- **[uv](https://docs.astral.sh/uv/)** (Python 3.13), **Node 20 + pnpm** (фронтенд).
+- Ключ **OpenRouter** (OSS-only модели, ADR-0006).
 
 ```bash
-make bootstrap            # uv sync --all-packages (+ зависимости фронтенда)
-cp .env.example .env      # впишите свой OPENROUTER_API_KEY
-make check                # линт + проверка форматирования + тесты
-make ingest N=20          # распарсить и извлечь 20 документов корпуса в граф
-make seed                 # заполнить демо-граф
-make api                  # API-шлюз на :8000  (GET /api/v1/admin/health)
-make frontend             # React-UI на :3000
-make demo                 # прогнать 4 приёмочных запроса end-to-end
+make bootstrap          # uv sync --all-packages (+ frontend deps)
+cp .env.example .env    # впишите OPENROUTER_API_KEY; выберите RUNTIME_PROFILE
 ```
 
-## Быстрый старт (Docker, серверный профиль)
+---
 
-Поднимает **весь стек** — инфру (Neo4j, Qdrant, OpenSearch, Postgres, Redis,
-MinIO, Authentik, Docling) **и** сервисы приложения (api-gateway, agent-service,
-ingestion-service, frontend) — из `infra/docker-compose.yml`.
+## Вариант A — embedded (за 1 команду, без Docker)
 
 ```bash
-cp .env.example .env      # впишите свой OPENROUTER_API_KEY
-make up                   # = docker compose -f infra/docker-compose.yml up -d
-make init-db              # миграция графа + индексация чанков (заполнить граф)
-# → фронтенд на :3000, API-шлюз на :8000  (GET /api/v1/admin/health)
-
-make ps                   # статус контейнеров
-make logs                 # логи стека
-make down                 # остановить стек
+make demo-up            # seed граф + поднять API (:8000)   → infra/demo/up.sh
+# или пошагово:
+make ingest N=50        # распарсить+извлечь 50 документов корпуса в KG
+make index              # построить векторный + keyword индексы из графа
+make api                # API gateway на :8000  (GET /api/v1/admin/health)
+make frontend           # React UI на :3000
+make demo               # прогнать 4 приёмочных запроса end-to-end
 ```
 
-> **Примечание:** голый `docker compose up` из корня репозитория не найдёт конфиг —
-> compose-файл лежит в `infra/`, поэтому используйте `make up` (или
-> `docker compose -f infra/docker-compose.yml up -d`). `make up` запускает
-> сервисы; данные наполняет именно `make init-db` (иначе граф пустой). Усиленный
-> production-оверлей: `make deploy-prod`.
+## Вариант B — server (полный стек, реальный масштаб)
 
-## Структура репозитория (§6.1)
+### 1) Поднять инфраструктуру
+
+```bash
+make up                 # docker compose -f infra/docker-compose.yml up -d
+make ps                 # статус контейнеров (neo4j/qdrant/opensearch/postgres/valkey/minio/authentik)
+make logs               # хвост логов
+```
+
+Сервисы стека: Neo4j 5.26, Qdrant, OpenSearch 2.17, Postgres 16, Valkey (Redis-совместимый),
+MinIO, authentik (SSO), docling-serve, api-gateway, agent-service, ingestion-service, frontend.
+Все с healthcheck'ами и именованными volume'ами (данные переживают перезапуск).
+
+### 2) Запустить API на server-профиле
+
+```bash
+RUNTIME_PROFILE=server \
+  NEO4J_URI=bolt://localhost:7687 QDRANT_URL=http://localhost:6333 \
+  OPENSEARCH_URL=http://localhost:9200 \
+  uv run uvicorn api_gateway.main:app --host 0.0.0.0 --port 8000
+```
+
+> В контейнере вместо `localhost` используйте `host.docker.internal` (см. «Демо-контейнер» ниже).
+
+---
+
+## Инициализация данными (быстро, в несколько потоков)
+
+Ядро качества — **корпус в графе**. Ingest реально распараллелен: CLI использует
+`ProcessPoolExecutor(max_workers=--workers)` (`apps/ingestion-service/.../cli.py`), поэтому
+инициализация масштабируется по ядрам.
+
+### Параллельный ingest (рекомендуется)
+
+```bash
+# embedded (в Kuzu):
+uv run python -m ingestion_service.cli ingest \
+  --data-dir <путь_к_корпусу> \
+  --workers "$(nproc)" \      # ← многопроцессный ingest по числу ядер
+  --llm --llm-chunks 3 \      # small-OSS-модель на ≤3 чанка/док (без --llm = только правила, быстрее)
+  --max-mb 40                 # пропускать файлы крупнее N МБ
+# затем индексы:
+uv run python -m ingestion_service.cli index      # вектор (Qdrant) + keyword (OpenSearch/BM25)
+```
+
+Флаги `ingest`: `--data-dir --limit --workers --llm --llm-chunks --max-mb --shuffle --seed
+--keep-seed`. Ingest **идемпотентен и возобновляем** (dedup по хешу документа) — можно
+докидывать документы волнами.
+
+### Server-профиль: наполнение Neo4j + Qdrant + OpenSearch
+
+```bash
+# (а) если есть встроенный Kuzu-граф — перенести его в Neo4j:
+make init-db                                   # migrate_kuzu_to_neo4j.py + index_chunks_server.py
+
+# (б) или наполнить с нуля из корпуса (так и построен демо-граф на 152k узлов):
+uv run python scripts/ingest_corpus_server.py  # batch rule+LLM ingest прямо в Neo4j
+uv run python scripts/index_chunks_server.py   # :Chunk → Qdrant (векторы) + OpenSearch (keyword)
+uv run python scripts/propagate_geography.py   # Document→Evidence→Measurement: country/practice_type/дата
+                                               # (включает гео/временные фильтры на фактах)
+```
+
+Восстановление/починка индексов (частые операции):
+
+```bash
+uv run python scripts/reindex_opensearch.py    # пересобрать ТОЛЬКО OpenSearch keyword-индекс
+                                               # (нужно после рестарта, если kg_chunks-индекс потерян → 404)
+uv run python scripts/qdrant_reembed.py        # переэмбеддить все :Chunk текущей моделью
+                                               # (обязательно при смене EMBEDDING_MODEL — см. ниже)
+```
+
+> ⚠ **Смена embedding-модели ≠ правка строки.** Векторный поиск сравнивает запрос с уже
+> проиндексированными векторами; другая модель (даже той же размерности 384) даёт несопоставимые
+> векторы. После смены `EMBEDDING_MODEL` **обязателен** `qdrant_reembed.py`.
+
+### Проверка
+
+```bash
+make demo                                       # 4 приёмочных запроса → docs/eval/domain_science_ball_report.md
+curl -s localhost:8000/api/v1/admin/health
+curl -s localhost:8000/api/v1/admin/stats -H 'X-Role: admin'   # counts.nodes / rels по типам
+```
+
+---
+
+## Модели (OSS-only, ADR-0006, набор Q2-2026)
+
+Единый источник — `packages/kg_common/.../config.py` (переопределяется `LLM_MODEL_*` env).
+
+| Роль | Модель | Лицензия |
+|---|---|---|
+| Извлечение / fast / preprocess | `qwen/qwen3.6-35b-a3b` | Apache-2.0 |
+| Синтез ответа (`/query`) | `deepseek/deepseek-v4-flash` | MIT |
+| Синтез — quality / deep-research supervisor | `z-ai/glm-5.2` | MIT |
+| Embeddings (Qdrant, 384d, RU+EN) | `ibm-granite/granite-embedding-97m-multilingual-r2` | Apache-2.0 |
+| Reranker | `cross-encoder/ettin-reranker-1b-v1` | Apache-2.0 |
+| Мультимодальный (опционально) | `minimax/minimax-m3` | ⚠ MiniMax-Community — **только опционально** |
+
+**Исключены** (лицензия не подходит §7.5): Llama (Community), Gemma, NVIDIA Nemotron (OpenMDW).
+Подробности: `docs/LICENSES.md`, `docs/adr/0006-oss-llm-and-licensing.md`.
+
+---
+
+## Порты
+
+| API | UI | Neo4j | Qdrant | OpenSearch | Postgres | Redis | MinIO | authentik |
+|---|---|---|---|---|---|---|---|---|
+| 8000 | 3000 | 7474/7687 | 6333 | 9200 | 5432 | 6379 | 9000/9001 | 9100 |
+
+---
+
+## Демо-контейнер (как поднят живой стенд)
+
+API-gateway крутится контейнером на server-профиле, обращаясь к внешним Neo4j/Qdrant/OpenSearch
+через `host.docker.internal`. Секреты — только через `--env-file`, не в командной строке:
+
+```bash
+docker run -d --name sciball-api -p 8001:8000 \
+  --add-host host.docker.internal:host-gateway \
+  --env-file secrets.env \      # OPENROUTER_API_KEY, JWT_SECRET
+  --env-file overlay.env \      # RUNTIME_PROFILE=server, NEO4J_URI/QDRANT_URL/OPENSEARCH_URL=host.docker.internal, LLM_MODEL_*
+  sciball-api-full
+```
+
+---
+
+## Разработка
+
+```bash
+make dev        # API + фронтенд параллельно (embedded)
+make check      # ruff lint + format-check + pytest (воспроизводит CI)
+make test       # pytest;  make type — mypy;  make fe-build — прод-сборка фронта
+make gap-scan   # пробелы + противоречия по графу
+```
+
+## Структура репозитория
 
 ```
 apps/        api-gateway agent-service ingestion-service graph-service
              search-service extraction-service curation-service frontend
 packages/    kg_common kg_schema kg_extractors kg_retrievers kg_eval
-infra/       docker-compose.yml neo4j/ qdrant/ opensearch/ dagster/ helm/
-docs/        adr/ conventions/ domain/ eval/  + план задач и гайды
-third_party/ вендоренные OSS-репозитории (только для изучения; в .gitignore)
+infra/       docker-compose.yml neo4j/ qdrant/ opensearch/ dagster/ helm/ demo/
+scripts/     ingest_corpus_server · index_chunks_server · reindex_opensearch ·
+             qdrant_reembed · migrate_kuzu_to_neo4j · propagate_geography
+docs/        architecture.md · adr/ · domain/ · eval/ · hackathon_architecture_benchmarks_killer_features.md
 ```
 
-Полная карта — в `docs/architecture.md`, план задач — в
-`docs/FULL_SYSTEM_TASKS_science_ball.md` (прогресс: `python scripts/mark_tasks.py stats`).
+## Лицензия
+
+Проект — **Apache-2.0** (`LICENSE`, `NOTICE`). Все зависимости и модели — под лицензиями,
+разрешёнными правилами §7.5 (Apache-2.0 / MIT / GPL-семейство). См. `docs/LICENSES.md`.
