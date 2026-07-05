@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowRight, CircleCheck, CircleSlash, Download, Loader2 } from 'lucide-react';
+import { ArrowRight, CircleCheck, CircleSlash, Download, FileText, Loader2, X } from 'lucide-react';
 import { api } from '../api';
 import { CallHistory } from './CallHistory';
+import { DocumentViewer } from './DocumentUpload';
 import { pushCall } from '../lib/callHistory';
 
 type Cell = { value?: number; unit?: string; gap?: boolean; evidence_ids?: string[] };
+// Applicability cell — prose + the corpus-text source it is grounded in (§17.19).
+type ApplCell = { text: string; doc_id?: string | null; page?: number | null; evidence_ids?: string[] };
+
+function isApplCell(v: unknown): v is ApplCell {
+  return typeof v === 'object' && v !== null && 'text' in (v as object);
+}
 
 // Visible domestic-vs-foreign split (jury ask): map raw practice_type enum → отеч./заруб.
 const PRACTICE_LABELS: Record<string, { short: string; domestic: boolean }> = {
@@ -17,6 +24,7 @@ const PRACTICE_LABELS: Record<string, { short: string; domestic: boolean }> = {
 
 // Flatten a comparison cell to plain text for CSV (§17.16).
 function cellText(v: unknown): string {
+  if (isApplCell(v)) return v.text ?? '';
   if (v && typeof v === 'object') {
     const c = v as Cell;
     if (c.gap) return '—';
@@ -46,6 +54,7 @@ const EXAMPLES = [
 
 export function CompareView() {
   const [q, setQ] = useState('');
+  const [viewerDoc, setViewerDoc] = useState<string | null>(null);
   const cmp = useMutation({ mutationFn: (query: string) => api.comparison(query) });
   const runCompare = (query: string) => {
     const t = query.trim();
@@ -136,7 +145,7 @@ export function CompareView() {
                     <tr key={i} className="border-t border-line/60">
                       {cmp.data!.columns.map((c) => (
                         <td key={c} className="px-3 py-2 align-top">
-                          <CellValue value={row[c]} />
+                          <CellValue value={row[c]} onOpenSource={setViewerDoc} />
                         </td>
                       ))}
                     </tr>
@@ -147,11 +156,51 @@ export function CompareView() {
           </>
         )}
       </div>
+      {/* In-app corpus-text viewer for an applicability «источник» (reuses DocumentUpload's viewer). */}
+      {viewerDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-graphite/70 p-4"
+          onClick={() => setViewerDoc(null)}
+        >
+          <div className="panel w-full max-w-3xl p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-nickel">
+                <FileText size={15} className="text-copper" /> Разбор документа
+              </div>
+              <button
+                onClick={() => setViewerDoc(null)}
+                className="rounded p-1 text-faint hover:text-copper"
+                title="Закрыть"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <DocumentViewer docId={viewerDoc} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CellValue({ value }: { value: unknown }) {
+function CellValue({ value, onOpenSource }: { value: unknown; onOpenSource?: (docId: string) => void }) {
+  // Applicability cell — prose + a link to the corpus text it is grounded in (§17.19).
+  if (isApplCell(value)) {
+    return (
+      <span className="flex flex-col items-start gap-0.5">
+        <span className="text-ink/90">{value.text}</span>
+        {value.doc_id && (
+          <button
+            onClick={() => onOpenSource?.(value.doc_id!)}
+            className="chip border-copper/40 text-copper hover:bg-copper/10"
+            title={`Открыть источник в корпусе${value.page ? ` · стр. ${value.page}` : ''}`}
+          >
+            <FileText size={11} /> источник{value.page ? ` · стр. ${value.page}` : ''}
+          </button>
+        )}
+      </span>
+    );
+  }
   if (typeof value === 'string') {
     const pr = PRACTICE_LABELS[value.toLowerCase()];
     if (pr)

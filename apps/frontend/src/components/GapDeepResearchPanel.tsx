@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMutation } from '@tanstack/react-query';
@@ -20,6 +20,27 @@ import {
 } from 'lucide-react';
 import { api, type DeepResearchSource, type GapAnalysisResult, type TrustedSource } from '../api';
 import type { PrioritizedGap } from '../types';
+
+// Gaps the user has «closed» (research ran + ≥1 source ingested into the graph) are hidden from
+// the map and STAY hidden across a reload / re-scan — persisted client-side so «мы решили этот
+// пробел» sticks even though the backend gap-scanner would otherwise resurface it.
+const SOLVED_KEY = 'sb.solvedGaps';
+export function getSolvedGaps(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SOLVED_KEY) || '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+export function markGapSolved(id: string): void {
+  try {
+    const s = getSolvedGaps();
+    s.add(id);
+    localStorage.setItem(SOLVED_KEY, JSON.stringify([...s]));
+  } catch {
+    /* localStorage unavailable — in-session removal via closeGap still works */
+  }
+}
 
 const DOMAIN_RU_FULL: Record<string, string> = {
   hydrometallurgy: 'гидрометаллургия',
@@ -163,16 +184,21 @@ export function GapDeepResearchPanel({ g }: { g: PrioritizedGap }) {
   const [sources, setSources] = useState<DeepResearchSource[]>([]);
   const [promote, setPromote] = useState<PromoteResult | null>(null);
 
-  // Gap closed once the research ingested ≥1 source that covers it → drop the card from
-  // the map (after a beat so the «закрыт» confirmation is visible first).
+  // «Закрыть пробел»: once the load finished and ≥1 source actually landed in the graph, the
+  // gap is solved → confirm, then drop the card from the map. Crucially this fires only AFTER
+  // the load loop completes (see onSolved in LoadToGraphPanel), never on the first incremental
+  // ingest — the earlier mid-load removal unmounted this panel, aborting the loop.
   const closeGap = useStore((s) => s.closeGap);
-  const closingRef = useRef(false);
   const ingestedCount = promote?.ingested.length ?? 0;
-  useEffect(() => {
-    if (closingRef.current || ingestedCount === 0) return;
-    closingRef.current = true;
-    setTimeout(() => closeGap(g.id), 1600);
-  }, [ingestedCount, g.id, closeGap]);
+  const [solved, setSolved] = useState(false);
+  const solvedRef = useRef(false);
+  const markSolved = () => {
+    if (solvedRef.current) return;
+    solvedRef.current = true;
+    setSolved(true);
+    markGapSolved(g.id); // persist so a reload / re-scan keeps it hidden
+    setTimeout(() => closeGap(g.id), 1600); // let the «закрыт» confirmation show first
+  };
 
   const run = useMutation({
     mutationFn: (a: GapAnalysisResult) => withTimeout(api.runResearch(a.question, a.queries), RUN_TIMEOUT_MS),
@@ -280,7 +306,7 @@ export function GapDeepResearchPanel({ g }: { g: PrioritizedGap }) {
           {ingestedCount > 0 && (
             <div className="mb-2 flex items-center gap-1.5 rounded bg-verified/10 px-2.5 py-1.5 text-[12px] text-verified">
               <Check size={13} aria-hidden /> Пробел закрыт — {ingestedCount} источн. добавлено в
-              граф. Убираю карточку из карты…
+              граф.{solved ? ' Убираю карточку из карты…' : ''}
             </div>
           )}
 
@@ -401,7 +427,12 @@ export function GapDeepResearchPanel({ g }: { g: PrioritizedGap }) {
           )}
 
           {!run.isPending && sources.length > 0 && (
-            <LoadToGraphPanel sources={sources} promote={promote} setPromote={setPromote} />
+            <LoadToGraphPanel
+              sources={sources}
+              promote={promote}
+              setPromote={setPromote}
+              onSolved={markSolved}
+            />
           )}
           {!run.isPending && report && sources.length === 0 && (
             <div className="mt-2 font-mono text-[11px] text-faint">
@@ -435,10 +466,12 @@ function LoadToGraphPanel({
   sources,
   promote,
   setPromote,
+  onSolved,
 }: {
   sources: DeepResearchSource[];
   promote: PromoteResult | null;
   setPromote: React.Dispatch<React.SetStateAction<PromoteResult | null>>;
+  onSolved: () => void;
 }) {
   const [progress, setProgress] = useState<ProgItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -480,6 +513,9 @@ function LoadToGraphPanel({
       }
     }
     setLoading(false);
+    // Gap solved once ≥1 source is actually in the graph — fires HERE, after the whole loop,
+    // so removing the card can never abort an in-flight ingest.
+    if (ingested.length > 0) onSolved();
   };
 
   const decide = (id: string, keep: boolean) =>
@@ -495,7 +531,11 @@ function LoadToGraphPanel({
     mutationFn: (id: string) => api.approveSource(id),
     onMutate: (id) => withBusy(id, true),
     onSettled: (_r, _e, id) => withBusy(id, false),
-    onSuccess: (_r, id) => decide(id, true),
+    onSuccess: (_r, id) => {
+      // Approving a review source puts it in the graph too → the gap counts as solved.
+      decide(id, true);
+      onSolved();
+    },
   });
   const reject = useMutation({
     mutationFn: (id: string) => api.rejectSource(id),

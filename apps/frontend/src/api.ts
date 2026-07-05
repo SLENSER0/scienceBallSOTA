@@ -385,6 +385,12 @@ export const api = {
   documentStorage(docId: string): Promise<DocStorage> {
     return req(`/api/v1/documents/${encodeURIComponent(docId)}/storage`);
   },
+  // Destructive: purge a corpus source and EVERYTHING derived from it — the source
+  // node + its doc-scoped nodes/edges in the graph, the registry row, and its vector
+  // points. Irreversible. Role-gated server-side (requires the «delete» capability).
+  deleteCorpusSource(docId: string): Promise<CorpusSourceDeleteResult> {
+    return req(`/api/v1/corpus/sources/${encodeURIComponent(docId)}`, { method: 'DELETE' });
+  },
 
   // -- Multimodal deep-research: analyse a figure/micrograph/screenshot (§ minimax-m3) --
   async analyzeImage(file: File, question: string): Promise<MultimodalResult> {
@@ -993,6 +999,14 @@ export interface UploadResult {
   graph: GraphResponse;
   node_count: number;
   index?: DocIndex;
+}
+
+// Result of the destructive corpus-source purge (graph cascade + registry + vectors).
+export interface CorpusSourceDeleteResult {
+  source_id: string;
+  deleted_nodes: number;
+  registry_deleted: boolean;
+  vector_purged: boolean;
 }
 
 // -- §6.13 Confidence-fusion в оркестраторе --------------------------------

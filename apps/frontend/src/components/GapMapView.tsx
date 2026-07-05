@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, ListChecks, RotateCw, Sparkles, Target } from 'lucide-react';
 import type { PrioritizedGap } from '../types';
 import { useStore } from '../store';
 import { startGapMap } from '../lib/gapMapStream';
 import { AgentProgress } from './AgentProgress';
+import { GapDeepResearchPanel, getSolvedGaps } from './GapDeepResearchPanel';
 
 // Карта пробелов с приоритизацией (agentic). The gap-scanner says WHERE knowledge is
 // missing; a prioritization agent per gap (GLM-5.2, up to 10 in parallel) scores research
@@ -57,7 +58,11 @@ export function GapMapView() {
   }, []);
 
   const running = gapMap.phase === 'running';
-  const { gaps, done, total } = gapMap;
+  const { gaps: allGaps, done, total } = gapMap;
+  // Hide gaps already «solved» via deep research. In-session removal goes through the store
+  // (closeGap); this filter is the reload/re-scan safety net so solved gaps don't resurface.
+  const [solvedIds] = useState(getSolvedGaps);
+  const gaps = allGaps.filter((g) => !solvedIds.has(g.id));
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -148,6 +153,8 @@ function GapCard({ g, rank }: { g: PrioritizedGap; rank: number }) {
             <MiniBar label="важность" v={g.impact} icon={<Sparkles size={10} />} />
             <MiniBar label="осуществимость" v={g.feasibility} icon={<ListChecks size={10} />} />
           </div>
+          {/* Per-gap deep research — the card IS the context (only on scored cards). */}
+          <GapDeepResearchPanel g={g} />
         </div>
       </div>
     </div>

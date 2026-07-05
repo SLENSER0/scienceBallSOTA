@@ -41,3 +41,12 @@ third_party/*/
 infra/**/data/
 infra/**/plugins/
 infra/**/logs/
+
+# --- ephemeral / dev-only (never commit) ---
+# (gitignore has no inline comments — keep patterns on their own lines)
+# .opt_tmp/ = e2e/kuzu test temp dirs
+.opt_tmp/
+# project uses pnpm (pnpm-lock.yaml); reject the stray npm lockfile
+apps/frontend/package-lock.json
+# temporary dev-stand vite config (self-marked "not committed")
+apps/frontend/vite.stand.config.mts

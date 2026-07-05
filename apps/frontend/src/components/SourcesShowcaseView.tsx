@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Download,
   ExternalLink,
@@ -7,8 +8,10 @@ import {
   Loader2,
   Plus,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
+import { api } from '../api';
 import { useStore } from '../store';
 import { DocumentViewer } from './DocumentUpload';
 
@@ -226,6 +229,19 @@ export function SourcesShowcaseView() {
     }
   };
 
+  // Destructive delete: purge the source + everything derived from it (graph, registry,
+  // vectors), then refetch the corpus list so the card disappears. Irreversible.
+  const del = useMutation({
+    mutationFn: (docId: string) => api.deleteCorpusSource(docId),
+    onSuccess: () => void load(input, docType),
+    onError: (e) => setDlError(e instanceof Error ? e.message : String(e)),
+  });
+  const remove = (s: CorpusSource) => {
+    if (!window.confirm('Удалить источник из графа и системы?')) return;
+    setDlError(null);
+    del.mutate(s.doc_id);
+  };
+
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
       <div className="mx-auto max-w-5xl">
@@ -299,6 +315,8 @@ export function SourcesShowcaseView() {
                   onOpen={() => open(s)}
                   onDownload={() => void download(s)}
                   downloading={downloading === s.doc_id}
+                  onDelete={() => remove(s)}
+                  deleting={del.isPending && del.variables === s.doc_id}
                 />
               ))}
             </div>
@@ -414,11 +432,15 @@ function SourceCard({
   onOpen,
   onDownload,
   downloading,
+  onDelete,
+  deleting,
 }: {
   s: CorpusSource;
   onOpen: () => void;
   onDownload: () => void;
   downloading: boolean;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const country = s.country ? COUNTRY[s.country] ?? s.country : null;
   return (
@@ -470,6 +492,19 @@ function SourceCard({
             <Download size={12} />
           )}
           Скачать
+        </button>
+        {/* Destructive: remove the source + everything derived from it. Subtle → red on hover. */}
+        <button
+          onClick={onDelete}
+          disabled={deleting}
+          className="ml-auto rounded p-1 text-faint hover:text-contradiction disabled:opacity-40"
+          title="Удалить источник из графа и системы"
+        >
+          {deleting ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : (
+            <Trash2 size={13} />
+          )}
         </button>
       </div>
     </div>

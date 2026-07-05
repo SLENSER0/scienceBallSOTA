@@ -95,6 +95,26 @@ class SourceRegistry:
             row = conn.execute(select(sources).where(sources.c.source_id == source_id)).first()
         return Source(**row._mapping) if row else None
 
+    def delete(self, source_id: str) -> bool:
+        """Delete a source by id — удалить источник по ``source_id`` (§3, destructive).
+
+        Purges the registry row so the source is gone «из системы в целом» next to
+        the graph cascade + vector-index purge that make up a source delete. Never
+        touches shared/canonical rows — only the exact ``source_id`` match is removed.
+        Idempotent: returns ``True`` when a row was removed, ``False`` when the id
+        was already absent (deleting a non-existent source is not an error).
+
+        Удаляет строку реестра источника — часть каскадного разрушающего удаления
+        (граф + vector-index + реестр). Точное совпадение по ``source_id``; общие/
+        канонические записи не затрагиваются. Идемпотентно: ``True`` если строка
+        удалена, ``False`` если такого источника не было (не ошибка).
+
+        RU/EN: источник / source, удаление / delete, реестр / registry.
+        """
+        with self.engine.begin() as conn:
+            result = conn.execute(sources.delete().where(sources.c.source_id == source_id))
+        return result.rowcount > 0
+
     def by_hash(self, sha256: str) -> Source | None:
         with self.engine.begin() as conn:
             row = conn.execute(select(sources).where(sources.c.sha256 == sha256)).first()
