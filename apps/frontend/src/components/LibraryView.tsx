@@ -7,12 +7,14 @@ import {
   Brain,
   Check,
   DatabaseZap,
+  ExternalLink,
   FlaskConical,
   ImagePlus,
   Library,
   Loader2,
   ShieldCheck,
   Sparkles,
+  TriangleAlert,
   X,
 } from 'lucide-react';
 import { api, type TrustedSource } from '../api';
@@ -242,6 +244,31 @@ const TRUST_CHIP: Record<string, string> = {
 };
 const trustChip = (tier: string) => TRUST_CHIP[tier] ?? 'border-line text-faint';
 
+// Domain shown under a review source's title — the host is the fastest trust cue.
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+
+// Freshness is a first-class review signal for web sources — recency shifts trust.
+const FRESH_CHIP: Record<string, string> = {
+  fresh: 'border-verified/40 text-verified',
+  aging: 'border-copper/40 text-copper',
+  stale: 'border-contradiction/40 text-contradiction',
+  unknown: 'border-line text-faint',
+};
+const FRESH_LABEL: Record<string, string> = {
+  fresh: 'свежий',
+  aging: 'устаревает',
+  stale: 'устарел',
+  unknown: 'дата неизв.',
+};
+const freshChip = (f: string) => FRESH_CHIP[f] ?? 'border-line text-faint';
+const freshLabel = (f: string) => FRESH_LABEL[f] ?? f;
+
 type ProgStatus = 'pending' | 'loading' | 'ingested' | 'review' | 'error';
 type ProgItem = { title: string; status: ProgStatus; item?: TrustedSource };
 
@@ -328,14 +355,25 @@ function LoadToGraphPanel() {
         <div className="flex items-center gap-1.5 text-xs text-nickel">
           <ShieldCheck size={14} className="text-copper" /> Доверие к источникам · найдено {deep.sources.length}
         </div>
-        <button
-          onClick={() => void runLoad()}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper hover:bg-copper/25 disabled:opacity-50"
-        >
-          {loading ? <Loader2 size={13} className="animate-spin" /> : <DatabaseZap size={13} />}
-          {loading ? `Загрузка ${doneCount}/${deep.sources.length}…` : 'Загрузить в граф'}
-        </button>
+        {loading ? (
+          <span className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper opacity-80">
+            <Loader2 size={13} className="animate-spin" />
+            Загрузка {doneCount}/{deep.sources.length}…
+          </span>
+        ) : !deep.promote && progress.length === 0 ? (
+          <button
+            onClick={() => void runLoad()}
+            className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper hover:bg-copper/25"
+          >
+            <DatabaseZap size={13} />
+            Загрузить в граф
+          </button>
+        ) : (
+          // Load already ran — no button, so the user can't re-trigger a second ingest.
+          <span className="flex items-center gap-1 text-[11px] text-verified">
+            <Check size={13} /> загружено
+          </span>
+        )}
       </div>
 
       {/* Live per-source loading queue — pending → loading → в графе / на ревью */}
@@ -399,41 +437,82 @@ function LoadToGraphPanel() {
           )}
           {promote.review.length > 0 && (
             <div>
-              <div className="mb-1 text-[10px] uppercase tracking-wide text-gap">
-                на ревью — низкое доверие ({promote.review.length})
+              <div className="mb-1.5 text-[10px] uppercase tracking-wide text-gap">
+                на ревью — решите по каждому источнику ({promote.review.length})
               </div>
-              <div className="space-y-1.5">
-                {promote.review.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex items-center gap-2 rounded border border-gap/30 px-2.5 py-1.5 text-[12px]"
-                  >
-                    <span className="truncate text-ink" title={(r.trust.warnings ?? []).join(' · ')}>
-                      {r.title}
-                    </span>
-                    <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
-                      {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
-                    </span>
-                    <span className="ml-auto flex items-center gap-1">
-                      <button
-                        onClick={() => r.id && approve.mutate(r.id)}
-                        disabled={approve.isPending}
-                        className="rounded bg-verified/15 p-1 text-verified hover:bg-verified/25 disabled:opacity-50"
-                        title="Добавить в корпус"
-                      >
-                        <Check size={13} />
-                      </button>
-                      <button
-                        onClick={() => r.id && reject.mutate(r.id)}
-                        disabled={reject.isPending}
-                        className="rounded bg-contradiction/15 p-1 text-contradiction hover:bg-contradiction/25 disabled:opacity-50"
-                        title="Отклонить"
-                      >
-                        <X size={13} />
-                      </button>
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {promote.review.map((r) => {
+                  const warnings = r.trust.warnings ?? [];
+                  return (
+                    <div
+                      key={r.id}
+                      className="rounded border border-gap/30 bg-graphite/20 px-2.5 py-2 text-[12px]"
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          {r.url ? (
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 font-medium text-ink hover:text-copper"
+                              title={r.url}
+                            >
+                              <span className="truncate">{r.title}</span>
+                              <ExternalLink size={11} className="shrink-0 opacity-60" />
+                            </a>
+                          ) : (
+                            <span className="truncate font-medium text-ink">{r.title}</span>
+                          )}
+                          {r.url && (
+                            <div className="mt-0.5 truncate font-mono text-[10px] text-faint">
+                              {hostOf(r.url)}
+                            </div>
+                          )}
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1">
+                          <button
+                            onClick={() => r.id && approve.mutate(r.id)}
+                            disabled={approve.isPending}
+                            className="flex items-center gap-1 rounded bg-verified/15 px-2 py-1 text-[11px] text-verified hover:bg-verified/25 disabled:opacity-50"
+                            title="Добавить источник в корпус"
+                          >
+                            <Check size={12} /> Добавить
+                          </button>
+                          <button
+                            onClick={() => r.id && reject.mutate(r.id)}
+                            disabled={reject.isPending}
+                            className="flex items-center gap-1 rounded bg-contradiction/15 px-2 py-1 text-[11px] text-contradiction hover:bg-contradiction/25 disabled:opacity-50"
+                            title="Не добавлять"
+                          >
+                            <X size={12} /> Пропустить
+                          </button>
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
+                          доверие: {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
+                        </span>
+                        <span className={`chip ${freshChip(r.trust.freshness)}`}>
+                          {freshLabel(r.trust.freshness)}
+                        </span>
+                        {r.year != null && (
+                          <span className="chip border-line/60 text-faint">{r.year}</span>
+                        )}
+                      </div>
+                      {warnings.length > 0 && (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {warnings.map((w, i) => (
+                            <li key={i} className="flex gap-1.5 text-[11px] text-gap">
+                              <TriangleAlert size={11} className="mt-0.5 shrink-0" />
+                              <span>{w}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
