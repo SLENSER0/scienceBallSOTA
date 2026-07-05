@@ -68,7 +68,7 @@ JOB_NAME = "full_ingestion_job"
 _CAN_INGEST = {"admin", "curator", "researcher", "analyst", "project_manager"}
 # Parseable extensions — mirror ingestion_service.parsers.SUPPORTED.
 _ALLOWED_SUFFIX = {".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".txt", ".md"}
-_MAX_BYTES = 64 * 1024 * 1024  # 64 MB per file
+_MAX_BYTES = 512 * 1024 * 1024  # 512 MB per file
 _MAX_EVENTS = 200  # keep the recent-events ring bounded
 _MAX_PER_POLL = 25  # cap one tick so a huge drop stays bounded
 
@@ -213,7 +213,7 @@ async def upload(
                 if size > _MAX_BYTES:
                     out.close()
                     dest.unlink(missing_ok=True)
-                    raise HTTPException(status_code=413, detail="file too large (max 64 MB)")
+                    raise HTTPException(status_code=413, detail="file too large (max 512 MB)")
                 out.write(chunk)
     except HTTPException:
         raise

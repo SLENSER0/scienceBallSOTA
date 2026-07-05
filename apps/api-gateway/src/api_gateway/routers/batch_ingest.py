@@ -48,7 +48,7 @@ _log = get_logger("api.batch_ingest")
 _CAN_INGEST = {"admin", "curator", "researcher", "analyst", "project_manager"}
 # Parseable extensions (mirror ingestion_service.parsers.SUPPORTED).
 _ALLOWED_SUFFIX = {".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".txt", ".md"}
-_MAX_BYTES = 64 * 1024 * 1024  # 64 MB per file
+_MAX_BYTES = 512 * 1024 * 1024  # 512 MB per file
 _MAX_FILES = 60  # a batch is meant for 20–50 docs; cap to keep one run bounded
 
 # In-process per-job state (results + extraction tally + timing). Keyed by job_id.
@@ -294,7 +294,7 @@ async def upload_batch(
                     if size > _MAX_BYTES:
                         out.close()
                         dest.unlink(missing_ok=True)
-                        raise ValueError("file too large (max 64 MB)")
+                        raise ValueError("file too large (max 512 MB)")
                     out.write(chunk)
         except ValueError as exc:
             skipped.append({"name": name, "reason": str(exc)})

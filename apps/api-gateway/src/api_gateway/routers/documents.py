@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 # Same write-capable roles as manual article add (§19).
 _CAN_UPLOAD = {"admin", "curator", "researcher", "analyst", "project_manager"}
-_MAX_BYTES = 64 * 1024 * 1024  # 64 MB upload cap
+_MAX_BYTES = 512 * 1024 * 1024  # 512 MB upload cap
 _ALLOWED_SUFFIX = {".pdf", ".docx", ".pptx", ".xlsx", ".txt", ".md"}
 
 
@@ -237,7 +237,7 @@ async def upload_document(
             if size > _MAX_BYTES:
                 out.close()
                 dest.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail="file too large (max 64 MB)")
+                raise HTTPException(status_code=413, detail="file too large (max 512 MB)")
             out.write(chunk)
 
     result = _ingest_file(dest, use_llm=use_llm)

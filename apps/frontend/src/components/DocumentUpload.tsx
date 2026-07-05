@@ -101,7 +101,7 @@ export function DocumentUpload() {
       >
         <UploadCloud size={22} className="text-faint" />
         <div className="text-sm text-nickel">Перетащите файлы или нажмите, чтобы выбрать</div>
-        <div className="font-mono text-[10px] text-faint">PDF · DOCX · PPTX · XLSX · TXT · MD (до 64 МБ)</div>
+        <div className="font-mono text-[10px] text-faint">PDF · DOCX · PPTX · XLSX · TXT · MD (до 512 МБ)</div>
         <input
           ref={inputRef}
           type="file"
