@@ -450,52 +450,54 @@ def corpus_sources(
     """List citable corpus sources — seed/manual :Paper + uploaded :Document (§17.19)."""
     store = get_store()
     bounded = min(max(limit, 1), 500)
-    # Push the type filter into the query (BEFORE LIMIT) so `doc_type=document` isn't
-    # starved by a LIMIT that filled up with papers first.
     label_map = {"paper": "Paper", "document": "Document"}
     dt = (doc_type or "").strip().lower()
     labels = [label_map[dt]] if dt in label_map else ["Paper", "Document"]
     labels_lit = "[" + ", ".join(f"'{lbl}'" for lbl in labels) + "]"
 
-    # NB: LIMIT + labels are literals (bounded int / fixed label names, no user text) —
-    # the embedded Kuzu store rejects a bound $param LIMIT, matching every other query
-    # in the repo (graph.py, search.py). No injection surface.
-    # User-added sources (deep-research/manual :Paper + uploaded :Document) are few but MUST
-    # always surface. A plain "LIMIT n" over the whole corpus has no recency order, so once the
-    # seed corpus grows past the cap the just-loaded sources fall outside it and never show
-    # (the reported «после загрузки из дип-серч не показываются»). Fetch them first, then fill
-    # the remaining slots with the rest of the corpus.
-    def _rows(extra: str, order: str = "") -> list:
-        return list(
-            store.rows(
-                f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL {extra} "
-                f"RETURN n {order} LIMIT {int(bounded)}"
-            )
-        )
-
-    # Order the user-added set by ingest recency so the JUST-loaded source lands inside the cap
-    # (untimestamped legacy sources coalesce to 0 and sort after the freshly-loaded ones).
-    added_rows = _rows(
-        "AND (n.label = 'Document' OR n.source IN ['deep-research', 'manual'])",
-        "ORDER BY coalesce(n.ingested_at, 0) DESC",
+    # A plain "LIMIT n" over the whole corpus has no recency order, so once the seed corpus grows
+    # past the cap a just-loaded source falls outside it and never shows (the reported «после
+    # загрузки из дип-серч не показываются»). We rank user-added sources (deep-research/manual
+    # :Paper + uploaded :Document) most-recent-first so they land in the kept set.
+    #
+    # This ranking is done in PYTHON, not Cypher: the default embedded store (Kuzu) has a FIXED
+    # Node schema, so `source`/`ingested_at` live in the props JSON — referencing them in a
+    # WHERE/ORDER BY raises a Kuzu Binder exception (Neo4j is schemaless and would allow it, but
+    # both profiles must work). store._node_dict unpacks props, so we read them there. Candidates
+    # are capped generously so a just-loaded source is never truncated at corpus scale.
+    # NB: LIMIT + labels are literals (bounded int / fixed label names) — the embedded store
+    # rejects a bound $param LIMIT, matching every other query in the repo. No injection surface.
+    candidate_cap = 4000
+    rows = store.rows(
+        f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL "
+        f"RETURN n LIMIT {candidate_cap}"
     )
-    rest_rows = _rows("")
-
-    sources: list[CorpusSource] = []
-    added_ids: set[str] = set()
-    recency: dict[str, int] = {}
+    # Cheap pass (no CorpusSource / no _has_parsed I/O): rank user-added → most-recent → title,
+    # then build only the kept top-`bounded`.
+    cands: list[tuple[int, int, str, dict]] = []
     seen: set[str] = set()
-    for r, is_added in [(r, True) for r in added_rows] + [(r, False) for r in rest_rows]:
+    for r in rows:
         nd = store._node_dict(r[0])
         node_id = nd.get("id") or ""
         if not node_id or node_id in seen:
             continue
         seen.add(node_id)
-        if is_added:
+        src = str(nd.get("source") or "").lower()
+        is_added = nd.get("label") == "Document" or src in ("deep-research", "manual")
+        ia = _as_int(nd.get("ingested_at")) or 0
+        title = str(nd.get("name") or nd.get("canonical_name") or node_id)
+        cands.append((0 if is_added else 1, -ia, title.lower(), nd))
+    cands.sort(key=lambda c: (c[0], c[1], c[2]))
+
+    sources: list[CorpusSource] = []
+    added_ids: set[str] = set()
+    recency: dict[str, int] = {}
+    for pri, neg_ia, _tl, nd in cands[:bounded]:
+        node_id = nd.get("id") or ""
+        if pri == 0:
             added_ids.add(node_id)
-        ia = _as_int(nd.get("ingested_at"))
-        if ia:
-            recency[node_id] = ia
+        if neg_ia:
+            recency[node_id] = -neg_ia
         label = nd.get("label") or ""
         title = nd.get("name") or nd.get("canonical_name") or node_id
         sources.append(
@@ -514,12 +516,9 @@ def corpus_sources(
                 has_parsed=_has_parsed(node_id),
             )
         )
-        if len(sources) >= bounded:
-            break
     if q:
         ql = q.lower()
         sources = [s for s in sources if ql in s.title.lower()]
-    # (doc_type is already applied in the Cypher label filter above.)
     # Attach real-text counts (graph :Chunk per doc) in one bulk read so the UI knows
     # which sources have body text and can open/download the actual text.
     ids = [s.doc_id for s in sources]
