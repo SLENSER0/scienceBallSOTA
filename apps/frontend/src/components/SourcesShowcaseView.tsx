@@ -5,6 +5,7 @@ import {
   FileText,
   Library,
   Loader2,
+  Plus,
   Search,
   X,
 } from 'lucide-react';
@@ -37,6 +38,16 @@ interface CorpusSource {
 interface CorpusResponse {
   sources: CorpusSource[];
   count: number;
+}
+
+// Low-trust deep-research sources parked in the review queue (not yet in the graph).
+interface PendingItem {
+  id: string;
+  source: { title?: string; url?: string; year?: number | null; doi?: string | null };
+  trust?: { trust_tier?: string };
+}
+interface PendingResponse {
+  items: PendingItem[];
 }
 
 // Inline auth (copied from EvidenceInspectorView.authHeaders): bearer token if we have
@@ -98,6 +109,8 @@ export function SourcesShowcaseView() {
   const [viewerDoc, setViewerDoc] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [dlError, setDlError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingItem[]>([]);
+  const [approving, setApproving] = useState<string | null>(null);
 
   const load = useCallback(async (q: string, dt: DocTypeFilter) => {
     setLoading(true);
@@ -125,6 +138,43 @@ export function SourcesShowcaseView() {
     const t = setTimeout(() => void load(input, docType), 350);
     return () => clearTimeout(t);
   }, [input, docType, load]);
+
+  // Deep-research sources held for review (below the trust bar) — surfaced so «загрузил
+  // из рисёрча → вижу» holds even before a curator approves them into the graph.
+  const loadPending = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/research/sources/pending', { headers: { ...authHeaders() } });
+      if (!res.ok) return;
+      const data = (await res.json()) as PendingResponse;
+      setPending(data.items ?? []);
+    } catch {
+      /* pending is best-effort — never block the corpus list */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPending();
+  }, [loadPending]);
+
+  // Approve a pending source → it is ingested into the graph as a :Paper and then shows
+  // up in the main corpus list on the next fetch.
+  const approve = async (id: string) => {
+    setApproving(id);
+    setDlError(null);
+    try {
+      const res = await fetch(`/api/v1/research/sources/${encodeURIComponent(id)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      setPending((prev) => prev.filter((p) => p.id !== id));
+      void load(input, docType); // the approved source is now a graph :Paper → refresh
+    } catch (e) {
+      setDlError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setApproving(null);
+    }
+  };
 
   const open = (s: CorpusSource) => {
     if (s.url) {
@@ -222,7 +272,7 @@ export function SourcesShowcaseView() {
 
         {dlError && (
           <div className="mt-3 rounded-md border border-contradiction/40 bg-contradiction/10 px-3 py-2 text-sm text-contradiction">
-            Ошибка скачивания: {dlError}
+            Ошибка: {dlError}
           </div>
         )}
 
@@ -254,6 +304,25 @@ export function SourcesShowcaseView() {
             </div>
           )}
         </div>
+
+        {/* Из deep-research — ниже порога доверия, пока НЕ в графе; «Добавить» их ингестит */}
+        {pending.length > 0 && (
+          <div className="mt-8">
+            <div className="mb-2 text-sm text-nickel">
+              Из deep-research · ожидают одобрения ({pending.length})
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {pending.map((p) => (
+                <PendingCard
+                  key={p.id}
+                  p={p}
+                  onApprove={() => void approve(p.id)}
+                  approving={approving === p.id}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* In-app parsed viewer (reuses the DocumentUpload viewer). */}
@@ -282,6 +351,60 @@ export function SourcesShowcaseView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PendingCard({
+  p,
+  onApprove,
+  approving,
+}: {
+  p: PendingItem;
+  onApprove: () => void;
+  approving: boolean;
+}) {
+  const src = p.source ?? {};
+  const title = src.title || src.url || 'источник';
+  const tier = p.trust?.trust_tier;
+  return (
+    <div className="panel flex flex-col border-gap/30 p-4">
+      <div className="mb-2 flex items-start gap-2">
+        <FileText size={15} className="mt-0.5 shrink-0 text-gap" />
+        <div className="min-w-0 flex-1">
+          <div className="line-clamp-3 text-sm text-ink">{title}</div>
+        </div>
+        <span
+          className="chip shrink-0 border-gap/40 text-gap"
+          title="ещё не в графе — доверие ниже порога, требуется одобрение"
+        >
+          на ревью
+        </span>
+      </div>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {src.year != null && <span className="chip text-faint">{src.year}</span>}
+        {tier && <span className="chip text-faint">доверие: {tier}</span>}
+      </div>
+      <div className="mt-auto flex gap-1.5 pt-1">
+        {src.url && (
+          <button
+            onClick={() => window.open(src.url as string, '_blank', 'noopener')}
+            className="chip flex items-center gap-1 border-line text-nickel hover:text-copper"
+            title="Открыть источник"
+          >
+            <ExternalLink size={12} /> Открыть
+          </button>
+        )}
+        <button
+          onClick={onApprove}
+          disabled={approving}
+          className="chip flex items-center gap-1 border-copper/40 text-copper hover:bg-copper/10 disabled:opacity-40"
+          title="Добавить в граф корпуса"
+        >
+          {approving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+          Добавить в граф
+        </button>
+      </div>
     </div>
   );
 }

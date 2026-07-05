@@ -98,12 +98,19 @@ _SEVERITY_RANK: dict[str, int] = {"critical": 3, "high": 2, "medium": 1, "none":
 _AS_OF = datetime(2000, 1, 1, tzinfo=UTC)
 
 
-def _freshness_level(doc_id: str, age_days: float | None) -> str:
-    """Freshness level for a source via the shipped classifier (§10.7)."""
+def _freshness_level(
+    doc_id: str, age_days: float | None, *, fresh_days: int = 30, stale_days: int = 180
+) -> str:
+    """Freshness level for a source via the shipped classifier (§10.7).
+
+    ``fresh_days``/``stale_days`` default to the ingest-recency thresholds (30/180d).
+    Callers scoring *publication* age (annual granularity) must pass year-scaled
+    thresholds, else every paper older than ~6 months is misclassified ``stale``.
+    """
     if age_days is None:
         return classify(doc_id, None, _AS_OF).level
     last = _AS_OF - timedelta(days=float(age_days))
-    return classify(doc_id, last, _AS_OF).level
+    return classify(doc_id, last, _AS_OF, fresh_days=fresh_days, stale_days=stale_days).level
 
 
 # --------------------------------------------------------------------------- #
@@ -153,7 +160,9 @@ def _normalize_status(raw: object) -> str:
     return status if status in SOURCE_STATUSES else "active"
 
 
-def assess_citation(citation: Mapping[str, object]) -> CitationTrust:
+def assess_citation(
+    citation: Mapping[str, object], *, fresh_days: int = 30, stale_days: int = 180
+) -> CitationTrust:
     """Fuse trust + freshness + retraction for one citation (§23.27).
 
     Reads ``doc_id`` (or ``source_id``), ``source_status`` (default ``active``),
@@ -187,7 +196,9 @@ def assess_citation(citation: Mapping[str, object]) -> CitationTrust:
         trust_score = round(trust_score * _DEPRECATED_TRUST_SCALE, 6)
         trust_tier = "low" if trust_score < 0.34 else trust_tier
 
-    freshness_level = _freshness_level(doc_id, age_days)
+    freshness_level = _freshness_level(
+        doc_id, age_days, fresh_days=fresh_days, stale_days=stale_days
+    )
 
     warnings: list[str] = []
     if status == "retracted":

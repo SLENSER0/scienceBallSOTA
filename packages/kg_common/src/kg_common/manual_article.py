@@ -41,10 +41,39 @@ class ManualArticle:
         }
 
 
+def _normalize_url(url: str) -> str:
+    """Canonical form of an http(s) URL for idempotent keying: lowercase scheme+host, drop
+    the fragment and any trailing slash. Returns "" for non-http(s) input."""
+    u = (url or "").strip()
+    if not u.lower().startswith(("http://", "https://")):
+        return ""
+    from urllib.parse import urlsplit, urlunsplit
+
+    try:
+        p = urlsplit(u)
+        scheme, netloc = p.scheme.lower(), p.netloc.lower()
+        # drop the default port so ':443'/':80' and the bare host key identically
+        if scheme == "https" and netloc.endswith(":443"):
+            netloc = netloc[:-4]
+        elif scheme == "http" and netloc.endswith(":80"):
+            netloc = netloc[:-3]
+        return urlunsplit((scheme, netloc, p.path.rstrip("/"), p.query, ""))
+    except ValueError:
+        return u.rstrip("/")
+
+
 def article_id(article: ManualArticle) -> str:
-    """Deterministic Paper id — from DOI when present, else the title."""
-    key = article.doi.strip() or article.title.strip()
-    return make_id("Paper", key, use_hash=bool(article.doi))
+    """Deterministic Paper id — DOI when present, else the normalized URL (so the same web
+    source can't duplicate or collide by title), else the title."""
+    doi = article.doi.strip()
+    if doi:
+        return make_id("Paper", doi, use_hash=True)
+    url = _normalize_url(article.url)
+    if url:
+        # Hash the raw URL via uuid5 — NOT make_id, whose canonical_key collapses '-./_'
+        # separators and would merge distinct URLs ('a-b.com' vs 'a.b.com', '/a/b' vs '/a-b').
+        return uuid5_id("Paper", "url", url)
+    return make_id("Paper", article.title.strip())
 
 
 def validate_article(article: ManualArticle) -> list[str]:

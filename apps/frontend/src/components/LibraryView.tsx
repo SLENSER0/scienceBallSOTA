@@ -125,7 +125,10 @@ function GapResearchPanel() {
   });
   const run = useMutation({
     mutationFn: () => api.runResearch(a!.question, a!.queries),
-    onSuccess: (r) => setDeep({ report: r.report, sources: r.sources }),
+    // Reset promote too: a fresh source batch must re-enable «Загрузить в граф» (else the
+    // stale promote from the previous batch keeps the button hidden and the new sources
+    // are stuck showing «загружено» forever).
+    onSuccess: (r) => setDeep({ report: r.report, sources: r.sources, promote: null }),
   });
 
   const onImage = (f: File | null) => {
@@ -297,6 +300,18 @@ function LoadToGraphPanel() {
   const promote = deep.promote as PromoteResult | null;
   const [progress, setProgress] = useState<ProgItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+  const withBusy = (id: string, on: boolean) =>
+    setBusy((b) => {
+      const n = new Set(b);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  // A load counts as done only once it produced results — an all-error run stays retriable
+  // instead of falsely reading as «загружено», and a successful one hides the button for good.
+  const hasResult = !!promote && (promote.ingested.length > 0 || promote.review.length > 0);
+  const attempted = !loading && progress.length > 0;
 
   const runLoad = async () => {
     const srcs = deep.sources;
@@ -328,25 +343,30 @@ function LoadToGraphPanel() {
   };
 
   const doneCount = progress.filter((p) => p.status !== 'pending' && p.status !== 'loading').length;
+  // Read the live promote from the store (not the render snapshot) so two in-flight decisions
+  // can't clobber each other. keep=true → move to «в графе»; keep=false → drop from review.
+  const decide = (id: string, keep: boolean) => {
+    const cur = useStore.getState().deep.promote as PromoteResult | null;
+    if (!cur) return;
+    const moved = cur.review.find((x) => x.id === id);
+    setDeep({
+      promote: {
+        ingested: keep && moved ? [...cur.ingested, moved] : cur.ingested,
+        review: cur.review.filter((x) => x.id !== id),
+      },
+    });
+  };
   const approve = useMutation({
     mutationFn: (id: string) => api.approveSource(id),
-    onSuccess: (_r, id) => {
-      if (!promote) return;
-      const moved = promote.review.find((x) => x.id === id);
-      setDeep({
-        promote: {
-          ingested: moved ? [...promote.ingested, moved] : promote.ingested,
-          review: promote.review.filter((x) => x.id !== id),
-        },
-      });
-    },
+    onMutate: (id) => withBusy(id, true),
+    onSettled: (_r, _e, id) => withBusy(id, false),
+    onSuccess: (_r, id) => decide(id, true),
   });
   const reject = useMutation({
     mutationFn: (id: string) => api.rejectSource(id),
-    onSuccess: (_r, id) => {
-      if (!promote) return;
-      setDeep({ promote: { ...promote, review: promote.review.filter((x) => x.id !== id) } });
-    },
+    onMutate: (id) => withBusy(id, true),
+    onSettled: (_r, _e, id) => withBusy(id, false),
+    onSuccess: (_r, id) => decide(id, false),
   });
 
   return (
@@ -360,24 +380,24 @@ function LoadToGraphPanel() {
             <Loader2 size={13} className="animate-spin" />
             Загрузка {doneCount}/{deep.sources.length}…
           </span>
-        ) : !deep.promote && progress.length === 0 ? (
+        ) : hasResult ? (
+          // Succeeded — no button, so the user can't re-trigger a second ingest.
+          <span className="flex items-center gap-1 text-[11px] text-verified">
+            <Check size={13} /> загружено
+          </span>
+        ) : (
           <button
             onClick={() => void runLoad()}
             className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper hover:bg-copper/25"
           >
             <DatabaseZap size={13} />
-            Загрузить в граф
+            {attempted ? 'Повторить' : 'Загрузить в граф'}
           </button>
-        ) : (
-          // Load already ran — no button, so the user can't re-trigger a second ingest.
-          <span className="flex items-center gap-1 text-[11px] text-verified">
-            <Check size={13} /> загружено
-          </span>
         )}
       </div>
 
       {/* Live per-source loading queue — pending → loading → в графе / на ревью */}
-      {progress.length > 0 && (
+      {loading && progress.length > 0 && (
         <div className="mb-3">
           <div className="mb-1.5 h-1 overflow-hidden rounded bg-line/40">
             <div
@@ -411,9 +431,9 @@ function LoadToGraphPanel() {
         </div>
       )}
 
-      {promote && (
+      {!loading && promote && (
         <div className="space-y-3">
-          {promote.ingested.length > 0 && progress.length === 0 && (
+          {promote.ingested.length > 0 && (
             <div>
               <div className="mb-1 text-[10px] uppercase tracking-wide text-faint">
                 в графе ({promote.ingested.length})
@@ -429,7 +449,9 @@ function LoadToGraphPanel() {
                     <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
                       {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
                     </span>
-                    <span className="ml-auto font-mono text-[10px] text-faint">{r.trust.freshness}</span>
+                    <span className={`ml-auto chip ${freshChip(r.trust.freshness)}`}>
+                      {freshLabel(r.trust.freshness)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -443,6 +465,9 @@ function LoadToGraphPanel() {
               <div className="space-y-2">
                 {promote.review.map((r) => {
                   const warnings = r.trust.warnings ?? [];
+                  // Only trust http(s) — a web-search URL could be javascript:/data: (DOM-XSS).
+                  const safeUrl = /^https?:\/\//i.test((r.url ?? '').trim()) ? r.url : '';
+                  const isBusy = busy.has(r.id ?? '');
                   return (
                     <div
                       key={r.id}
@@ -450,13 +475,13 @@ function LoadToGraphPanel() {
                     >
                       <div className="flex items-start gap-2">
                         <div className="min-w-0 flex-1">
-                          {r.url ? (
+                          {safeUrl ? (
                             <a
-                              href={r.url}
+                              href={safeUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 font-medium text-ink hover:text-copper"
-                              title={r.url}
+                              title={safeUrl}
                             >
                               <span className="truncate">{r.title}</span>
                               <ExternalLink size={11} className="shrink-0 opacity-60" />
@@ -464,16 +489,16 @@ function LoadToGraphPanel() {
                           ) : (
                             <span className="truncate font-medium text-ink">{r.title}</span>
                           )}
-                          {r.url && (
+                          {safeUrl && (
                             <div className="mt-0.5 truncate font-mono text-[10px] text-faint">
-                              {hostOf(r.url)}
+                              {hostOf(safeUrl)}
                             </div>
                           )}
                         </div>
                         <span className="flex shrink-0 items-center gap-1">
                           <button
                             onClick={() => r.id && approve.mutate(r.id)}
-                            disabled={approve.isPending}
+                            disabled={isBusy}
                             className="flex items-center gap-1 rounded bg-verified/15 px-2 py-1 text-[11px] text-verified hover:bg-verified/25 disabled:opacity-50"
                             title="Добавить источник в корпус"
                           >
@@ -481,7 +506,7 @@ function LoadToGraphPanel() {
                           </button>
                           <button
                             onClick={() => r.id && reject.mutate(r.id)}
-                            disabled={reject.isPending}
+                            disabled={isBusy}
                             className="flex items-center gap-1 rounded bg-contradiction/15 px-2 py-1 text-[11px] text-contradiction hover:bg-contradiction/25 disabled:opacity-50"
                             title="Не добавлять"
                           >

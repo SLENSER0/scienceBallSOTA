@@ -129,10 +129,16 @@ def add_article(
     if errs:
         raise HTTPException(status_code=422, detail={"errors": errs})
 
+    import time
+
     ops = build_graph_ops(art)
     store = get_store()
+    now = int(time.time())
     for node in ops["nodes"]:
-        store.upsert_node(node["id"], node["label"], **node["props"])
+        props = dict(node["props"])
+        if node["label"] == "Paper":
+            props["ingested_at"] = now  # recency signal so the corpus showcase surfaces it
+        store.upsert_node(node["id"], node["label"], **props)
     for edge in ops["edges"]:
         store.upsert_edge(edge["src"], edge["dst"], edge["type"], **edge["props"])
 
@@ -197,9 +203,11 @@ def _source_summary(s: dict) -> dict:
 # ScienceDirect paper ≠ an Instagram post). Journals/repositories/gov are peer-reviewed &
 # authoritative; social / course-notes / glossaries / fake test hosts are low-trust and MUST
 # go to review instead of being auto-ingested.
+# Full hosts (not bare tokens) so boundary-matching can't be spoofed: 'springer.com' matches
+# link.springer.com but not springer-fake.ru; 'pubmed.ncbi…' not pubmed.evil.com.
 _SCHOLARLY_HOSTS = (
-    "sciencedirect.com", "nature.com", "science.org", "mdpi.com", "wiley.com", "springer",
-    "tandfonline.com", "doi.org", "ncbi.nlm.nih.gov", "pubmed", "core.ac.uk",
+    "sciencedirect.com", "nature.com", "science.org", "mdpi.com", "wiley.com", "springer.com",
+    "tandfonline.com", "doi.org", "ncbi.nlm.nih.gov", "pubmed.ncbi.nlm.nih.gov", "core.ac.uk",
     "researchgate.net", "academia.edu", "cyberleninka.ru", "elibrary.ru", "dissercat.com",
     "rusneb.ru", "rucont.ru", "arxiv.org", "ssrn.com", ".edu",
 )
@@ -213,18 +221,40 @@ _JUNK_HOSTS = (
 )
 
 
+def _host_matches(host: str, domains: tuple[str, ...]) -> bool:
+    """True if ``host`` is (a subdomain of) any entry — matched on host BOUNDARIES, not as a
+    substring. Entry shapes: ``.edu``/``.gov`` = TLD suffix; ``sciencedirect.com`` = full host
+    or subdomain; ``springer`` = a whole host label. So ``x.edu.evil.com`` is NOT scholarly,
+    ``springer-fake.ru`` is NOT scholarly, and ``netflix.com`` is NOT junk (``x.com``)."""
+    labels = host.split(".")
+    for entry in domains:
+        d = entry.strip().lower()
+        if d.startswith("."):  # TLD/suffix — must sit at the end of the host
+            if host.endswith(d):
+                return True
+            continue
+        d = d.rstrip(".")  # tolerate list entries like 'pinterest.'
+        if "." in d:  # full host / registrable domain → exact or subdomain
+            if host == d or host.endswith("." + d):
+                return True
+        elif d and d in labels:  # bare token → match a whole host label, never a substring
+            return True
+    return False
+
+
 def _domain_reputation(url: str) -> tuple[str, bool]:
     """(domain_class, peer_reviewed) from the URL host: 'junk' | 'scholarly' | 'gov' | 'unknown'."""
     from urllib.parse import urlparse
 
-    host = (urlparse(url).netloc or url).lower()
+    # Add a scheme for bare 'example.com/x' so .hostname parses (and drops any :port / userinfo).
+    host = (urlparse(url if "//" in url else "//" + url).hostname or "").lower()
     if not host:
         return ("unknown", False)
-    if any(d in host for d in _JUNK_HOSTS):
+    if _host_matches(host, _JUNK_HOSTS):
         return ("junk", False)
-    if any(d in host for d in _SCHOLARLY_HOSTS):
+    if _host_matches(host, _SCHOLARLY_HOSTS):
         return ("scholarly", True)
-    if any(d in host for d in _GOV_HOSTS):
+    if _host_matches(host, _GOV_HOSTS):
         return ("gov", True)
     return ("unknown", False)
 
@@ -266,14 +296,27 @@ def _assess_source_trust(s: dict) -> dict:
             "age_days": age_days,
             "citation_count": cc,
             "primary": False,
-        }
+        },
+        # Publication age has annual granularity, not ingest recency: a paper from the last
+        # ~2 years is fresh; only >~5 years is stale. Without year-scaled thresholds the shared
+        # 30/180-day ingest defaults flag every non-current-year paper as «устарел» (red + false
+        # stale warning), which would gut the whole source-trust review on the demo path.
+        fresh_days=730,
+        stale_days=1826,
     )
     tier, score = ct.trust_tier, ct.trust_score
     warnings = list(ct.warning_messages)
     if dclass == "junk":
-        # not a scholarly source (social / course-notes / glossary / blog) → force to review
+        # not a scholarly source (social / course-notes / glossary / blog) → force to review.
+        # Prepend (don't replace) so the curator keeps the real signals (stale / unreviewed).
         tier, score = "low", min(score, 0.2)
-        warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью"]
+        warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью", *warnings]
+    elif dclass == "unknown" and tier in ("medium", "high"):
+        # Host isn't a known journal/repository/gov domain — we can't vouch for it, so it must
+        # not auto-ingest: cap to low → routes to review with the reason shown (year alone is
+        # too weak a signal to trust an unknown site).
+        tier, score = "low", min(score, 0.35)
+        warnings = ["источник с неизвестного домена — проверьте вручную", *warnings]
     return {
         "doc_id": pid,
         "trust_score": round(score, 3),
@@ -296,12 +339,16 @@ def _ingest_source(s: dict) -> dict:
         abstract=s.get("snippet", ""),
         source="deep-research",
     )
+    import time
+
     ops = build_graph_ops(art)
     store = get_store()
+    now = int(time.time())
     for node in ops["nodes"]:
         props = dict(node["props"])
         if node["label"] == "Paper":
             props.setdefault("source_status", "active")
+            props["ingested_at"] = now  # recency signal so the corpus showcase surfaces it
         store.upsert_node(node["id"], node["label"], **props)
     for edge in ops["edges"]:
         store.upsert_edge(edge["src"], edge["dst"], edge["type"], **edge["props"])
@@ -377,9 +424,12 @@ def reject_source(
         raise HTTPException(status_code=403, detail="role may not reject sources")
     from api_gateway import audit, source_review_store
 
-    it = source_review_store.set_status(sid, source_review_store.REJECTED)
-    if not it:
+    # Only a still-pending source may be rejected — guard against rejecting one that was
+    # already approved (would leave it ingested-but-marked-rejected on an approve/reject race).
+    it = source_review_store.get(sid)
+    if not it or it.get("status") != source_review_store.PENDING:
         raise HTTPException(status_code=404, detail="pending source not found")
+    source_review_store.set_status(sid, source_review_store.REJECTED)
     audit.record("reject_source", user=user, role=role, detail={"id": sid})
     return {"rejected": sid}
 

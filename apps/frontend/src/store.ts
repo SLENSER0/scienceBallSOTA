@@ -152,6 +152,9 @@ interface AppState {
   gapMap: GapMapState;
   setGapMap: (patch: Partial<GapMapState>) => void;
   resetGapMap: () => void;
+  // Remove a single gap from the map — used when a gap is closed (e.g. deep-research
+  // ingested new sources that cover it), so its card disappears.
+  closeGap: (id: string) => void;
 }
 
 export type GapMapPhase = 'idle' | 'running' | 'done';
@@ -255,4 +258,6 @@ export const useStore = create<AppState>((set) => ({
   gapMap: EMPTY_GAPMAP,
   setGapMap: (patch) => set((s) => ({ gapMap: { ...s.gapMap, ...patch } })),
   resetGapMap: () => set({ gapMap: { ...EMPTY_GAPMAP } }),
+  closeGap: (id) =>
+    set((s) => ({ gapMap: { ...s.gapMap, gaps: s.gapMap.gaps.filter((x) => x.id !== id) } })),
 }));
