@@ -79,20 +79,24 @@ function LibrarySearchTab() {
         <MultimodalPanel />
 
         {/* Two columns: manual add + recent */}
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        {/* minmax(0,…) + min-w-0: без него неразрывный длинный заголовок/URL распирает колонку
+            грида и ширина блоков «плавает». Заголовок обрезаем в одну строку с многоточием. */}
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <ManualAddForm onAdded={() => void qc.invalidateQueries({ queryKey: ['recent-articles'] })} />
-          <div className="panel p-4">
+          <div className="panel min-w-0 p-4">
             <div className="mb-2 flex items-center gap-2 text-sm text-nickel">
               <FlaskConical size={15} className="text-copper" /> Недавно добавленные
             </div>
             {recent.data?.articles.length ? (
               <ul className="space-y-2">
                 {recent.data.articles.map((a) => (
-                  <li key={a.id} className="text-sm">
-                    <span className="text-ink">{a.title}</span>
-                    <span className="ml-1 font-mono text-[10px] text-faint">
+                  <li key={a.id} className="min-w-0 text-sm">
+                    <div className="truncate text-ink" title={a.title}>
+                      {a.title}
+                    </div>
+                    <div className="truncate font-mono text-[10px] text-faint">
                       {a.year ?? ''} {a.doi ? `· ${a.doi}` : ''}
-                    </span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -445,7 +449,20 @@ function LoadToGraphPanel() {
                     className="flex items-center gap-2 rounded border border-line/60 px-2.5 py-1.5 text-[12px]"
                   >
                     <Check size={12} className="shrink-0 text-verified" />
-                    <span className="truncate text-ink">{r.title}</span>
+                    {r.url ? (
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex min-w-0 items-center gap-1 text-ink hover:text-copper"
+                        title={r.url}
+                      >
+                        <span className="truncate">{r.title}</span>
+                        <ExternalLink size={11} className="shrink-0 opacity-60" />
+                      </a>
+                    ) : (
+                      <span className="truncate text-ink">{r.title}</span>
+                    )}
                     <span className={`chip ${trustChip(r.trust.trust_tier)}`}>
                       {r.trust.trust_tier} {r.trust.trust_score.toFixed(2)}
                     </span>
