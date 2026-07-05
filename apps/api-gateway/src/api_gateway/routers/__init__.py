@@ -52,6 +52,7 @@ _ROUTERS: list[tuple[str, tuple[str, ...]]] = [
     ("graph_ext", ("router",)),
     ("research", ("router",)),
     ("documents", ("router",)),
+    ("corpus_source_delete", ("router",)),
     ("advise", ("router",)),
     ("contradictions", ("router",)),
     ("insights", ("router",)),
