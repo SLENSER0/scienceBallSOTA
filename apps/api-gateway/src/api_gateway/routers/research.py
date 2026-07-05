@@ -305,34 +305,94 @@ def _source_summary(s: dict) -> dict:
     return {"title": s.get("title") or s.get("url") or "источник", "url": s.get("url", ""), "year": s.get("year")}
 
 
+# Domain reputation — a web source's HOST is the strongest trust signal we have (a
+# ScienceDirect paper ≠ an Instagram post). Journals/repositories/gov are peer-reviewed &
+# authoritative; social / course-notes / glossaries / fake test hosts are low-trust and MUST
+# go to review instead of being auto-ingested.
+_SCHOLARLY_HOSTS = (
+    "sciencedirect.com", "nature.com", "science.org", "mdpi.com", "wiley.com", "springer",
+    "tandfonline.com", "doi.org", "ncbi.nlm.nih.gov", "pubmed", "core.ac.uk",
+    "researchgate.net", "academia.edu", "cyberleninka.ru", "elibrary.ru", "dissercat.com",
+    "rusneb.ru", "rucont.ru", "arxiv.org", "ssrn.com", ".edu",
+)
+_GOV_HOSTS = ("epa.gov", "congress.gov", ".gov", "gwpc.org", "gtk.fi", "stroyinf.ru", "europa.eu")
+_JUNK_HOSTS = (
+    "instagram.com", "facebook.com", "youtube.com", "youtu.be", "twitter.com", "x.com",
+    "tiktok.com", "pinterest.", "reddit.com", "studylib", "studocu", "studfile", "studopedia",
+    "coursehero", "scribd.com", "quizlet", "example.org", "example.com", "citynews",
+    "ru-ecology.info", "sustainability-directory", "vk.com", "medium.com", "blogspot", "wordpress.com",
+)
+
+
+def _domain_reputation(url: str) -> tuple[str, bool]:
+    """(domain_class, peer_reviewed) from the URL host: 'junk' | 'scholarly' | 'gov' | 'unknown'."""
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).netloc or url).lower()
+    if not host:
+        return ("unknown", False)
+    if any(d in host for d in _JUNK_HOSTS):
+        return ("junk", False)
+    if any(d in host for d in _SCHOLARLY_HOSTS):
+        return ("scholarly", True)
+    if any(d in host for d in _GOV_HOSTS):
+        return ("gov", True)
+    return ("unknown", False)
+
+
+def _extract_year(*parts: str | None) -> int | None:
+    """Most-recent plausible publication year found in the title / url / snippet."""
+    import re
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC).year
+    years = [int(y) for y in re.findall(r"(?:19|20)\d{2}", " ".join(p or "" for p in parts))]
+    years = [y for y in years if 1950 <= y <= now]
+    return max(years) if years else None
+
+
 def _assess_source_trust(s: dict) -> dict:
-    """Run one found source through Source Trust (retraction/freshness/peer-review)."""
+    """Source Trust for one found web source — from its DOMAIN reputation (journal/gov vs
+    social/course-notes) + an extracted year, not a flat prior. Junk domains route to review."""
     from datetime import UTC, datetime
 
     from kg_common.manual_article import ManualArticle, article_id
     from kg_retrievers.citation_trust import assess_citation
 
-    year = s.get("year")
+    url = s.get("url", "")
+    dclass, peer = _domain_reputation(url)
+    year = s.get("year") or _extract_year(s.get("title"), url, s.get("snippet"))
     age_days = None
     if isinstance(year, int) and year > 0:
         age_days = max(0.0, (datetime.now(UTC).year - year) * 365.25)
-    pid = article_id(ManualArticle(title=s.get("title", ""), url=s.get("url", "")))
+    # Domain reputation → a citation-count proxy so scholarly/gov outrank unknown/junk in the
+    # shared trust formula (the engine has no host awareness of its own).
+    cc = 20 if dclass in ("scholarly", "gov") else 0
+    pid = article_id(ManualArticle(title=s.get("title", ""), url=url))
     ct = assess_citation(
         {
             "doc_id": pid,
-            "source_status": "active",  # a fresh web source; retraction is set later by curation
-            "peer_reviewed": False,  # web sources are not peer-reviewed until proven otherwise
+            "source_status": "active",
+            "peer_reviewed": peer,
             "age_days": age_days,
-            "citation_count": 0,
+            "citation_count": cc,
             "primary": False,
         }
     )
+    tier, score = ct.trust_tier, ct.trust_score
+    warnings = list(ct.warning_messages)
+    if dclass == "junk":
+        # not a scholarly source (social / course-notes / glossary / blog) → force to review
+        tier, score = "low", min(score, 0.2)
+        warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью"]
     return {
         "doc_id": pid,
-        "trust_score": round(ct.trust_score, 3),
-        "trust_tier": ct.trust_tier,
+        "trust_score": round(score, 3),
+        "trust_tier": tier,
         "freshness": ct.freshness_level,
-        "warnings": list(ct.warning_messages),
+        "domain": dclass,
+        "year": year,
+        "warnings": warnings,
     }
 
 
