@@ -472,8 +472,11 @@ def corpus_sources(
         f"MATCH (n:Node) WHERE n.label IN {labels_lit} AND n.name IS NOT NULL "
         f"RETURN n LIMIT {candidate_cap}"
     )
-    # Cheap pass (no CorpusSource / no _has_parsed I/O): rank user-added → most-recent → title,
-    # then build only the kept top-`bounded`.
+    # Cheap pass (no CorpusSource / no _has_parsed I/O): rank RECENTLY-loaded sources (a real
+    # ingested_at, i.e. loaded via this feature) most-recent-first, then everything else by
+    # title, then build only the kept top-`bounded`. Priority keys off recency, not "is this a
+    # deep-research/manual source" — otherwise a corpus with many such legacy sources (no
+    # timestamp) would fill every slot and starve the seed corpus out of the showcase.
     cands: list[tuple[int, int, str, dict]] = []
     seen: set[str] = set()
     for r in rows:
@@ -482,20 +485,15 @@ def corpus_sources(
         if not node_id or node_id in seen:
             continue
         seen.add(node_id)
-        src = str(nd.get("source") or "").lower()
-        is_added = nd.get("label") == "Document" or src in ("deep-research", "manual")
         ia = _as_int(nd.get("ingested_at")) or 0
         title = str(nd.get("name") or nd.get("canonical_name") or node_id)
-        cands.append((0 if is_added else 1, -ia, title.lower(), nd))
+        cands.append((0 if ia > 0 else 1, -ia, title.lower(), nd))
     cands.sort(key=lambda c: (c[0], c[1], c[2]))
 
     sources: list[CorpusSource] = []
-    added_ids: set[str] = set()
     recency: dict[str, int] = {}
-    for pri, neg_ia, _tl, nd in cands[:bounded]:
+    for _pri, neg_ia, _tl, nd in cands[:bounded]:
         node_id = nd.get("id") or ""
-        if pri == 0:
-            added_ids.add(node_id)
         if neg_ia:
             recency[node_id] = -neg_ia
         label = nd.get("label") or ""
@@ -534,11 +532,11 @@ def corpus_sources(
             counts = {}
         for s in sources:
             s.chunk_count = counts.get(s.doc_id, 0)
-    # User-added sources first, most-recently-loaded of those first, then real-text, then title
-    # — so a just-loaded source lands at the very top of the showcase.
+    # Recently-loaded sources first (most-recent first), then those with real text, then title
+    # — so a just-loaded source lands at the very top of the showcase without starving the seed.
     sources.sort(
         key=lambda s: (
-            0 if s.doc_id in added_ids else 1,
+            0 if s.doc_id in recency else 1,
             -recency.get(s.doc_id, 0),
             0 if (s.has_parsed or s.chunk_count > 0) else 1,
             s.title.lower(),
