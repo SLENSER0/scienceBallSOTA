@@ -41,10 +41,31 @@ class ManualArticle:
         }
 
 
+def _normalize_url(url: str) -> str:
+    """Canonical form of an http(s) URL for idempotent keying: lowercase scheme+host, drop
+    the fragment and any trailing slash. Returns "" for non-http(s) input."""
+    u = (url or "").strip()
+    if not u.lower().startswith(("http://", "https://")):
+        return ""
+    from urllib.parse import urlsplit, urlunsplit
+
+    try:
+        p = urlsplit(u)
+        return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), p.query, ""))
+    except ValueError:
+        return u.rstrip("/")
+
+
 def article_id(article: ManualArticle) -> str:
-    """Deterministic Paper id — from DOI when present, else the title."""
-    key = article.doi.strip() or article.title.strip()
-    return make_id("Paper", key, use_hash=bool(article.doi))
+    """Deterministic Paper id — DOI when present, else the normalized URL (so the same web
+    source can't duplicate or collide by title), else the title."""
+    doi = article.doi.strip()
+    if doi:
+        return make_id("Paper", doi, use_hash=True)
+    url = _normalize_url(article.url)
+    if url:
+        return make_id("Paper", url, use_hash=True)
+    return make_id("Paper", article.title.strip())
 
 
 def validate_article(article: ManualArticle) -> list[str]:

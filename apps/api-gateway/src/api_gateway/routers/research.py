@@ -281,6 +281,12 @@ def _assess_source_trust(s: dict) -> dict:
         # Prepend (don't replace) so the curator keeps the real signals (stale / unreviewed).
         tier, score = "low", min(score, 0.2)
         warnings = ["источник не научный (соцсети/конспекты/блог) — требует ревью", *warnings]
+    elif dclass == "unknown" and tier in ("medium", "high"):
+        # Host isn't a known journal/repository/gov domain — we can't vouch for it, so it must
+        # not auto-ingest: cap to low → routes to review with the reason shown (year alone is
+        # too weak a signal to trust an unknown site).
+        tier, score = "low", min(score, 0.35)
+        warnings = ["источник с неизвестного домена — проверьте вручную", *warnings]
     return {
         "doc_id": pid,
         "trust_score": round(score, 3),
