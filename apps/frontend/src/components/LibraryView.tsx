@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,39 +6,26 @@ import {
   BookPlus,
   Brain,
   Check,
-  ChevronDown,
-  ChevronRight,
   DatabaseZap,
-  ExternalLink,
   FlaskConical,
   ImagePlus,
   Library,
   Loader2,
-  Search,
   ShieldCheck,
   Sparkles,
-  TriangleAlert,
   X,
 } from 'lucide-react';
 import { api, type TrustedSource } from '../api';
 import { useStore } from '../store';
-import { CallHistory } from './CallHistory';
-import { pushCall } from '../lib/callHistory';
 import { DocumentUpload } from './DocumentUpload';
 import { MultimodalPanel } from './MultimodalPanel';
 import { TabHub } from './TabHub';
 import { SourcesShowcaseView } from './SourcesShowcaseView';
 
 // «Библиотека» — add scientific articles to the graph. Two flows:
-// (1) deep-research: decompose a question into sub-questions × ready-to-open
-//     search links across the scientific source catalog (open_deep_research-style);
+// (1) gap-informed research: analyze the prompt (+ optional image) against the corpus,
+//     find gaps, web-search to close them, then review + ingest the found sources;
 // (2) manual add: a form that writes a :Paper (+ abstract chunk/evidence) to the graph.
-
-const ACCESS_STYLE: Record<string, { label: string; cls: string }> = {
-  open: { label: 'открытый', cls: 'text-verified border-verified/40' },
-  paywalled: { label: 'платный', cls: 'text-copper border-copper/40' },
-  shadow: { label: 'теневая б-ка', cls: 'text-contradiction border-contradiction/40' },
-};
 
 // Top-level «Библиотека» hub: sources showcase first, then the search/add flow.
 export function LibraryView() {
@@ -65,55 +52,8 @@ export function LibraryView() {
 
 function LibrarySearchTab() {
   const qc = useQueryClient();
-  const [question, setQuestion] = useState('');
   const sources = useQuery({ queryKey: ['research-sources'], queryFn: api.researchSources });
   const recent = useQuery({ queryKey: ['recent-articles'], queryFn: api.recentArticles });
-  const deepStatus = useQuery({ queryKey: ['deep-status'], queryFn: api.deepStatus });
-
-  const plan = useMutation({ mutationFn: (q: string) => api.researchPlan(q) });
-
-  // Deep research streams into the app-level store (survives tab switches).
-  const deep = useStore((s) => s.deep);
-  const setDeep = useStore((s) => s.setDeep);
-  const resetDeep = useStore((s) => s.resetDeep);
-  const esRef = useRef<EventSource | null>(null);
-
-  const startDeep = (q: string) => {
-    if (q.trim()) pushCall('deep-research', q.trim());
-    esRef.current?.close();
-    resetDeep(q);
-    const es = new EventSource(`/api/v1/research/deep/stream?question=${encodeURIComponent(q)}`);
-    esRef.current = es;
-    es.addEventListener('stage', (e) => {
-      const d = JSON.parse((e as MessageEvent).data);
-      setDeep({ stages: [...useStore.getState().deep.stages, { node: d.node, label: d.label }] });
-    });
-    es.addEventListener('reasoning', (e) => {
-      const d = JSON.parse((e as MessageEvent).data);
-      setDeep({ reasoning: `${useStore.getState().deep.reasoning}\n\n### ${d.node}\n${d.text}` });
-    });
-    es.addEventListener('token', (e) => {
-      const d = JSON.parse((e as MessageEvent).data);
-      setDeep({ tokens: useStore.getState().deep.tokens + (d.text ?? '') });
-    });
-    es.addEventListener('report', (e) => {
-      const d = JSON.parse((e as MessageEvent).data);
-      setDeep({ report: d.text ?? '' });
-    });
-    es.addEventListener('sources', (e) => {
-      const d = JSON.parse((e as MessageEvent).data);
-      setDeep({ sources: d.items ?? [] });
-    });
-    es.addEventListener('done', () => {
-      setDeep({ running: false });
-      es.close();
-    });
-    es.addEventListener('error', (e) => {
-      const msg = (e as MessageEvent).data ? JSON.parse((e as MessageEvent).data).message : 'stream error';
-      setDeep({ running: false, error: String(msg) });
-      es.close();
-    });
-  };
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6">
@@ -129,93 +69,6 @@ function LibrarySearchTab() {
 
         {/* Gap-informed (optionally multimodal) research */}
         <GapResearchPanel />
-
-        {/* Deep-research search */}
-        <div className="panel mt-5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm text-nickel">
-            <Sparkles size={15} className="text-copper" /> Deep-research по источникам
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && question.trim() && plan.mutate(question)}
-              placeholder="Напр.: очистка шахтных вод от сульфатов"
-              className="flex-1 rounded-md border border-line bg-surface/60 px-3 py-2.5 text-sm text-ink outline-none placeholder:text-faint focus:border-copper/50"
-            />
-            <button
-              onClick={() => question.trim() && plan.mutate(question)}
-              disabled={plan.isPending || !question.trim()}
-              className="flex items-center gap-2 rounded-md bg-copper/20 px-4 text-sm text-copper transition enabled:hover:bg-copper/30 disabled:opacity-40"
-              title="Быстрый поиск: ссылки по базам"
-            >
-              {plan.isPending ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-              Ссылки
-            </button>
-            <button
-              onClick={() => question.trim() && startDeep(question)}
-              disabled={deep.running || !question.trim() || !deepStatus.data?.available}
-              className="flex items-center gap-2 rounded-md border border-copper/40 bg-copper/10 px-4 text-sm text-copper transition enabled:hover:bg-copper/20 disabled:opacity-40"
-              title={deepStatus.data?.available ? 'Глубокое исследование по реальным веб-источникам (~2-3 мин)' : 'Сейчас недоступно'}
-            >
-              {deep.running ? <Loader2 size={15} className="animate-spin" /> : <Brain size={15} />}
-              Deep-research
-            </button>
-          </div>
-
-          {!deep.running && (
-            <CallHistory
-              feature="deep-research"
-              title="История deep-research"
-              onPick={(e) => {
-                setQuestion(e.label);
-                startDeep(e.label);
-              }}
-            />
-          )}
-          <DeepResearchPanel />
-          {deep.error && (
-            <div className="mt-2 text-xs text-contradiction">Ошибка: {deep.error}</div>
-          )}
-
-          {plan.data && (
-            <div className="mt-4 space-y-4">
-              <div className="flex flex-wrap gap-1.5">
-                {plan.data.keywords.map((k) => (
-                  <span key={k} className="chip text-faint">{k}</span>
-                ))}
-              </div>
-              {plan.data.sub_questions.map((sq, i) => (
-                <div key={i} className="rounded-md border border-line bg-surface/40 p-3">
-                  <div className="mb-2 text-sm font-medium text-ink">{sq.text}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {sq.links.map((l) => {
-                      const a = ACCESS_STYLE[l.access] ?? ACCESS_STYLE.paywalled;
-                      return (
-                        <a
-                          key={l.source_id}
-                          href={l.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition hover:bg-surface ${a.cls}`}
-                          title={`${l.source_name} · ${a.label}`}
-                        >
-                          {l.access === 'shadow' && <TriangleAlert size={11} />}
-                          {l.source_name}
-                          <ExternalLink size={10} className="opacity-60" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              <p className="text-[11px] text-faint">
-                Ссылки открываются во внешних базах. Sci-Hub — теневая библиотека (правовая
-                серая зона); система ничего не скачивает автоматически, решение за вами.
-              </p>
-            </div>
-          )}
-        </div>
 
         {/* Upload document → graph + viewer (§17.19) */}
         <DocumentUpload />
@@ -252,82 +105,6 @@ function LibrarySearchTab() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-// open-webui-style deep-research trace: live stage pipeline + a collapsible
-// «Рассуждение» panel that streams the model's thinking, then the final report.
-function DeepResearchPanel() {
-  const deep = useStore((s) => s.deep);
-  const [showReasoning, setShowReasoning] = useState(true);
-  if (!deep.question && !deep.running) return null;
-
-  const live = deep.reasoning || deep.tokens;
-  return (
-    <div className="mt-4 rounded-md border border-copper/30 bg-surface/40 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs text-faint">
-        <Brain size={14} className="text-copper" />
-        Реальный веб-поиск по научным источникам
-        {deep.running && <Loader2 size={12} className="animate-spin text-copper" />}
-      </div>
-
-      {/* Stage pipeline */}
-      {deep.stages.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          {deep.stages.map((s, i) => (
-            <span key={i} className="flex items-center gap-1">
-              <span
-                className={`rounded px-2 py-0.5 text-[11px] ${
-                  i === deep.stages.length - 1 && deep.running
-                    ? 'bg-copper/20 text-copper'
-                    : 'bg-surface text-nickel'
-                }`}
-              >
-                {s.label}
-              </span>
-              {i < deep.stages.length - 1 && <ChevronRight size={11} className="text-faint" />}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Reasoning (collapsible «thinking») */}
-      {live && (
-        <div className="mb-3 rounded border border-line bg-graphite/40">
-          <button
-            onClick={() => setShowReasoning((v) => !v)}
-            className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs text-faint hover:text-nickel"
-          >
-            {showReasoning ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            {deep.running ? 'Рассуждение (в реальном времени)…' : 'Рассуждение'}
-          </button>
-          {showReasoning && (
-            <div className="max-h-56 overflow-y-auto whitespace-pre-wrap border-t border-line px-3 py-2 font-mono text-[11px] leading-relaxed text-muted">
-              {deep.reasoning}
-              {deep.running && deep.tokens && (
-                <span className="text-faint">{deep.tokens.slice(-1200)}</span>
-              )}
-              {deep.running && <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-copper/70 align-middle" />}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Final report */}
-      {deep.report && (
-        <div className="md max-h-[440px] overflow-y-auto rounded border border-line bg-graphite/30 p-3">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{deep.report}</ReactMarkdown>
-        </div>
-      )}
-      {deep.running && !deep.report && (
-        <div className="font-mono text-[11px] text-faint">
-          Анализ источников… отчёт появится по завершении (~2-3 мин).
-        </div>
-      )}
-
-      {/* «Загрузить в граф» + Source Trust gate + low-trust review */}
-      {!deep.running && deep.sources.length > 0 && <LoadToGraphPanel />}
     </div>
   );
 }
@@ -465,20 +242,65 @@ const TRUST_CHIP: Record<string, string> = {
 };
 const trustChip = (tier: string) => TRUST_CHIP[tier] ?? 'border-line text-faint';
 
-// «Загрузить в граф»: run each found source through Source Trust, ingest the trusted
-// ones and hold the low-trust ones for the user's add/reject decision (§23.27).
+type ProgStatus = 'pending' | 'loading' | 'ingested' | 'review' | 'error';
+type ProgItem = { title: string; status: ProgStatus; item?: TrustedSource };
+
+const PROG_LABEL: Record<ProgStatus, string> = {
+  pending: 'в очереди',
+  loading: 'загружается…',
+  ingested: 'в графе',
+  review: 'на ревью',
+  error: 'ошибка',
+};
+
+function ProgIcon({ status }: { status: ProgStatus }) {
+  if (status === 'loading') return <Loader2 size={12} className="shrink-0 animate-spin text-copper" />;
+  if (status === 'ingested') return <Check size={12} className="shrink-0 text-verified" />;
+  if (status === 'error') return <X size={12} className="shrink-0 text-contradiction" />;
+  if (status === 'review') return <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-gap" />;
+  return <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-line" />;
+}
+
+// «Загрузить в граф»: run each found source through Source Trust ONE AT A TIME so the loading
+// is visible (sources don't ingest instantly): pending → loading → в графе / на ревью. Trusted
+// ones go to the graph; low-trust ones are held for the user's add/reject decision (§23.27).
 function LoadToGraphPanel() {
   const deep = useStore((s) => s.deep);
   const setDeep = useStore((s) => s.setDeep);
   const promote = deep.promote as PromoteResult | null;
+  const [progress, setProgress] = useState<ProgItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const load = useMutation({
-    mutationFn: () =>
-      api.promoteDeepSources(
-        deep.sources.map((s) => ({ title: s.title, url: s.url, snippet: s.snippet, year: s.year ?? null })),
-      ),
-    onSuccess: (r) => setDeep({ promote: r }),
-  });
+  const runLoad = async () => {
+    const srcs = deep.sources;
+    if (!srcs.length || loading) return;
+    setLoading(true);
+    setProgress(srcs.map((s) => ({ title: s.title, status: 'pending' as ProgStatus })));
+    const ingested: TrustedSource[] = [];
+    const review: TrustedSource[] = [];
+    for (let i = 0; i < srcs.length; i++) {
+      const s = srcs[i];
+      setProgress((p) => p.map((it, j) => (j === i ? { ...it, status: 'loading' } : it)));
+      try {
+        const r = await api.promoteDeepSources([
+          { title: s.title, url: s.url, snippet: s.snippet, year: s.year ?? null },
+        ]);
+        const toReview = r.review.length > 0;
+        const got = (toReview ? r.review[0] : r.ingested[0]) as TrustedSource | undefined;
+        if (got) (toReview ? review : ingested).push(got);
+        setProgress((p) =>
+          p.map((it, j) => (j === i ? { ...it, status: toReview ? 'review' : 'ingested', item: got } : it)),
+        );
+        // publish incrementally so the review actions appear as low-trust sources arrive
+        setDeep({ promote: { ingested: [...ingested], review: [...review] } });
+      } catch {
+        setProgress((p) => p.map((it, j) => (j === i ? { ...it, status: 'error' } : it)));
+      }
+    }
+    setLoading(false);
+  };
+
+  const doneCount = progress.filter((p) => p.status !== 'pending' && p.status !== 'loading').length;
   const approve = useMutation({
     mutationFn: (id: string) => api.approveSource(id),
     onSuccess: (_r, id) => {
@@ -507,19 +329,53 @@ function LoadToGraphPanel() {
           <ShieldCheck size={14} className="text-copper" /> Доверие к источникам · найдено {deep.sources.length}
         </div>
         <button
-          onClick={() => load.mutate()}
-          disabled={load.isPending}
+          onClick={() => void runLoad()}
+          disabled={loading}
           className="flex items-center gap-1.5 rounded bg-copper/15 px-2.5 py-1 text-xs text-copper hover:bg-copper/25 disabled:opacity-50"
         >
-          {load.isPending ? <Loader2 size={13} className="animate-spin" /> : <DatabaseZap size={13} />}
-          Загрузить в граф
+          {loading ? <Loader2 size={13} className="animate-spin" /> : <DatabaseZap size={13} />}
+          {loading ? `Загрузка ${doneCount}/${deep.sources.length}…` : 'Загрузить в граф'}
         </button>
       </div>
-      {load.isError && <div className="text-[11px] text-contradiction">не удалось загрузить</div>}
+
+      {/* Live per-source loading queue — pending → loading → в графе / на ревью */}
+      {progress.length > 0 && (
+        <div className="mb-3">
+          <div className="mb-1.5 h-1 overflow-hidden rounded bg-line/40">
+            <div
+              className="h-full bg-copper transition-all"
+              style={{ width: `${Math.round((doneCount / progress.length) * 100)}%` }}
+            />
+          </div>
+          <div className="max-h-56 space-y-1 overflow-y-auto">
+            {progress.map((p, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 rounded border border-line/50 px-2.5 py-1.5 text-[12px]"
+              >
+                <ProgIcon status={p.status} />
+                <span className="truncate text-ink">{p.title}</span>
+                {p.item && (
+                  <span className={`chip ${trustChip(p.item.trust.trust_tier)}`}>
+                    {p.item.trust.trust_tier} {p.item.trust.trust_score.toFixed(2)}
+                  </span>
+                )}
+                <span
+                  className={`ml-auto shrink-0 font-mono text-[10px] ${
+                    p.status === 'review' ? 'text-gap' : p.status === 'error' ? 'text-contradiction' : 'text-faint'
+                  }`}
+                >
+                  {PROG_LABEL[p.status]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {promote && (
         <div className="space-y-3">
-          {promote.ingested.length > 0 && (
+          {promote.ingested.length > 0 && progress.length === 0 && (
             <div>
               <div className="mb-1 text-[10px] uppercase tracking-wide text-faint">
                 в графе ({promote.ingested.length})
