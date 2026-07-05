@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/v1/ocr", tags=["ocr"])
 
 # Same write-capable roles that may upload documents (§17.19).
 _CAN_UPLOAD = {"admin", "curator", "researcher", "analyst", "project_manager"}
-_MAX_BYTES = 64 * 1024 * 1024  # 64 MB, matching the document upload cap
+_MAX_BYTES = 512 * 1024 * 1024  # 512 MB, matching the document upload cap
 _MAX_CORPUS_FILES = 200
 
 
@@ -87,7 +87,7 @@ async def analyze(
         while chunk := await file.read(1 << 20):
             size += len(chunk)
             if size > _MAX_BYTES:
-                raise HTTPException(status_code=413, detail="file too large (max 64 MB)")
+                raise HTTPException(status_code=413, detail="file too large (max 512 MB)")
             tmp.write(chunk)
         tmp.flush()
         try:

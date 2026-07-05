@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/v1/ingest/pipeline", tags=["ingest-pipeline"])
 
 # Те же write-роли, что и обычная загрузка документа (§19 / documents.py).
 _CAN_UPLOAD = {"admin", "curator", "researcher", "analyst", "project_manager"}
-_MAX_BYTES = 64 * 1024 * 1024  # 64 MB, как и /documents/upload
+_MAX_BYTES = 512 * 1024 * 1024  # 512 MB, как и /documents/upload
 _ALLOWED_SUFFIX = {".pdf", ".docx", ".pptx", ".xlsx", ".txt", ".md"}
 
 
@@ -104,7 +104,7 @@ async def upload_and_run(
             if size > _MAX_BYTES:
                 out.close()
                 dest.unlink(missing_ok=True)
-                raise HTTPException(status_code=413, detail="file too large (max 64 MB)")
+                raise HTTPException(status_code=413, detail="file too large (max 512 MB)")
             out.write(chunk)
 
     run = orchestrator().start(dest, use_llm=use_llm)
