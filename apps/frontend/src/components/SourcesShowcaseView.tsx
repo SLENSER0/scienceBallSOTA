@@ -143,7 +143,7 @@ export function SourcesShowcaseView() {
   // из рисёрча → вижу» holds even before a curator approves them into the graph.
   const loadPending = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/sources/pending', { headers: { ...authHeaders() } });
+      const res = await fetch('/api/v1/research/sources/pending', { headers: { ...authHeaders() } });
       if (!res.ok) return;
       const data = (await res.json()) as PendingResponse;
       setPending(data.items ?? []);
@@ -162,7 +162,7 @@ export function SourcesShowcaseView() {
     setApproving(id);
     setDlError(null);
     try {
-      const res = await fetch(`/api/v1/sources/${encodeURIComponent(id)}/approve`, {
+      const res = await fetch(`/api/v1/research/sources/${encodeURIComponent(id)}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
       });
@@ -272,7 +272,7 @@ export function SourcesShowcaseView() {
 
         {dlError && (
           <div className="mt-3 rounded-md border border-contradiction/40 bg-contradiction/10 px-3 py-2 text-sm text-contradiction">
-            Ошибка скачивания: {dlError}
+            Ошибка: {dlError}
           </div>
         )}
 
